@@ -297,6 +297,19 @@ let analyze_module (m : crate) (funs_map : fun_decl FunDeclId.Map.t) :
                declaration group:\n" ^ decls ^ "\n\nInitial error:\n"
             ^ error.msg));
         analyze_decl_groups decls'
+    | MixedGroup ids :: decls'
+      when Option.is_some
+             (LlbcAstUtils.fun_impl_mixed_group
+                (Charon.GAstUtils.g_declaration_group_to_list ids)) ->
+        (* Functions recursing through trait impls (aeneas#1264): the impls have
+           no body, so the group's functions form one recursive group. *)
+        let funs, _ =
+          Option.get
+            (LlbcAstUtils.fun_impl_mixed_group
+               (Charon.GAstUtils.g_declaration_group_to_list ids))
+        in
+        analyze_fun_decl_group funs;
+        analyze_decl_groups decls'
     | MixedGroup ids :: _ ->
         [%save_error_opt_span] None
           ("Mixed declaration groups (which contain both type and function \

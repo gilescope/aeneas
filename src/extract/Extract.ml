@@ -2375,7 +2375,7 @@ let extract_fun_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
     (fun qualif ->
       F.pp_print_space fmt ();
       F.pp_print_string fmt qualif)
-    (fun_decl_kind_to_post_qualif kind);
+    (fun_decl_kind_to_post_qualif ~mono_unfold:ctx.mono_unfold kind);
   (* Close the outer box for the definition *)
   F.pp_close_box fmt ();
   (* Add breaks to insert new lines between definitions *)
@@ -3430,6 +3430,86 @@ let extract_trait_impl_method_items (ctx : extraction_ctx) (fmt : F.formatter)
   with CFailure _ ->
     F.pp_print_space fmt ();
     extract_admit fmt
+
+(** Print a trait impl as a structure literal, its generics instantiated with
+    [generics]. Used for the impls of a group of functions which recurse through
+    them (aeneas#1264): those impls are only defined after the group, so inside
+    it we inline their (reducible) definition. *)
+let extract_trait_impl_literal (ctx : extraction_ctx) (fmt : F.formatter)
+    ~(inside : bool) (impl_id : trait_impl_id) (generics : generic_args) : unit
+    =
+  let impl =
+    [%unwrap_opt_span] None
+      (TraitImplId.Map.find_opt impl_id ctx.trans_trait_impls)
+      "Could not lookup the trait impl to inline"
+  in
+  let span = impl.item_meta.span in
+  [%cassert] span
+    (backend () = Lean)
+    "Functions recursing through trait impls are only supported for Lean";
+  [%cassert] span (impl.consts = [])
+    "Inlining trait impls with associated constants is not supported";
+  let subst = make_subst_from_generics impl.generics generics in
+  let subst_visitor =
+    object
+      inherit [_] subst_visitor
+    end
+  in
+  let trait_decl_id = impl.impl_trait.trait_decl_id in
+  let trait_decl = TraitDeclId.Map.find trait_decl_id ctx.crate.trait_decls in
+  let types =
+    List.map
+      (fun (type_id, _, ty) ->
+        ( ctx_get_trait_type span trait_decl_id type_id ctx,
+          fun () ->
+            extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false
+              (subst_visitor#visit_ty subst ty) ))
+      impl.types
+  in
+  let parents =
+    List.map
+      (fun ((clause : T.trait_param), trait_ref) ->
+        ( ctx_get_trait_parent_clause span trait_decl_id clause.clause_id ctx,
+          fun () ->
+            extract_trait_ref span ctx fmt TypeDeclId.Set.empty ~inside:false
+              (subst_visitor#visit_trait_ref subst trait_ref) ))
+      (List.combine trait_decl.implied_clauses impl.parent_trait_refs)
+  in
+  let methods =
+    List.map
+      (fun (method_id, _, (fn : fun_decl_ref binder)) ->
+        [%cassert] span
+          (fn.binder_generics = empty_generic_params)
+          "Inlining trait impls with generic methods is not supported";
+        let trans =
+          [%unwrap_with_span] span
+            (ctx_lookup_fun_decl_info ctx fn.binder_value.fun_id)
+            "Could not lookup the translated method"
+        in
+        ( ctx_get_trait_method span trait_decl_id method_id ctx,
+          fun () ->
+            F.pp_print_string fmt
+              (ctx_get_local_function span fn.binder_value.fun_id None ctx);
+            extract_generic_args span ctx fmt TypeDeclId.Set.empty
+              ~explicit:(Some trans.f.signature.explicit_info)
+              (generic_args_substitute subst fn.binder_value.fun_generics) ))
+      impl.methods
+  in
+  if inside then F.pp_print_string fmt "(";
+  F.pp_print_string fmt "{";
+  Collections.List.iter_link
+    (fun () -> F.pp_print_string fmt ",")
+    (fun (name, value) ->
+      F.pp_print_space fmt ();
+      F.pp_print_string fmt (name ^ " :=");
+      F.pp_print_space fmt ();
+      value ())
+    (types @ parents @ methods);
+  F.pp_print_space fmt ();
+  F.pp_print_string fmt "}";
+  if inside then F.pp_print_string fmt ")"
+
+let () = extract_trait_impl_literal_hook := extract_trait_impl_literal
 
 (** Extract a trait implementation *)
 let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)

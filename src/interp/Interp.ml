@@ -59,6 +59,14 @@ let compute_contexts (crate : crate) : decls_ctx =
   let type_decls_groups, _, _, _, _, mixed_groups =
     split_declarations_to_group_maps declarations
   in
+  (* Functions recursing through trait impls are supported (aeneas#1264). *)
+  let mixed_groups =
+    List.filter
+      (fun g ->
+        Option.is_none
+          (LlbcAstUtils.fun_impl_mixed_group (g_declaration_group_to_list g)))
+      mixed_groups
+  in
   (* Check if there are mixed groups: if there are, we report an error
      and ignore those. *)
   (if mixed_groups <> [] then

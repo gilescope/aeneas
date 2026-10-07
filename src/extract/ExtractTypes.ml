@@ -619,6 +619,8 @@ and extract_trait_instance_id (span : Meta.span) (ctx : extraction_ctx)
           F.pp_print_space fmt ();
           F.pp_print_string fmt "/- Unexpected occurrence of Self -/"
       | _ -> F.pp_print_string fmt "ERROR(\"Unexpected Self\")")
+  | TraitImpl (id, generics) when TraitImplId.Set.mem id ctx.inline_trait_impls
+    -> !extract_trait_impl_literal_hook ctx fmt ~inside id generics
   | TraitImpl (id, generics) ->
       let name = ctx_get_trait_impl span id ctx in
       (* Lookup the the information about the explicit/implicit parameters. *)

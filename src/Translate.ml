@@ -1123,6 +1123,75 @@ let extract_definitions (fmt : Format.formatter) (config : gen_config)
   in
   let export_trait_impl ~is_rec = export_trait_impl fmt config ctx ~is_rec in
 
+  (* A group of functions recursing through trait impls (aeneas#1264). *)
+  let export_fun_impl_group (fun_ids : FunDeclId.id list)
+      (impl_ids : TraitImplId.id list) : unit =
+    let pure_funs =
+      List.filter_map
+        (fun id -> ExtractBase.ctx_lookup_fun_decl_info ctx id)
+        fun_ids
+    in
+    let inline_trait_impls = TraitImplId.Set.of_list impl_ids in
+    let decls =
+      List.concat
+        (List.map
+           (fun (f : pure_fun_translation) -> f.loops @ f.bodies @ [ f.f ])
+           pure_funs)
+    in
+    (* The callees to unfold in the monotonicity proofs: the transparent,
+       non-recursive functions to which the group passes one of its impls. *)
+    let fun_ids_set = FunDeclId.Set.of_list fun_ids in
+    let mentions_impl (generics : Pure.generic_args) : bool =
+      let found = ref false in
+      (object
+         inherit [_] Pure.iter_expr
+
+         method! visit_TraitImpl _ id _ =
+           if TraitImplId.Set.mem id inline_trait_impls then found := true
+      end)
+        #visit_generic_args
+        () generics;
+      !found
+    in
+    let callees = ref FunDeclId.Set.empty in
+    List.iter
+      (fun (d : Pure.fun_decl) ->
+        Option.iter
+          (fun (body : Pure.fun_body) ->
+            (object
+               inherit [_] Pure.iter_expr
+
+               method! visit_qualif _ q =
+                 match q.id with
+                 | FunOrOp (Fun (FromLlbc (FunId fid, None)))
+                   when (not (FunDeclId.Set.mem fid fun_ids_set))
+                        && mentions_impl q.generics -> (
+                     match ExtractBase.ctx_lookup_fun_decl_info ctx fid with
+                     | Some t
+                       when Option.is_some t.f.body
+                            && not t.f.signature.fwd_info.effect_info.is_rec ->
+                         callees := FunDeclId.Set.add fid !callees
+                     | _ -> ())
+                 | _ -> ()
+            end)
+              #visit_texpr
+              () body.body)
+          d.body)
+      decls;
+    let callees =
+      List.map
+        (fun fid ->
+          let d =
+            (Option.get (ExtractBase.ctx_lookup_fun_decl_info ctx fid)).f
+          in
+          ExtractBase.ctx_get_local_function d.item_meta.span fid None ctx)
+        (FunDeclId.Set.elements !callees)
+    in
+    let ctx = { ctx with inline_trait_impls; mono_unfold = Some callees } in
+    if config.extract_fun_decls then
+      export_functions_group_scc fmt config ctx true decls
+  in
+
   let export_decl_group (dg : declaration_group) : unit =
     match dg with
     | TypeGroup (NonRecGroup id) ->
@@ -1251,9 +1320,22 @@ let extract_definitions (fmt : Format.formatter) (config : gen_config)
                doesn't work for mutually recursive impls. *)
             let is_rec = List.length decls = 1 && Config.backend () = Lean in
             List.iter (fun id -> export_trait_impl ~is_rec id) ids)
-    | MixedGroup _ ->
-        [%craise_opt_span] None
-          "Mixed-recursive declaration groups are not supported"
+    | MixedGroup g -> (
+        match
+          LlbcAstUtils.fun_impl_mixed_group
+            (Charon.GAstUtils.g_declaration_group_to_list g)
+        with
+        | Some (fun_ids, impl_ids) when Config.backend () = Lean ->
+            (* Functions recursing through trait impls (aeneas#1264), typically
+               a function calling itself from a closure: the functions form one
+               recursive group in which the impls are inlined as structure
+               literals, and the impls are defined after it. *)
+            export_fun_impl_group fun_ids impl_ids;
+            if config.extract_trait_impls && config.extract_transparent then
+              List.iter (export_trait_impl ~is_rec:false) impl_ids
+        | _ ->
+            [%craise_opt_span] None
+              "Mixed-recursive declaration groups are not supported")
   in
 
   List.iter
@@ -1541,6 +1623,8 @@ let extract_translated_crate (filename : string) (dest_dir : string)
       trait_impls_filter_type_args_map = Pure.TraitImplId.Map.empty;
       trait_impls_filter_trait_clauses_map = Pure.TraitImplId.Map.empty;
       extracted_opaque;
+      inline_trait_impls = Pure.TraitImplId.Set.empty;
+      mono_unfold = None;
     }
   in
   (* Initialize EmitJson. *)

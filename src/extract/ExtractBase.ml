@@ -616,7 +616,27 @@ type extraction_ctx = {
       (** Set to true if at some point we extract a definition which is opaque,
           meaning we generate an axiom. If yes, and in case the user does not
           use the option [-split-files] we suggest it to the user. *)
+  inline_trait_impls : TraitImplId.Set.t;
+      (** Trait impls to print as structure literals rather than by name: the
+          impls of a group of functions recursing through them (aeneas#1264),
+          which are only defined after the group. *)
+  mono_unfold : string list option;
+      (** Lean: if [Some callees], the [partial_fixpoint] of the definitions
+          being extracted proves monotonicity itself, unfolding [callees] (the
+          transparent functions which receive one of [inline_trait_impls]). *)
 }
+
+(** Print a trait impl as a structure literal: set by {!Extract}, used by
+    {!ExtractTypes.extract_trait_instance_id} for [inline_trait_impls]. *)
+let extract_trait_impl_literal_hook :
+    (extraction_ctx ->
+    Format.formatter ->
+    inside:bool ->
+    TraitImplId.id ->
+    Pure.generic_args ->
+    unit)
+    ref =
+  ref (fun _ _ ~inside:_ _ _ -> raise (Failure "extract_trait_impl_literal"))
 
 let extraction_ctx_to_fmt_env (ctx : extraction_ctx) : PrintPure.fmt_env =
   TranslateCore.trans_ctx_to_pure_fmt_env ctx.trans_ctx
@@ -1447,14 +1467,23 @@ let fun_decl_kind_to_qualif (kind : decl_kind) : string option =
   | HOL4 -> None
 
 (** Compute the qualifier to add after the definition. *)
-let fun_decl_kind_to_post_qualif (kind : decl_kind) : string option =
+let fun_decl_kind_to_post_qualif ?(mono_unfold : string list option = None)
+    (kind : decl_kind) : string option =
   match backend () with
   | FStar | Coq | HOL4 -> None
   | Lean -> (
       match kind with
       | SingleNonRec | Builtin | Declared -> None
-      | SingleRec | MutRecFirst | MutRecInner | MutRecLast ->
-          Some "partial_fixpoint")
+      | SingleRec | MutRecFirst | MutRecInner | MutRecLast -> (
+          match mono_unfold with
+          | None -> Some "partial_fixpoint"
+          | Some callees ->
+              (* The recursive functions are passed to [callees] inside trait
+                 impl literals: Lean cannot prove the group monotone by itself
+                 (see [Aeneas.Tactic.Solver.RecMonotonicity]). *)
+              Some
+                ("partial_fixpoint monotonicity by aeneas_monotonicity ["
+               ^ String.concat ", " callees ^ "]")))
 
 (** The type of types.
 

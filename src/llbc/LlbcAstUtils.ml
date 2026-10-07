@@ -25,6 +25,22 @@ let body_is_target_dispatch (b : body) : bool =
 let body_is_translatable (b : body) : bool =
   body_is_known b || body_is_target_dispatch b
 
+(** A mixed declaration group made only of functions and trait impls: a function
+    which recurses through a trait impl, typically a closure's [FnOnce] impl
+    (aeneas#1264). Returns its functions and impls; [None] for any other mix. *)
+let fun_impl_mixed_group (ids : Types.item_id list) :
+    (FunDeclId.id list * TraitImplId.id list) option =
+  let funs, impls, others =
+    List.fold_right
+      (fun (id : Types.item_id) (funs, impls, others) ->
+        match id with
+        | IdFun id -> (id :: funs, impls, others)
+        | IdTraitImpl id -> (funs, id :: impls, others)
+        | _ -> (funs, impls, others + 1))
+      ids ([], [], 0)
+  in
+  if others = 0 && funs <> [] then Some (funs, impls) else None
+
 let fun_decl_global_initializer (f : fun_decl) : global_decl_ref option =
   match f.src with
   | GlobalInitializerFun global -> Some global
