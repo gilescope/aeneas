@@ -502,6 +502,51 @@ let projections_intersect (span : Meta.span) (ctx : eval_ctx)
   in
   compare_rtys ~allow_erased span ctx default combine compare_regions ty1 ty2
 
+(** Check if the projection of [ty2] over [rset2] intersects the regions of
+    [ty1] which are *nested* under the regions [ended1], that is the regions of
+    the inner borrows of the borrows we end (the "outlive" part of the
+    projection).
+
+    A region is nested under an ended region if it appears inside a borrow whose
+    region ended, or as an argument of an ADT one of whose region parameters
+    ended. For ADTs this is conservative: we don't know how an (opaque) ADT uses
+    its parameters, so all the regions of [Pair<'a, 'b>] are nested under ['a].
+    The regions of [Zip<IterMut<'a, T>, IterMut<'b, T>>], however, are not
+    nested under each other: ending ['a] gives back nothing which lives in ['b].
+
+    Like [projections_intersect], [ty1] and [ty2] are two views of the same
+    symbolic value. *)
+let rec nested_projections_intersect (span : Meta.span) (_ctx : eval_ctx)
+    ?(under = false) (ended1 : RegionId.Set.t) (ty1 : rty)
+    (rset2 : RegionId.Set.t) (ty2 : rty) : bool =
+  let intersect under ty1 ty2 =
+    nested_projections_intersect span _ctx ~under ended1 ty1 rset2 ty2
+  in
+  match (ty1, ty2) with
+  | TAdt tref1, TAdt tref2 ->
+      let regions =
+        List.combine tref1.generics.regions tref2.generics.regions
+      in
+      let ended_here =
+        List.exists (fun (r1, _) -> region_in_set r1 ended1) regions
+      in
+      List.exists
+        (fun (r1, r2) ->
+          (under || (ended_here && not (region_in_set r1 ended1)))
+          && region_in_set r2 rset2)
+        regions
+      || List.exists2
+           (intersect (under || ended_here))
+           tref1.generics.types tref2.generics.types
+  | TArray (ty1, _, _), TArray (ty2, _, _) | TSlice (ty1, _), TSlice (ty2, _) ->
+      intersect under ty1 ty2
+  | TRef (r1, ty1, _), TRef (r2, ty2, _) ->
+      (under && region_in_set r2 rset2)
+      || intersect (under || region_in_set r1 ended1) ty1 ty2
+  | _ ->
+      [%sanity_check] span (ty_is_rty ty1 && ty_is_rty ty2);
+      false
+
 (** Check if the first projection contains the second projection. We use this
     function when checking invariants.
 
@@ -1272,6 +1317,11 @@ let update_intersecting_aproj_borrows (span : Meta.span)
             abs0 {'a} { AProjLoans (s0 : Pair<'a, 'b>) [] }
             abs1 {'b} { AProjLoans (s0 : Pair<'a, 'b>) [] }
           ]}
+
+         So here every non-owned projector is reported as outlive, and the callers
+         ([end_aproj_borrows], [give_back_symbolic_value]) only project into the ones
+         which intersect the regions nested under the ended regions (see
+         [nested_projections_intersect]), which handles [Pair<'a, 'b>] conservatively.
       *)
       let intersects_outlive = include_outlive && not intersects_owned in
       let intersects_owned = include_owned && intersects_owned in

@@ -691,11 +691,19 @@ let end_aproj_borrows (span : Meta.span) (ended_regions : RegionId.Set.t)
      - if the *outlive* projection intersects the borrow projector: we need to
        project the inner loans of the given back value.
   *)
-  let update_mut ~owned ~outlive (_abs : abs) (aproj : aproj_borrows) : aproj =
+  (* Only the regions nested under the ended regions are given back with new
+     inner borrows: see [nested_projections_intersect]. *)
+  let is_outlive (abs : abs) (proj_ty : rty) : bool =
+    nested_projections_intersect span ctx ended_regions proj.proj_ty
+      abs.regions.owned proj_ty
+  in
+  let update_mut ~owned ~outlive (abs : abs) (aproj : aproj_borrows) : aproj =
     (* We can be in one case, or the other, but not both *)
     [%sanity_check] span ((not owned) || not outlive);
 
-    if owned then
+    if (not owned) && not (is_outlive abs aproj.proj.proj_ty) then
+      AProjBorrows aproj
+    else if owned then
       (* There is nothing to project *)
       let mvalues = { consumed = proj.sv_id; given_back = nsv } in
       AEndedProjBorrows { mvalues; loans = aproj.loans }
@@ -714,11 +722,13 @@ let end_aproj_borrows (span : Meta.span) (ended_regions : RegionId.Set.t)
       in
       AProjBorrows { proj; loans = (consumed, loan) :: aproj.loans }
   in
-  let update_emut ~owned ~outlive (_abs : abs) (aproj : eproj_borrows) : eproj =
+  let update_emut ~owned ~outlive (abs : abs) (aproj : eproj_borrows) : eproj =
     (* We can be in one case, or the other, but not both *)
     [%sanity_check] span ((not owned) || not outlive);
 
-    if owned then
+    if (not owned) && not (is_outlive abs aproj.proj.proj_ty) then
+      EProjBorrows aproj
+    else if owned then
       (* There is nothing to project *)
       let mvalues = { consumed = proj.sv_id; given_back = nsv } in
       EEndedProjBorrows { mvalues; loans = aproj.loans }
@@ -777,10 +787,67 @@ let give_back_symbolic_value (_config : config) (span : Meta.span)
      We proceed in two steps:
      - we first update when intersecting with ancestors regions
      - then we update when intersecting with owned regions
+
+     In the second case, the projector of borrows over [nsv] we introduce must be
+     matched by a projector of loans over [nsv]: those are the ones
+     [end_aproj_borrows] (called just before) introduced in the other live
+     projectors of borrows over the symbolic value. If none intersects, the part
+     of [nsv] projected here was already given back, when an earlier sibling
+     abstraction ended, and introducing a projector of borrows would break the
+     invariant that every projector of borrows has a projector of loans.
+
+     Ex.: [s0 : Zip<IterMut<'a>, IterMut<'b>>] moved into an opaque call. Ending
+     abs2 gives back [s1]: [abs0] consumes it, [abs1] projects its borrows,
+     matched by the loans [end_aproj_borrows] puts in abs3. Ending abs3 gives back
+     [s2]: [abs1] consumes it, but [abs0] must *not* project its borrows: abs2,
+     the only abstraction which could hold the matching loans, has ended.
+     {[
+       abs0 {'a} { AProjLoans (s0 : Zip<'a, 'b>) [] }
+       abs1 {'b} { AProjLoans (s0 : Zip<'a, 'b>) [] }
+       abs2 {'c} { AProjBorrows (s0 : Zip<'c, 'd>) }
+       abs3 {'d} { AProjBorrows (s0 : Zip<'c, 'd>) }
+     ]}
+
+     See [proofs/ProjectorEnd.lean]: this rule preserves the invariant, and
+     coincides with projecting into every outlive projector whenever doing so
+     preserves it.
   *)
-  let subst ~owned ~outlive (_abs : abs) (aproj : aproj_loans) : aproj =
+  let nsv_loans : (RegionId.Set.t * rty) list ref = ref [] in
+  (object
+     inherit [_] iter_eval_ctx as super
+     method! visit_abs _ abs = super#visit_abs (Some abs) abs
+
+     method! visit_aproj abs proj =
+       (match proj with
+       | AProjLoans { proj = p; _ } when p.sv_id = nsv.sv_id ->
+           nsv_loans :=
+             ((Option.get abs).regions.owned, p.proj_ty) :: !nsv_loans
+       | _ -> ());
+       super#visit_aproj abs proj
+
+     method! visit_eproj abs proj =
+       (match proj with
+       | EProjLoans { proj = p; _ } when p.sv_id = nsv.sv_id ->
+           nsv_loans :=
+             ((Option.get abs).regions.owned, p.proj_ty) :: !nsv_loans
+       | _ -> ());
+       super#visit_eproj abs proj
+  end)
+    #visit_eval_ctx
+    None ctx;
+  let has_matching_loans (abs : abs) (proj_ty : rty) : bool =
+    nested_projections_intersect span ctx ended_regions proj.proj_ty
+      abs.regions.owned proj_ty
+    && List.exists
+         (fun (owned, ty) ->
+           projections_intersect span ctx owned ty abs.regions.owned proj_ty)
+         !nsv_loans
+  in
+  let subst ~owned ~outlive (abs : abs) (aproj : aproj_loans) : aproj =
     [%sanity_check] span ((not owned) || not outlive);
-    if owned then
+    if (not owned) && not (has_matching_loans abs aproj.proj.proj_ty) then
+      AProjLoans aproj
+    else if owned then
       (* There is nothing to project *)
       let child_proj = AEmpty in
       let consumed : mconsumed_symb =
@@ -799,9 +866,11 @@ let give_back_symbolic_value (_config : config) (span : Meta.span)
       in
       AProjLoans { aproj with borrows = (consumed, borrow) :: aproj.borrows }
   in
-  let esubst ~owned ~outlive (_abs : abs) (aproj : eproj_loans) : eproj =
+  let esubst ~owned ~outlive (abs : abs) (aproj : eproj_loans) : eproj =
     [%sanity_check] span ((not owned) || not outlive);
-    if owned then
+    if (not owned) && not (has_matching_loans abs aproj.proj.proj_ty) then
+      EProjLoans aproj
+    else if owned then
       (* There is nothing to project *)
       let child_proj = EEmpty in
       let consumed : mconsumed_symb =
