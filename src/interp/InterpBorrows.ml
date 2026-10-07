@@ -808,9 +808,9 @@ let give_back_symbolic_value (_config : config) (span : Meta.span)
        abs3 {'d} { AProjBorrows (s0 : Zip<'c, 'd>) }
      ]}
 
-     See [proofs/ProjectorEnd.lean]: this rule preserves the invariant, and
-     coincides with projecting into every outlive projector whenever doing so
-     preserves it.
+     This rule preserves the invariant, and coincides with projecting into
+     every outlive projector (the previous rule) whenever doing so preserves
+     it.
   *)
   let nsv_loans : (RegionId.Set.t * rty) list ref = ref [] in
   (object
