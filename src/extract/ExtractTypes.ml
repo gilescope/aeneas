@@ -459,7 +459,13 @@ let rec extract_ty (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
   | TLiteral lty -> extract_literal_type ctx fmt lty
   | TArrow (arg_ty, ret_ty) ->
       if inside then F.pp_print_string fmt "(";
-      extract_rec ~inside:false arg_ty;
+      (* An arrow argument needs parentheses: [(A → B) → C] *)
+      let arg_inside =
+        match arg_ty with
+        | TArrow _ -> true
+        | _ -> false
+      in
+      extract_rec ~inside:arg_inside arg_ty;
       F.pp_print_space fmt ();
       extract_arrow fmt ();
       F.pp_print_space fmt ();

@@ -1416,10 +1416,20 @@ and eval_function_call_symbolic_from_inst_sig (config : config)
   let abs_ids = List.map (fun rg -> rg.id) inst_sg.abs_regions_hierarchy in
   let args_with_rtypes = List.combine args inst_sg.inputs in
 
-  (* Check the type of the input arguments *)
+  (* Check the type of the input arguments, modulo all regions: including those a
+     function item binds itself, e.g. [for<'a, 'b> Ord::cmp<'a, 'b>] passed to
+     [max_by], which a body gives as erased (and we as ['static]). *)
+  let erase_all_regions =
+    (object
+       inherit [_] map_ty
+       method! visit_region _ _ = RErased
+    end)
+      #visit_ty
+      ()
+  in
   List.iteri
     (fun i ((arg, rty) : tvalue * rty) ->
-      if not (Subst.erase_regions arg.ty = Subst.erase_regions rty) then (
+      if not (erase_all_regions arg.ty = erase_all_regions rty) then (
         [%ltrace
           "Argument " ^ string_of_int i
           ^ " doesn't have the proper type:\n- arg: " ^ tvalue_to_string ctx arg

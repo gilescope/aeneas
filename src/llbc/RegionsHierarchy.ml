@@ -167,27 +167,11 @@ let compute_regions_hierarchy_for_sig (span : Meta.span option) (crate : crate)
         (* We can ignore the outer regions *)
         let { Types.inputs; output; _ } = binder.binder_value in
         List.iter (explore_ty []) (output :: inputs)
-    | TFnDef { binder_regions; binder_value = { kind = _; generics } } ->
-        (* For now we check that there are no regions anywhere.
-
-           TODO: the best would be to open all binders and then do a sanity
-           check (probably that no region bound at the level of the signature
-           is outlived by a locally bound region).
-         *)
-        [%cassert_opt_span] span (binder_regions = []) "Unimplemented";
-        let visitor =
-          object
-            inherit [_] iter_ty
-            method! visit_region _ _ = raise Utils.Found
-          end
-        in
-        let has_regions =
-          try
-            visitor#visit_generic_args () generics;
-            false
-          with Utils.Found -> true
-        in
-        [%cassert_opt_span] span (not has_regions) "Unimplemented";
+    | TFnDef _ ->
+        (* A function item holds no data, so its regions (its signature's: bound by
+           its own binder, e.g. [for<'a, 'b> Ord::cmp<'a, 'b>], or early-bound
+           like the [&'x A] of [impl Ord for &'x A]) constrain no borrow and add
+           no edge. Passing [Ord::cmp] to [max_by] puts one in a signature. *)
         ()
     | TDynTrait _ ->
         [%cassert_opt_span] span Config.type_analysis_ignore_dyn "Unimplemented"

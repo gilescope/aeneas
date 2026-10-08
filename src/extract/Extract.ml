@@ -1825,7 +1825,13 @@ let extract_fun_parameters (space : bool ref) (ctx : extraction_ctx)
 let extract_fun_input_parameters_types (span : span) (ctx : extraction_ctx)
     (fmt : F.formatter) (inputs : ty list) : unit =
   let extract_param (ty : ty) : unit =
-    let inside = false in
+    (* A function-typed input (e.g. a function item used as a closure's state)
+       needs parentheses *)
+    let inside =
+      match ty with
+      | TArrow _ -> true
+      | _ -> false
+    in
     extract_ty span ctx fmt TypeDeclId.Set.empty ~inside ty;
     F.pp_print_space fmt ();
     extract_arrow fmt ();

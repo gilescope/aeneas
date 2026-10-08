@@ -371,6 +371,10 @@ let raise_if_not_rty_visitor =
       (* Ignore dyn traits by default *)
       if Config.type_analysis_ignore_dyn then ()
       else super#visit_TDynTrait env tr
+
+    (* A function item holds no borrows: the regions of its signature, including
+       those it binds itself ([for<'a, 'b> Ord::cmp<'a, 'b>]), do not matter. *)
+    method! visit_TFnDef _ _ = ()
   end
 
 (** Return [true] if the type is a region type (i.e., it doesn't contain erased

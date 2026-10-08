@@ -459,27 +459,10 @@ let analyze_full_ty (span : Meta.span option) (updated : bool ref)
             ty_info inputs
         in
         analyze span expl_info ty_info output
-    | TFnDef { binder_regions; binder_value = { kind = _; generics } } ->
-        (* For now we check that there are no regions anywhere.
-
-           TODO: the best would be to open all binders and then do a sanity
-           check (probably that no region bound at the level of the signature
-           is outlived by a locally bound region).
-         *)
-        [%cassert_opt_span] span (binder_regions = []) "Unimplemented";
-        let visitor =
-          object
-            inherit [_] iter_ty
-            method! visit_region _ _ = raise Utils.Found
-          end
-        in
-        let has_regions =
-          try
-            visitor#visit_generic_args () generics;
-            false
-          with Utils.Found -> true
-        in
-        [%cassert_opt_span] span (not has_regions) "Unimplemented";
+    | TFnDef _ ->
+        (* A function item holds no data, hence no borrows: whatever regions its
+           type mentions (its signature's, possibly bound by its own binder as in
+           [for<'a, 'b> Ord::cmp<'a, 'b>]) contribute nothing. *)
         ty_info
     | TError _ ->
         [%craise_opt_span] span "Found type error in the output of charon"
@@ -1032,6 +1015,13 @@ let check_no_bound_free_implied_bounds (span : Meta.span option)
                against [outer] by [visit_region], the type arguments are
                recursed into. *)
             super#visit_ty outer ty
+        | TFnDef _ ->
+            (* A function item holds no data: its regions are its signature's
+               (often bound by its own binder, e.g. [for<'a, 'b> Ord::cmp<'a, 'b>]),
+               not lifetimes of anything a borrow of it could reach, so a borrow
+               of it implies no bound on them (as for Rust's well-formedness).
+               This is what [max_by(Ord::cmp)] passes as [&mut F]. *)
+            ()
         | _ -> super#visit_ty outer ty
     end
   in

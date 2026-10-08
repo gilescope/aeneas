@@ -394,8 +394,9 @@ let rec translate_fwd_ty (span : Meta.span option) (decls_ctx : C.decls_ctx)
         "Unimplemented";
       let trait_ref = translate_fwd_trait_ref span decls_ctx trait_ref in
       TTraitType (trait_ref, type_name)
-  | TFnDef { binder_regions; binder_value = { kind; generics } } -> (
-      [%cassert_opt_span] span (binder_regions = []) "Unimplemented";
+  | TFnDef { binder_regions = _; binder_value = { kind; generics } } -> (
+      (* The regions the item binds (e.g. [for<'a, 'b> Ord::cmp<'a, 'b>]) vanish
+         with the others in the pure type. *)
       let generics = translate_fwd_generic_args span decls_ctx generics in
       match kind with
       | T.Fun fid ->
@@ -536,8 +537,10 @@ and compute_back_ty_num_levels (span : Meta.span option)
           (generics = TypesUtils.empty_generic_args)
           "Unimplemented";
         save_count outer_regions
-    | TFnDef _ | TFnPtr _ ->
-        [%craise_opt_span] span "Arrow types are not supported yet"
+    | TFnDef _ ->
+        (* A function item holds no borrows (see [RegionsHierarchy]) *)
+        save_count outer_regions
+    | TFnPtr _ -> [%craise_opt_span] span "Arrow types are not supported yet"
     | TDynTrait _ ->
         [%craise_opt_span] span "Dynamic trait types are not supported yet"
     | TError _ ->
@@ -671,8 +674,10 @@ and translate_back_ty_aux (span : Meta.span option) (decls_ctx : C.decls_ctx)
           (generics = TypesUtils.empty_generic_args)
           "Unimplemented";
         stop outer_regions ty
-    | TFnDef _ | TFnPtr _ ->
-        [%craise_opt_span] span "Arrow types are not supported yet"
+    | TFnDef _ ->
+        (* A function item holds no borrows (see [RegionsHierarchy]) *)
+        stop outer_regions ty
+    | TFnPtr _ -> [%craise_opt_span] span "Arrow types are not supported yet"
     | TDynTrait _ ->
         [%craise_opt_span] span "Dynamic trait types are not supported yet"
     | TError _ ->

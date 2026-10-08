@@ -539,7 +539,21 @@ let eval_operand_no_reorganize (config : config) (span : Meta.span)
           in
           (cv, ctx, cc_comp cc cf)
       | CFnDef ptr ->
-          let sv = mk_fresh_symbolic_tvalue span ctx cv.ty in
+          (* A function item holds no borrows: its erased regions (e.g. those of
+             [Ord::cmp] passed to [max_by]) may be anything; use ['static]. *)
+          let ty =
+            (object
+               inherit [_] map_ty
+
+               method! visit_region _ r =
+                 match r with
+                 | RErased -> RStatic
+                 | _ -> r
+            end)
+              #visit_ty
+              () cv.ty
+          in
+          let sv = mk_fresh_symbolic_tvalue span ctx ty in
           let cf e =
             SymbolicAst.IntroSymbolic
               (ctx, None, tvalue_as_symbolic span sv, SymbolicAst.VaFnDef ptr, e)

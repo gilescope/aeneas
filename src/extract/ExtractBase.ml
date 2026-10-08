@@ -1846,8 +1846,10 @@ let ctx_compute_trait_impl_name_raw (ctx : extraction_ctx)
                   let name =
                     opt_ctx_prepare_name decl.item_meta ctx decl.item_meta.name
                   in
+                  (* Regions are not part of the name (they are ['static], see
+                     [PrePasses.normalize_fn_def_types]) *)
                   name_with_generics_to_simple_name ctx.trans_ctx name params
-                    generics
+                    { generics with regions = [] }
                   |> flatten_name
               | _ ->
                   let name =

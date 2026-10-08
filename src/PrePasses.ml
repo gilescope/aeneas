@@ -2601,9 +2601,42 @@ let unify_diamond_assoc_types (crate : crate) (f : fun_decl) : fun_decl =
       "Updated: " ^ Print.fun_decl_to_string env "" " " f];
     f
 
+(** Normalise function-item types: no binder, ['static] regions.
+
+    A function item (e.g. [Ord::cmp] passed to [max_by]) holds no data, so the
+    regions in its type - its signature's, including those it binds itself
+    ([for<'a, 'b> Ord::cmp<'a, 'b>]) - constrain no borrow. Bodies give them
+    erased, signatures bound or free, and the borrow machinery expects neither
+    in a value's type; making them all ['static] lets every check see the same
+    type. Function items are not otherwise compared by their regions. *)
+let normalize_fn_def_types (crate : crate) : crate =
+  let static_regions =
+    object
+      inherit [_] map_ty
+      method! visit_region _ _ = RStatic
+    end
+  in
+  let visitor =
+    object
+      inherit [_] map_crate as super
+
+      method! visit_ty env ty =
+        match ty with
+        | TFnDef { binder_regions = _; binder_value } ->
+            TFnDef
+              {
+                binder_regions = [];
+                binder_value = static_regions#visit_fn_ptr () binder_value;
+              }
+        | _ -> super#visit_ty env ty
+    end
+  in
+  visitor#visit_crate () crate
+
 let apply_passes (crate : crate) : crate =
   (* Passes that apply to the whole crate *)
   let crate = update_array_default crate in
+  let crate = normalize_fn_def_types crate in
   (* Passes that apply to individual function bodies *)
   let function_passes =
     [
