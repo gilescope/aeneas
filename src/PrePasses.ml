@@ -163,27 +163,28 @@ let update_array_default (crate : crate) : crate =
      doesn't require that the type of the elements also has a default
      implementation. *)
   let matches_default_array (impl : trait_impl) : constant_expr option =
-    let trait_decl =
-      [%silent_unwrap_opt_span] (Some impl.item_meta.span)
-        (TraitDeclId.Map.find_opt impl.impl_trait.id crate.trait_decls)
-    in
-    if not (match_name impl_pat trait_decl.item_meta.name) then None
-    else
-      match impl.impl_trait.generics with
-      | {
-       regions = [];
-       types =
-         [
-           TArray
-             ( TVar (Free _),
-               ({ kind = CInteger (UnsignedInteger (Usize, nv)); _ } as n),
-               _ );
-         ];
-       const_generics = [];
-       trait_refs = _;
-      }
-        when Z.to_int nv != 0 -> Some n
-      | _ -> None
+    (* The trait may be missing, e.g. under [--monomorphize], where an impl can
+       refer to a trait declaration Charon did not keep: such an impl is not ours. *)
+    match TraitDeclId.Map.find_opt impl.impl_trait.id crate.trait_decls with
+    | None -> None
+    | Some trait_decl -> (
+        if not (match_name impl_pat trait_decl.item_meta.name) then None
+        else
+          match impl.impl_trait.generics with
+          | {
+           regions = [];
+           types =
+             [
+               TArray
+                 ( TVar (Free _),
+                   ({ kind = CInteger (UnsignedInteger (Usize, nv)); _ } as n),
+                   _ );
+             ];
+           const_generics = [];
+           trait_refs = _;
+          }
+            when Z.to_int nv != 0 -> Some n
+          | _ -> None)
   in
 
   (* First pass: collect all the trait impls matching [Default<[T; N]>] and
@@ -2334,6 +2335,25 @@ let fix_closure_signature_regions (crate : crate) (f : fun_decl) : fun_decl =
       in
       let inputs = List.map (visitor#visit_ty ()) f.signature.inputs in
       let output = visitor#visit_ty () f.signature.output in
+      (* A result that carries a closure is an [impl Trait] Charon resolved, and
+         its other erased regions (e.g. [Iter<'_, T>] around the closure, or the
+         [&'_ T] it yields) are elided lifetimes too: with a single lifetime
+         parameter, they are that one. *)
+      let output =
+        if !updated then
+          let visitor =
+            object
+              inherit [_] map_ty
+
+              method! visit_region _ r =
+                match r with
+                | RErased -> region
+                | _ -> r
+            end
+          in
+          visitor#visit_ty () output
+        else output
+      in
       if !updated then begin
         let signature = { f.signature with inputs; output } in
         let f = { f with signature } in
@@ -2398,8 +2418,48 @@ let fix_closure_output_outlives (crate : crate) (f : fun_decl) : fun_decl =
       match state_ty with
       | None -> f
       | Some state_ty ->
-          let received = free_regions (state_ty :: args) in
           let all_inputs = free_regions f.signature.inputs in
+          (* Erased regions in the result (e.g. the lifetimes of an inner closure
+             type, [Map<Iter<'1, T>, closure::closure<'_, '_>>]): give them a region
+             parameter the inputs do not mention, preferably one the result already
+             uses; Charon declares spare ones. *)
+          let f =
+            let spare =
+              let in_output = free_regions [ f.signature.output ] in
+              let candidates =
+                List.filter
+                  (fun (r : region_param) ->
+                    not (RegionId.Set.mem r.index all_inputs))
+                  f.generics.regions
+              in
+              match
+                List.find_opt
+                  (fun (r : region_param) -> RegionId.Set.mem r.index in_output)
+                  candidates
+              with
+              | Some r -> Some r.index
+              | None -> (
+                  match candidates with
+                  | r :: _ -> Some r.index
+                  | [] -> None)
+            in
+            match spare with
+            | None -> f
+            | Some spare ->
+                let visitor =
+                  object
+                    inherit [_] map_ty
+
+                    method! visit_region _ r =
+                      match r with
+                      | RErased -> RVar (Free spare)
+                      | _ -> r
+                  end
+                in
+                let output = visitor#visit_ty () f.signature.output in
+                { f with signature = { f.signature with output } }
+          in
+          let received = free_regions (state_ty :: args) in
           let outs =
             RegionId.Set.diff (free_regions [ f.signature.output ]) all_inputs
           in
@@ -2430,6 +2490,117 @@ let fix_closure_output_outlives (crate : crate) (f : fun_decl) : fun_decl =
             f)
   | [] -> f
 
+(** Identify associated types reached through several bounds (a diamond).
+
+    Charon's [--remove-associated-types] turns each associated type into a type
+    parameter per path that reaches it, without noticing when two paths reach
+    the same predicate (a documented limitation of its
+    [expand_associated_types]): with
+    [F: WithSmallOrderMulGroup<3> + FromUniformBytes<64>], both bounds imply
+    [F: PrimeField], and [<F as PrimeField>::Repr] becomes two unrelated
+    parameters [Clause2_Clause0_Repr] and [Clause5_Clause0_Repr]. Calls then
+    fail to type-check ("The input arguments don't have the proper type").
+
+    By coherence, two references to the same trait with the same arguments other
+    than its associated types denote the same impl, so their associated types
+    are equal. For every function, we gather the trait references its bounds
+    imply (transitively through the traits' implied clauses), group them by
+    trait and non-associated arguments, and identify the function's own type
+    parameters that stand for the same associated type. Associated-type
+    parameters of a trait are recognised by Charon's naming, [Self_<path>].
+
+    TODO: remove once Charon identifies them. *)
+let unify_diamond_assoc_types (crate : crate) (f : fun_decl) : fun_decl =
+  let is_assoc (p : type_param) =
+    String.length p.name > 5 && String.sub p.name 0 5 = "Self_"
+  in
+  (* The trait references implied by the bounds, with their declarations *)
+  let refs = ref [] in
+  let rec explore (depth : int) (tr : trait_decl_ref) =
+    if depth <= 16 then
+      match TraitDeclId.Map.find_opt tr.id crate.trait_decls with
+      | None -> ()
+      | Some d ->
+          refs := (tr, d) :: !refs;
+          let subst =
+            [%add_loc] Substitute.make_subst_from_generics None d.generics
+              tr.generics Self
+          in
+          List.iter
+            (fun (c : trait_param) ->
+              explore (depth + 1)
+                (Substitute.trait_decl_ref_substitute subst c.trait.binder_value))
+            d.implied_clauses
+  in
+  (try
+     List.iter
+       (fun (c : trait_param) -> explore 0 c.trait.binder_value)
+       f.generics.trait_clauses
+   with Invalid_argument _ -> refs := []);
+  (* Union-find over the function's type variables *)
+  let parent = Hashtbl.create 8 in
+  let rec find id =
+    match Hashtbl.find_opt parent id with
+    | Some p when p <> id -> find p
+    | _ -> id
+  in
+  let union a b =
+    let a = find a and b = find b in
+    if a <> b then
+      if TypeVarId.compare_id a b < 0 then Hashtbl.replace parent b a
+      else Hashtbl.replace parent a b
+  in
+  let split ((tr, d) : trait_decl_ref * trait_decl) =
+    if List.length d.generics.types <> List.length tr.generics.types then None
+    else
+      let pairs = List.combine d.generics.types tr.generics.types in
+      let key =
+        ( tr.id,
+          List.filter_map
+            (fun (p, t) -> if is_assoc p then None else Some t)
+            pairs,
+          tr.generics.const_generics )
+      in
+      Some
+        ( key,
+          List.filter_map
+            (fun (p, t) -> if is_assoc p then Some t else None)
+            pairs )
+  in
+  let groups = Hashtbl.create 8 in
+  List.iter
+    (fun r ->
+      match split r with
+      | None -> ()
+      | Some (key, assoc) -> (
+          match Hashtbl.find_opt groups key with
+          | None -> Hashtbl.add groups key assoc
+          | Some assoc0 ->
+              List.iter2
+                (fun t0 t ->
+                  match (t0, t) with
+                  | TVar (Free a), TVar (Free b) -> union a b
+                  | _ -> ())
+                assoc0 assoc))
+    !refs;
+  if Hashtbl.length parent = 0 then f
+  else
+    let visitor =
+      object
+        inherit [_] map_crate as super
+
+        method! visit_TVar env var =
+          match var with
+          | Free id -> TVar (Free (find id))
+          | _ -> super#visit_TVar env var
+      end
+    in
+    let f = visitor#visit_fun_decl () f in
+    [%ltrace
+      let env = Print.crate_to_fmt_env crate in
+      "Updated: " ^ Print.fun_decl_to_string env "" " " f];
+    f
+
 let apply_passes (crate : crate) : crate =
   (* Passes that apply to the whole crate *)
   let crate = update_array_default crate in
@@ -2439,6 +2610,7 @@ let apply_passes (crate : crate) : crate =
       ("fix_closure_lifetimes", fix_closure_lifetimes);
       ("fix_closure_signature_regions", fix_closure_signature_regions);
       ("fix_closure_output_outlives", fix_closure_output_outlives);
+      ("unify_diamond_assoc_types", unify_diamond_assoc_types);
       ("erase_body_regions", erase_body_regions);
       ("remove_unreachable", remove_unreachable);
       ("update_loop", update_loops);

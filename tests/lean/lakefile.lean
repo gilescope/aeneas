@@ -14,6 +14,7 @@ package «tests» {}
 @[default_target] lean_lib ArraySliceIndex
 @[default_target] lean_lib AsMut
 @[default_target] lean_lib AssertCfg
+@[default_target] lean_lib AssocTypeDiamond
 @[default_target] lean_lib Avl
 @[default_target] lean_lib BaseTutorial
 @[default_target] lean_lib Bitwise
@@ -25,6 +26,7 @@ package «tests» {}
 @[default_target] lean_lib CastSigned
 @[default_target] lean_lib ChunksExact
 @[default_target] lean_lib ClosureMutArgs
+@[default_target] lean_lib ClosureNestedBorrows
 @[default_target] lean_lib ClosureOutputBorrows
 @[default_target] lean_lib Closures
 @[default_target] lean_lib Constants
