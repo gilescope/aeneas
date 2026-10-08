@@ -638,6 +638,108 @@ def alloc.vec.partial_eq.PartialEqVec.ne
     List.anyM (fun (x0, x1) => PartialEqInst.ne x0 x1) (List.zip v0.val v1.val)
   else .ok true
 
+/-- Lexicographic comparison, with the elements compared by `cmp`: the first difference
+decides, else the shorter list is smaller (Rust's `Ord` for slices and `Vec`s). -/
+@[expose] def List.lexCmpM {T : Type} (cmp : T → T → Result Ordering) :
+    List T → List T → Result Ordering
+  | [], [] => ok .eq
+  | [], _ :: _ => ok .lt
+  | _ :: _, [] => ok .gt
+  | a :: as, b :: bs => do
+    match ← cmp a b with
+    | .eq => List.lexCmpM cmp as bs
+    | o => ok o
+
+@[expose, rust_fun "alloc::vec::{core::cmp::Ord<alloc::vec::Vec<@T>>}::cmp"
+    (keepParams := [true, false])]
+def alloc.vec.OrdVec.cmp {T : Type} (OrdInst : core.cmp.Ord T)
+    (v0 v1 : alloc.vec.Vec T) : Result Ordering :=
+  List.lexCmpM OrdInst.cmp v0.val v1.val
+
+/-! Monotonicity of `Vec`'s methods in the element's impl: a derived impl on a type which
+contains itself through a `Vec` passes its own (recursive) methods to them, which Aeneas
+extracts as a `partial_fixpoint` (see `aeneas_monotonicity`). -/
+section
+open Lean.Order
+
+@[partial_fixpoint_monotone]
+theorem List.mapM_with_length_monotone {γ : Type _} [Lean.Order.PartialOrder γ] {α β : Type}
+    (f : γ → α → Result β) (xs : List α) (hmono : monotone f) :
+    monotone (fun x => List.mapM_with_length (f x) xs) := by
+  induction xs with
+  | nil =>
+    simp only [List.mapM_with_length]
+    apply Lean.Order.monotone_const
+  | cons _ _ ih =>
+    simp only [List.mapM_with_length]
+    apply monotone_bind
+    · exact ih
+    · apply monotone_of_monotone_apply
+      intro y
+      apply monotone_bind
+      · apply monotone_apply
+        apply hmono
+      · apply Lean.Order.monotone_const
+
+@[partial_fixpoint_monotone]
+theorem alloc.vec.CloneVec.clone_monotone {γ : Type _} [Lean.Order.PartialOrder γ] {T : Type}
+    (inst : γ → core.clone.Clone T) (v : alloc.vec.Vec T)
+    (hmono : monotone (fun x => (inst x).clone)) :
+    monotone (fun x => alloc.vec.CloneVec.clone (inst x) v) := by
+  simp only [alloc.vec.CloneVec.clone, Slice.clone, List.clone]
+  apply monotone_bind
+  · apply monotone_bind
+    · exact List.mapM_with_length_monotone (fun x => (inst x).clone) _ hmono
+    · apply Lean.Order.monotone_const
+  · apply Lean.Order.monotone_const
+
+@[partial_fixpoint_monotone]
+theorem List.lexCmpM_monotone {γ : Type _} [Lean.Order.PartialOrder γ] {T : Type}
+    (f : γ → T → T → Result Ordering) (xs ys : List T) (hmono : monotone f) :
+    monotone (fun x => List.lexCmpM (f x) xs ys) := by
+  induction xs generalizing ys with
+  | nil => cases ys <;> (simp only [List.lexCmpM]; apply Lean.Order.monotone_const)
+  | cons a as ih =>
+    cases ys with
+    | nil => simp only [List.lexCmpM]; apply Lean.Order.monotone_const
+    | cons b bs =>
+      simp only [List.lexCmpM]
+      apply monotone_bind
+      · apply monotone_apply
+        apply monotone_apply
+        exact hmono
+      · apply monotone_of_monotone_apply
+        intro o
+        cases o
+        · apply Lean.Order.monotone_const
+        · exact ih bs
+        · apply Lean.Order.monotone_const
+
+@[partial_fixpoint_monotone]
+theorem alloc.vec.OrdVec.cmp_monotone {γ : Type _} [Lean.Order.PartialOrder γ] {T : Type}
+    (inst : γ → core.cmp.Ord T) (v0 v1 : alloc.vec.Vec T)
+    (hmono : monotone (fun x => (inst x).cmp)) :
+    monotone (fun x => alloc.vec.OrdVec.cmp (inst x) v0 v1) := by
+  simp only [alloc.vec.OrdVec.cmp]
+  exact List.lexCmpM_monotone (fun x => (inst x).cmp) _ _ hmono
+
+@[partial_fixpoint_monotone]
+theorem alloc.vec.partial_eq.PartialEqVec.eq_monotone {γ : Type _} [Lean.Order.PartialOrder γ]
+    {T U : Type} (inst : γ → core.cmp.PartialEq T U) (v0 : alloc.vec.Vec T)
+    (v1 : alloc.vec.Vec U) (hmono : monotone (fun x => (inst x).eq)) :
+    monotone (fun x => alloc.vec.partial_eq.PartialEqVec.eq (inst x) v0 v1) := by
+  simp only [alloc.vec.partial_eq.PartialEqVec.eq]
+  split
+  · apply List.monotone_allM
+    apply monotone_of_monotone_apply
+    intro p
+    apply monotone_apply
+    apply monotone_apply
+    exact hmono
+  · apply Lean.Order.monotone_const
+
+end
+
 @[expose, reducible,
   rust_trait_impl
     "core::cmp::PartialEq<alloc::vec::Vec<@T>, alloc::vec::Vec<@U>>"

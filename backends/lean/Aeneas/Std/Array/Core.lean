@@ -20,7 +20,7 @@ instance {α : Type u} : GetElem? (List α) Usize α (fun l i => i < l.length) w
 /-
 # Theorems
 -/
-def List.mapM_with_length {m : Type u → Type v} [Monad m] {α : Type w} {β : Type u} (f : α → m β) (as : List α)
+@[expose] def List.mapM_with_length {m : Type u → Type v} [Monad m] {α : Type w} {β : Type u} (f : α → m β) (as : List α)
   : m ({ l : List β // l.length = as.length}) :=
   match as with
   | [] => pure ⟨[], by trivial⟩

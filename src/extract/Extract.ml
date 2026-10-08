@@ -3728,17 +3728,23 @@ let extract_trait_impl_literal (ctx : extraction_ctx) (fmt : F.formatter)
       impl.methods
   in
   if inside then F.pp_print_string fmt "(";
-  F.pp_print_string fmt "{";
+  F.pp_print_string fmt "{ ";
+  (* Lean requires the fields of a structure instance which spans several lines
+     to start at the same column: break only in a box aligned on the first *)
+  F.pp_open_hvbox fmt 0;
   Collections.List.iter_link
-    (fun () -> F.pp_print_string fmt ",")
+    (fun () ->
+      F.pp_print_string fmt ",";
+      F.pp_print_space fmt ())
     (fun (name, value) ->
-      F.pp_print_space fmt ();
+      F.pp_open_hovbox fmt 2;
       F.pp_print_string fmt (name ^ " :=");
       F.pp_print_space fmt ();
-      value ())
+      value ();
+      F.pp_close_box fmt ())
     (types @ parents @ methods);
-  F.pp_print_space fmt ();
-  F.pp_print_string fmt "}";
+  F.pp_close_box fmt ();
+  F.pp_print_string fmt " }";
   if inside then F.pp_print_string fmt ")"
 
 let () = extract_trait_impl_literal_hook := extract_trait_impl_literal

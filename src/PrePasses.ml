@@ -1997,6 +1997,268 @@ let filter_type_aliases (crate : crate) : crate =
            (Option.get crate.declarations));
   }
 
+(** Group with their impl the trait impl methods which pass that impl to a
+    callee: a derived [Clone] on a type containing itself through a [Vec] clones
+    the elements with its own impl ([Vec::clone[Self's impl]]), so the method
+    and the impl are mutually recursive.
+
+    Charon ignores a method's references to its own impl when ordering the
+    declarations (to avoid spurious cycles through associated types): such an
+    impl comes after its use, or is missing altogether when every caller calls
+    the method directly. We add those references back for these methods (only
+    references in the generics of a call: uses of the impl as an instance),
+    recompute their strongly connected component (with a derived [Ord], it also
+    holds the [PartialOrd] impl, the [Ord] impl's parent, whose [partial_cmp]
+    calls [cmp]) and put it in one group, which we extract as functions
+    recursing through trait impls (see [Translate.export_fun_impl_group]).
+
+    The group goes where its last member was; the groups between its first and
+    last members which depend on a member move after it, in order. *)
+let group_self_referencing_impls (crate : crate) : crate =
+  let module Ids = Charon.GAstUtils.AnyDeclIdSet in
+  let module IdMap = Charon.GAstUtils.AnyDeclIdMap in
+  let passes_own_impl (impl_id : TraitImplId.id) (f : fun_decl) : bool =
+    let found = ref false in
+    let in_call = ref false in
+    let visitor =
+      object
+        inherit [_] iter_statement as super
+
+        method! visit_fn_ptr env fn_ptr =
+          let outer = !in_call in
+          in_call := true;
+          super#visit_fn_ptr env fn_ptr;
+          in_call := outer
+
+        method! visit_TraitImpl env impl_ref =
+          if !in_call && impl_ref.id = impl_id then found := true;
+          super#visit_TraitImpl env impl_ref
+      end
+    in
+    (match f.body with
+    | StructuredBody body -> visitor#visit_block () body.body
+    | _ -> ());
+    !found
+  in
+  let seeds =
+    FunDeclId.Map.fold
+      (fun _ (f : fun_decl) acc ->
+        match f.src with
+        | TraitImplFun (impl_ref, _, _, _) when passes_own_impl impl_ref.id f ->
+            IdFun f.def_id :: acc
+        | _ -> acc)
+      crate.fun_decls []
+  in
+  if seeds = [] then crate
+  else
+    (* The dependencies, as Charon computes them, plus the references of the
+       seeds to their own impl *)
+    let deps_tbl = Hashtbl.create 64 in
+    let deps (id : item_id) : Ids.t =
+      match Hashtbl.find_opt deps_tbl id with
+      | Some d -> d
+      | None ->
+          let acc = ref Ids.empty in
+          let ignored =
+            match id with
+            | IdFun fid -> (
+                match FunDeclId.Map.find_opt fid crate.fun_decls with
+                | Some { src = TraitImplFun (impl_ref, _, _, _); _ }
+                  when not (List.mem id seeds) -> Some (IdTraitImpl impl_ref.id)
+                | Some { src = TraitDefaultFun (trait_ref, _); _ } ->
+                    Some (IdTraitDecl trait_ref.id)
+                | _ -> None)
+            | _ -> None
+          in
+          let add (x : item_id) =
+            if x <> id && Some x <> ignored then acc := Ids.add x !acc
+          in
+          let visitor =
+            object
+              inherit [_] iter_crate
+              method! visit_type_decl_id _ x = add (IdType x)
+              method! visit_fun_decl_id _ x = add (IdFun x)
+              method! visit_global_decl_id _ x = add (IdGlobal x)
+              method! visit_trait_decl_id _ x = add (IdTraitDecl x)
+              method! visit_trait_impl_id _ x = add (IdTraitImpl x)
+            end
+          in
+          (match id with
+          | IdFun x ->
+              Option.iter
+                (visitor#visit_fun_decl ())
+                (FunDeclId.Map.find_opt x crate.fun_decls)
+          | IdTraitImpl x ->
+              Option.iter
+                (visitor#visit_trait_impl ())
+                (TraitImplId.Map.find_opt x crate.trait_impls)
+          | IdGlobal x ->
+              Option.iter
+                (visitor#visit_global_decl ())
+                (GlobalDeclId.Map.find_opt x crate.global_decls)
+          | IdType x ->
+              Option.iter
+                (visitor#visit_type_decl ())
+                (TypeDeclId.Map.find_opt x crate.type_decls)
+          | IdTraitDecl x ->
+              Option.iter
+                (visitor#visit_trait_decl ())
+                (TraitDeclId.Map.find_opt x crate.trait_decls));
+          Hashtbl.add deps_tbl id !acc;
+          !acc
+    in
+    (* The strongly connected component of [root] *)
+    let scc (root : item_id) : Ids.t =
+      let rec forward seen x =
+        if Ids.mem x seen then seen
+        else Ids.fold (fun y seen -> forward seen y) (deps x) (Ids.add x seen)
+      in
+      let reach = forward Ids.empty root in
+      let rec back members =
+        let members' =
+          Ids.filter (fun x -> not (Ids.disjoint (deps x) members)) reach
+          |> Ids.union members
+        in
+        if Ids.equal members members' then members else back members'
+      in
+      back (Ids.singleton root)
+    in
+    let group_items (g : declaration_group) : item_id list =
+      match g with
+      | TypeGroup g ->
+          List.map
+            (fun x -> IdType x)
+            (Charon.GAstUtils.g_declaration_group_to_list g)
+      | FunGroup g ->
+          List.map
+            (fun x -> IdFun x)
+            (Charon.GAstUtils.g_declaration_group_to_list g)
+      | GlobalGroup g ->
+          List.map
+            (fun x -> IdGlobal x)
+            (Charon.GAstUtils.g_declaration_group_to_list g)
+      | TraitDeclGroup g ->
+          List.map
+            (fun x -> IdTraitDecl x)
+            (Charon.GAstUtils.g_declaration_group_to_list g)
+      | TraitImplGroup g ->
+          List.map
+            (fun x -> IdTraitImpl x)
+            (Charon.GAstUtils.g_declaration_group_to_list g)
+      | MixedGroup g -> Charon.GAstUtils.g_declaration_group_to_list g
+    in
+    let fix (groups : declaration_group list) (root : item_id) :
+        declaration_group list =
+      let members = scc root in
+      let span =
+        match root with
+        | IdFun x -> (FunDeclId.Map.find x crate.fun_decls).item_meta.span
+        | _ -> [%internal_error_opt_span] None
+      in
+      let is_member g =
+        List.exists (fun x -> Ids.mem x members) (group_items g)
+      in
+      List.iter
+        (fun g ->
+          if is_member g then
+            [%cassert] span
+              (List.for_all (fun x -> Ids.mem x members) (group_items g))
+              "Unexpected: a declaration group partially in a strongly \
+               connected component")
+        groups;
+      let indexed = List.mapi (fun i g -> (i, g)) groups in
+      let member_idx =
+        List.filter_map
+          (fun (i, g) -> if is_member g then Some i else None)
+          indexed
+      in
+      let merged =
+        (* The functions, then the impls, each after the impls it refers to
+           (e.g. an [Ord] impl after its parent [PartialOrd] impl): Aeneas
+           defines the impls after the functions, in this order *)
+        let impls =
+          List.filter
+            (function
+              | IdTraitImpl _ -> true
+              | _ -> false)
+            (Ids.elements members)
+        in
+        let rec visit (seen, order) x =
+          if Ids.mem x seen then (seen, order)
+          else
+            let seen, order =
+              List.fold_left visit
+                (Ids.add x seen, order)
+                (List.filter (fun y -> Ids.mem y (deps x)) impls)
+            in
+            (seen, x :: order)
+        in
+        let _, impls = List.fold_left visit (Ids.empty, []) impls in
+        let items =
+          List.filter
+            (function
+              | IdTraitImpl _ -> false
+              | _ -> true)
+            (Ids.elements members)
+          @ List.rev impls
+        in
+        if
+          List.for_all
+            (function
+              | IdFun _ -> true
+              | _ -> false)
+            items
+        then
+          FunGroup
+            (RecGroup
+               (List.map
+                  (function
+                    | IdFun x -> x
+                    | _ -> assert false)
+                  items))
+        else MixedGroup (RecGroup items)
+      in
+      match member_idx with
+      | [] ->
+          [%craise] span "Internal error: no declaration group for the method"
+      | _ ->
+          let first = List.hd member_idx in
+          let last = List.nth member_idx (List.length member_idx - 1) in
+          let moved = ref members in
+          let before, window_kept, window_moved, after =
+            List.fold_left
+              (fun (before, kept, mov, after) (i, g) ->
+                if i < first then (g :: before, kept, mov, after)
+                else if i > last then (before, kept, mov, g :: after)
+                else if is_member g then (before, kept, mov, after)
+                else
+                  let items = group_items g in
+                  if
+                    List.exists
+                      (fun x -> not (Ids.disjoint (deps x) !moved))
+                      items
+                  then (
+                    moved := Ids.union (Ids.of_list items) !moved;
+                    (before, kept, g :: mov, after))
+                  else (before, g :: kept, mov, after))
+              ([], [], [], []) indexed
+          in
+          List.rev before @ List.rev window_kept @ [ merged ]
+          @ List.rev window_moved @ List.rev after
+    in
+    let handled = ref Ids.empty in
+    let groups =
+      List.fold_left
+        (fun groups root ->
+          if Ids.mem root !handled then groups
+          else (
+            handled := Ids.union (scc root) !handled;
+            fix groups root))
+        (Option.get crate.declarations)
+        seeds
+    in
+    { crate with declarations = Some groups }
+
 (** Whenever we write a string literal in Rust, rustc actually introduces a
     constant of type [&str]. Generally speaking, because [str] is unsized, it
     doesn't make sense to manipulate values of type [str] directly. But in the
@@ -3510,5 +3772,6 @@ let apply_passes (crate : crate) : crate =
   let crate = remove_vtables crate in
   let crate = rename_type_vars crate in
   let crate = simplify_trait_calls crate in
+  let crate = group_self_referencing_impls crate in
   [%ltrace "After pre-passes:\n" ^ Print.crate_to_string crate ^ "\n"];
   crate

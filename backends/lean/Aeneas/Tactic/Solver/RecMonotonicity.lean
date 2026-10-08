@@ -35,6 +35,9 @@ meta partial def monoLeaf : TacticM Unit := do
     | .proj _ _ s => isRecHead s
     | e =>
       (e.isAppOfArity ``PProd.fst 3 || e.isAppOfArity ``PProd.snd 3) && isRecHead e.appArg!
+  -- Reduce the projections of the inlined impls (`{ cmp := f, .. }.cmp`), which the
+  -- monotonicity lemmas of the callees taking an impl leave behind
+  try evalTactic (← `(tactic| dsimp only)) catch _ => pure ()
   let g ← getMainGoal
   let some f := (← instantiateMVars (← g.getType)).getAppArgs.back?
     | throwError "mono_leaf: not a monotonicity goal"

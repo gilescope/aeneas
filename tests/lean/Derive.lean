@@ -543,13 +543,13 @@ def List.Insts.CoreCloneClone.clone
     let t ← corecloneCloneInst.clone __self_0
     let l ← List.Insts.CoreCloneClone.clone corecloneCloneInst __self_1
     ok (List.Cons t l)
-partial_fixpoint
+partial_fixpoint monotonicity by aeneas_monotonicity []
 
 /-- Trait implementation: [derive::{impl core::clone::Clone for derive::List<T>}]
     Source: 'tests/src/derive.rs', lines 34:9-34:14 -/
 @[reducible]
-def List.Insts.CoreCloneClone {T : Type} (corecloneCloneInst : core.clone.Clone
-  T) : core.clone.Clone (List T) := {
+impl_def List.Insts.CoreCloneClone {T : Type} (corecloneCloneInst :
+  core.clone.Clone T) : core.clone.Clone (List T) := {
   clone := List.Insts.CoreCloneClone.clone corecloneCloneInst
 }
 
@@ -587,7 +587,7 @@ def List.Insts.CoreCmpPartialEqList.eq
             __arg1_1
         else ok false
   else ok false
-partial_fixpoint
+partial_fixpoint monotonicity by aeneas_monotonicity []
 
 /-- Trait implementation: [derive::{impl core::cmp::PartialEq<derive::List<T>> for derive::List<T>}]
     Source: 'tests/src/derive.rs', lines 34:16-34:25 -/

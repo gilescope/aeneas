@@ -1342,8 +1342,12 @@ let extract_definitions (fmt : Format.formatter) (config : gen_config)
                recursive group in which the impls are inlined as structure
                literals, and the impls are defined after it. *)
             export_fun_impl_group fun_ids impl_ids;
+            (* A lone impl may refer to itself (e.g. [ne := ne.trait_default
+               <the impl>]): Lean's special elaboration handles that, as for the
+               singleton [TraitImplGroup (RecGroup _)] above *)
+            let is_rec = List.length impl_ids = 1 in
             if config.extract_trait_impls && config.extract_transparent then
-              List.iter (export_trait_impl ~is_rec:false) impl_ids
+              List.iter (export_trait_impl ~is_rec) impl_ids
         | _ ->
             [%craise_opt_span] None
               "Mixed-recursive declaration groups are not supported")

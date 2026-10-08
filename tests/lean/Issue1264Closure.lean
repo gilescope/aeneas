@@ -41,8 +41,9 @@ mutual
 def f (b : Bool) : Result Unit := do
   if b
   then
-    call ({ call_once :=
-      (f.closure.Insts.CoreOpsFunctionFnOnceTupleTuple.call_once) }) ()
+    call
+      ({ call_once :=
+           (f.closure.Insts.CoreOpsFunctionFnOnceTupleTuple.call_once) }) ()
   else ok ()
 partial_fixpoint monotonicity by aeneas_monotonicity [call]
 
@@ -58,8 +59,8 @@ end
 /-- Trait implementation: [issue_1264_closure::f::{impl core::ops::function::FnOnce<(), ()> for issue_1264_closure::f::{closure}}]
     Source: 'tests/src/issue-1264-closure.rs', lines 11:13-11:24 -/
 @[reducible]
-def f.closure.Insts.CoreOpsFunctionFnOnceTupleTuple : core.ops.function.FnOnce
-  f.closure Unit Unit := {
+impl_def f.closure.Insts.CoreOpsFunctionFnOnceTupleTuple :
+  core.ops.function.FnOnce f.closure Unit Unit := {
   call_once := f.closure.Insts.CoreOpsFunctionFnOnceTupleTuple.call_once
 }
 

@@ -5,6 +5,7 @@ import LoopsNestedExits
 import LoopsNestedExitsIter
 import NestedSharedIter
 import StaticStr
+import RecursiveDeriveClone
 
 /-! # Differential checks: the extracted Lean computes what Rust computes
 
@@ -148,5 +149,22 @@ open static_str in
 open static_str in
 example : advice_or_panic 4#usize = .ok 4#usize := by
   simp [advice_or_panic, check, advice_index, Column.impl.column_type, core.result.Result.unwrap]
+
+-- tests/src/recursive-derive-clone.rs
+open recursive_derive_clone in
+#guard (do let s ← sample; let c ← copy s; same c s).reducesTo true
+open recursive_derive_clone in
+#guard (do let s ← sample; same s (.Collection (alloc.vec.Vec.new Label))).reducesTo false
+open recursive_derive_clone in
+/-- `Collection [Fixed 1]`: a prefix of `sample` -/
+def shorter : Result Label := do
+  let v ← (alloc.vec.Vec.new Label).push (.Fixed 1#usize)
+  .ok (.Collection v)
+open recursive_derive_clone in
+#guard (do let s ← sample; let t ← shorter; order s t).reducesTo .gt
+open recursive_derive_clone in
+#guard (do let s ← sample; let t ← shorter; order t s).reducesTo .lt
+open recursive_derive_clone in
+#guard (do let s ← sample; order s s).reducesTo .eq
 
 end Differential
