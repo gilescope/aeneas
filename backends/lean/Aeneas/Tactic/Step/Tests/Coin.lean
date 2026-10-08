@@ -11,6 +11,10 @@ the `step` tactic (see `#register_spec_info` below).
 open Aeneas
 open Std Result WP Data Coinductive Effect Lean.Order
 
+-- These specs identify `ITreeC` and `Result` with `ITree`s, which Lean 4.34 no longer unfolds
+-- while unifying implicit arguments.
+set_option backward.isDefEq.respectTransparency false
+
 namespace Aeneas.Tactic.Step.Tests.Coin
 
 def CoinEffect : Effect := {
@@ -18,7 +22,7 @@ def CoinEffect : Effect := {
    O := fun _ => Bool
 }
 
-def ITreeC := ITree CoinEffect
+abbrev ITreeC := ITree CoinEffect
 
 -- can just use coinductive props!
 coinductive coinSpec {α} (p : Post α) : (x : ITreeC α) → Prop where
@@ -83,7 +87,7 @@ instance : MonadLift Result ITreeC where
   | .ok a => .ret a
   | _ => .div -- TODO
 
-theorem spec_coinSpec {α} {x : Result α} {p: Post α} : spec x p → coinSpec p x := by
+theorem spec_coinSpec {α} {x : Result α} {p: Post α} : spec x p → coinSpec p (monadLift x) := by
   intros s
   cases x
   · apply coinSpec.ret

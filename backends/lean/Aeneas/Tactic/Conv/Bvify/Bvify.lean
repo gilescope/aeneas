@@ -320,6 +320,45 @@ theorem UScalar.le_equiv_bv_le {ty : UScalarTy} (x y : UScalar ty) : x ≤ y ↔
 @[bvify] theorem U128.le_bv (x y : U128) : x ≤ y ↔ x.bv ≤ y.bv := by rfl
 @[bvify] theorem Usize.le_bv (x y : Usize) : x ≤ y ↔ x.bv ≤ y.bv := by rfl
 
+/-- Generalize every `x.bv` of a fixed-width scalar to a variable of type `BitVec w`, `w` a literal.
+
+Since Lean 4.34, `bv_decide` reads an atom's width syntactically off its inferred type, and
+`x.bv` (unfolded to `UScalar.bv x : BitVec (UScalarTy.numBits .U32)`) has none: it abstracts every expression over such atoms
+and reports a spurious counterexample. Generalizing loses nothing, as `bv_decide` treats the
+atoms as opaque anyway. `Usize`/`Isize` are left alone (their width is the platform's). -/
+meta def generalizeScalarBvs : TacticM Unit := withMainContext do
+  let atoms ← IO.mkRef (#[] : Array (Expr × Nat))
+  let collect (e : Expr) : MetaM Unit := do
+    discard <| Meta.transform (← instantiateMVars e) (post := fun e => do
+      if e.hasLooseBVars then return .done e
+      -- `U32.bv x` etc. are abbreviations of `UScalar.bv x`, which `bv_decide` unfolds
+      let isBv (e : Expr) := e.isAppOfArity ``UScalar.bv 2 || e.isAppOfArity ``IScalar.bv 2
+      let e' ← if isBv e then pure e else pure <| (← withReducible <| unfoldDefinition? e).getD e
+      if isBv e' then
+        let ty := e'.getArg! 0
+        unless ty.isConstOf ``UScalarTy.Usize || ty.isConstOf ``IScalarTy.Isize do
+          let .app _ w ← whnfR (← inferType e) | return .done e
+          if let some w := (← whnfD w).rawNatLit? <|> (← evalNat w |>.run) then
+            unless (← atoms.get).any (·.1 == e) do atoms.modify (·.push (e, w))
+      return .done e)
+  collect (← getMainTarget)
+  for d in ← getLCtx do
+    unless d.isImplementationDetail do collect d.type
+  let atoms ← atoms.get
+  if atoms.isEmpty then return
+  let mvarId ← getMainGoal
+  let hyps := (← getLCtx).foldl (init := #[]) fun hs d =>
+    if d.isImplementationDetail then hs else hs.push d.fvarId
+  let args := atoms.map fun (e, _) => ({ expr := e } : GeneralizeArg)
+  let (_, fvars, mvarId) ← mvarId.generalizeHyp args hyps
+  let mut mvarId := mvarId
+  for (fvar, (_, w)) in fvars.zip atoms do
+    mvarId ← mvarId.replaceLocalDeclDefEq fvar (mkApp (mkConst ``BitVec) (toExpr w))
+  replaceMainGoal [mvarId]
+
+/-- See `generalizeScalarBvs`: run it before calling `bv_decide` directly on scalar goals. -/
+elab "bv_generalize_scalars" : tactic => generalizeScalarBvs
+
 meta def bvifyAddSimpThms (n : Expr) : TacticM (Array FVarId) := do
   let addThm (thName : Name) : TacticM FVarId := do
     let thm ← mkAppM thName #[n]
@@ -453,6 +492,7 @@ example
   (c.val : ZMod 32) = (a.val : ZMod 32) + (b.val : ZMod 32) := by
   bvify 32 at *
   extract_goal1
+  bv_generalize_scalars
   bv_decide
 
 example
@@ -476,6 +516,7 @@ example
   := by
   bvify 32 at *
   simp_all only
+  bv_generalize_scalars
   bv_decide
 
 example
@@ -497,6 +538,7 @@ example
   := by
   bvify 32 at *
   simp_all only
+  bv_generalize_scalars
   bv_decide
 
 example
@@ -536,6 +578,6 @@ example (x a b : U32) (h : x.val = a.val + b.val) : (x.val : ZMod 3329) = (a.val
   simp [h]
 
 example (byte : U8) : 8 ∣ (byte &&& 16#u8).val := by
-  bvify 8; bv_decide
+  bvify 8; bv_generalize_scalars; bv_decide
 
 end Aeneas.Bvify
