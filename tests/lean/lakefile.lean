@@ -39,6 +39,7 @@ package «tests» {}
 @[default_target] lean_lib Demo
 @[default_target] lean_lib Deref
 @[default_target] lean_lib Derive
+@[default_target] lean_lib Differential
 @[default_target] lean_lib Discriminant
 @[default_target] lean_lib Drop
 @[default_target] lean_lib DropBug

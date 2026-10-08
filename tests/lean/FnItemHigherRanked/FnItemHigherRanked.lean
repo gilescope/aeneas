@@ -221,12 +221,12 @@ def longest (lens : Slice Std.Usize) : Result (Option Std.Usize) := do
     core.cmp.OrdUsize) i (Shared0A.Insts.CoreCmpOrd.cmp core.cmp.OrdUsize)
 
 /-- [fn_item_higher_ranked::longest_len::{closure}]
-    Source: 'tests/src/fn-item-higher-ranked.rs', lines 13:19-13:32 -/
+    Source: 'tests/src/fn-item-higher-ranked.rs', lines 14:13-14:26 -/
 @[reducible]
 def longest_len.closure := Unit
 
 /-- [fn_item_higher_ranked::longest_len::{impl core::ops::function::FnMut<(&'_0 alloc::vec::Vec<u8>,), usize> for fn_item_higher_ranked::longest_len::{closure}}::call_mut]:
-    Source: 'tests/src/fn-item-higher-ranked.rs', lines 13:19-13:32 -/
+    Source: 'tests/src/fn-item-higher-ranked.rs', lines 14:13-14:26 -/
 def
   longest_len.closure.Insts.CoreOpsFunctionFnMutTupleShared0VecU8Usize.call_mut
   (c : longest_len.closure) (tupled_args : alloc.vec.Vec Std.U8) :
@@ -236,7 +236,7 @@ def
   ok (i, c)
 
 /-- [fn_item_higher_ranked::longest_len::{impl core::ops::function::FnOnce<(&'_0 alloc::vec::Vec<u8>,), usize> for fn_item_higher_ranked::longest_len::{closure}}::call_once]:
-    Source: 'tests/src/fn-item-higher-ranked.rs', lines 13:19-13:32 -/
+    Source: 'tests/src/fn-item-higher-ranked.rs', lines 14:13-14:26 -/
 def
   longest_len.closure.Insts.CoreOpsFunctionFnOnceTupleShared0VecU8Usize.call_once
   (c : longest_len.closure) (v : alloc.vec.Vec Std.U8) : Result Std.Usize := do
@@ -246,7 +246,7 @@ def
   ok i
 
 /-- Trait implementation: [fn_item_higher_ranked::longest_len::{impl core::ops::function::FnOnce<(&'_0 alloc::vec::Vec<u8>,), usize> for fn_item_higher_ranked::longest_len::{closure}}]
-    Source: 'tests/src/fn-item-higher-ranked.rs', lines 13:19-13:32 -/
+    Source: 'tests/src/fn-item-higher-ranked.rs', lines 14:13-14:26 -/
 @[reducible]
 def longest_len.closure.Insts.CoreOpsFunctionFnOnceTupleShared0VecU8Usize :
   core.ops.function.FnOnce longest_len.closure (alloc.vec.Vec Std.U8) Std.Usize
@@ -256,7 +256,7 @@ def longest_len.closure.Insts.CoreOpsFunctionFnOnceTupleShared0VecU8Usize :
 }
 
 /-- Trait implementation: [fn_item_higher_ranked::longest_len::{impl core::ops::function::FnMut<(&'_0 alloc::vec::Vec<u8>,), usize> for fn_item_higher_ranked::longest_len::{closure}}]
-    Source: 'tests/src/fn-item-higher-ranked.rs', lines 13:19-13:32 -/
+    Source: 'tests/src/fn-item-higher-ranked.rs', lines 14:13-14:26 -/
 @[reducible]
 def longest_len.closure.Insts.CoreOpsFunctionFnMutTupleShared0VecU8Usize :
   core.ops.function.FnMut longest_len.closure (alloc.vec.Vec Std.U8) Std.Usize
@@ -268,7 +268,7 @@ def longest_len.closure.Insts.CoreOpsFunctionFnMutTupleShared0VecU8Usize :
 }
 
 /-- [fn_item_higher_ranked::longest_len]:
-    Source: 'tests/src/fn-item-higher-ranked.rs', lines 12:0-14:1
+    Source: 'tests/src/fn-item-higher-ranked.rs', lines 12:0-17:1
     Visibility: public -/
 def longest_len (xss : Slice (alloc.vec.Vec Std.U8)) : Result Std.Usize := do
   let i ← core.slice.Slice.iter xss

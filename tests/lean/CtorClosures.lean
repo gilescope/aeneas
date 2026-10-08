@@ -132,7 +132,7 @@ def Label.Fixed.Insts.CoreOpsFunctionFnMutTupleUsizeLabel :
 }
 
 /-- [ctor_closures::first_labels]:
-    Source: 'tests/src/ctor-closures.rs', lines 9:0-11:1
+    Source: 'tests/src/ctor-closures.rs', lines 9:0-14:1
     Visibility: public -/
 def first_labels
   (n : Std.Usize) : Result ((Option Label) × (Option Label)) := do

@@ -27,3 +27,24 @@ impl<F: Copy, C: Pcs> Evaluated<F, C> {
         move |e| (label, *e, &self.commitment)
     }
 }
+
+// Concrete results, checked against the extracted Lean in tests/lean/Differential.lean.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    pub struct Unit;
+    impl Pcs for Unit {
+        type Commitment = u32;
+    }
+
+    #[test]
+    fn values() {
+        let e = Evaluated::<u32, Unit> {
+            evals: vec![(3, vec![9, 8])],
+            commitment: 42,
+        };
+        assert_eq!(e.first(), (3, 9, &42));
+        assert_eq!(e.query()(&8), (3, 8, &42));
+    }
+}

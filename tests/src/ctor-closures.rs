@@ -7,5 +7,8 @@ pub enum Label {
 }
 
 pub fn first_labels(n: usize) -> (Option<Label>, Option<Label>) {
-    ((0..n).map(Label::Advice).next(), (0..n).map(Label::Fixed).next())
+    (
+        (0..n).map(Label::Advice).next(),
+        (0..n).map(Label::Fixed).next(),
+    )
 }

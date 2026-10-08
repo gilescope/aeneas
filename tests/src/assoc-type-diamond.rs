@@ -19,3 +19,21 @@ pub fn via_right<F: Right>(r: <F as Base>::Repr) -> <F as Base>::Repr {
 pub fn both<F: Left + Right>(r: <F as Base>::Repr) -> <F as Base>::Repr {
     via_right::<F>(via_left::<F>(r))
 }
+
+// Concrete results, checked against the extracted Lean in tests/lean/Differential.lean.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    pub struct Two;
+    impl Base for Two {
+        type Repr = u32;
+    }
+    impl Left for Two {}
+    impl Right for Two {}
+
+    #[test]
+    fn values() {
+        assert_eq!(both::<Two>(17), 17);
+    }
+}

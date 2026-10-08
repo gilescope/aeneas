@@ -24,3 +24,16 @@ pub fn first_pair(v: &[u32]) -> (u32, &u32) {
     let first = hr(|w| (w[0], &w[0]));
     first(v)
 }
+
+// Concrete results, checked against the extracted Lean in tests/lean/Differential.lean.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn values() {
+        assert_eq!(*identity(&7), 7);
+        assert_eq!(*pick(&[10, 20, 30], 1), 20);
+        assert_eq!(first_pair(&[5, 6]), (5, &5));
+    }
+}
