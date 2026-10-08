@@ -61,9 +61,9 @@ def sum (s : Slice Std.U32) : Result Std.U32 := do
     let (l, r) ← core.slice.Slice.split_at s i2
     let (x, y) ←
       join ({ call_once :=
-        sum.closure.Insts.CoreOpsFunctionFnOnceTupleU32.call_once }) ({
+        (sum.closure.Insts.CoreOpsFunctionFnOnceTupleU32.call_once) }) ({
         call_once :=
-        sum.closure_1.Insts.CoreOpsFunctionFnOnceTupleU32.call_once }) l r
+        (sum.closure_1.Insts.CoreOpsFunctionFnOnceTupleU32.call_once) }) l r
     ok (core.num.U32.wrapping_add x y)
 partial_fixpoint monotonicity by aeneas_monotonicity [join]
 
@@ -140,9 +140,9 @@ def tree (n : Std.U32) : Result Std.U32 := do
   else
     let (a, b) ←
       join ({ call_once :=
-        tree.closure.Insts.CoreOpsFunctionFnOnceTupleU32.call_once }) ({
+        (tree.closure.Insts.CoreOpsFunctionFnOnceTupleU32.call_once) }) ({
         call_once :=
-        tree.closure_1.Insts.CoreOpsFunctionFnOnceTupleU32.call_once }) n n
+        (tree.closure_1.Insts.CoreOpsFunctionFnOnceTupleU32.call_once) }) n n
     ok (core.num.U32.wrapping_add a b)
 partial_fixpoint monotonicity by aeneas_monotonicity [join]
 

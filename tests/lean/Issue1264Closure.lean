@@ -42,7 +42,7 @@ def f (b : Bool) : Result Unit := do
   if b
   then
     call ({ call_once :=
-      f.closure.Insts.CoreOpsFunctionFnOnceTupleTuple.call_once }) ()
+      (f.closure.Insts.CoreOpsFunctionFnOnceTupleTuple.call_once) }) ()
   else ok ()
 partial_fixpoint monotonicity by aeneas_monotonicity [call]
 

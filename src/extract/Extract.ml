@@ -3712,11 +3712,12 @@ let extract_trait_impl_literal (ctx : extraction_ctx) (fmt : F.formatter)
           Some
             ( ctx_get_trait_method span trait_decl_id method_id ctx,
               fun () ->
-                F.pp_print_string fmt "(";
-                extract_adapted_method fmt
-                  (compute_method_adapter ctx impl fn)
-                  print_fun;
-                F.pp_print_string fmt ")" )
+                match compute_method_adapter ctx impl fn with
+                | NoAdapter -> print_fun ()
+                | adapter ->
+                    F.pp_print_string fmt "(";
+                    extract_adapted_method fmt adapter print_fun;
+                    F.pp_print_string fmt ")" )
         else None)
       impl.methods
   in
