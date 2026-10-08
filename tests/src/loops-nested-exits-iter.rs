@@ -57,6 +57,25 @@ pub fn evaluate(labels: &[u32], t: &mut Reader) -> Result<Vec<Vec<u32>>, u32> {
     Ok(out)
 }
 
+/// Committed::evaluate with its check after the inner loop: a `return` in the outer loop's body
+/// after the inner loop, which Charon puts in the inner loop's exit branch, and the outer loop's
+/// `continue` with it (every exit of the inner loop is then lifted).
+pub fn evaluate_checked(labels: &[u32], t: &mut Reader) -> Result<Vec<Vec<u32>>, u32> {
+    let mut out = Vec::new();
+    for label in labels.iter() {
+        let points = vec![*label, *label + 1];
+        let mut evals = Vec::with_capacity(points.len());
+        for point in points {
+            evals.push(point + t.read()?);
+        }
+        if evals[0] == evals[1] {
+            return Err(2);
+        }
+        out.push(evals);
+    }
+    Ok(out)
+}
+
 /// A transcript
 pub struct Reader {
     pub buf: Vec<u32>,
@@ -88,6 +107,12 @@ mod tests {
         assert_eq!(evaluate(&[1, 5], &mut t), Ok(vec![vec![11, 22], vec![35, 46]]));
         let mut t = Reader { buf: vec![10, 20, 30], pos: 0 };
         assert_eq!(evaluate(&[1, 5], &mut t), Err(1));
+        let mut t = Reader { buf: vec![10, 20, 30, 40], pos: 0 };
+        assert_eq!(evaluate_checked(&[1, 5], &mut t), Ok(vec![vec![11, 22], vec![35, 46]]));
+        let mut t = Reader { buf: vec![10, 9, 30, 40], pos: 0 };
+        assert_eq!(evaluate_checked(&[1, 5], &mut t), Err(2));
+        let mut t = Reader { buf: vec![10, 20, 30], pos: 0 };
+        assert_eq!(evaluate_checked(&[1, 5], &mut t), Err(1));
         assert_eq!(absorb(&[1, 2], &[vec![3], vec![4, 5]]), Ok(vec![1, 1, 3, 2, 4, 5]));
         assert_eq!(absorb(&[1, 0], &[vec![3]]), Err(7));
         assert_eq!(absorb(&[1], &[vec![3], vec![]]), Err(7));

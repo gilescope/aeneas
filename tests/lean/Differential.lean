@@ -98,6 +98,18 @@ open loops_nested_exits_iter in
               { buf := row[10#u32, 20#u32, 30#u32], pos := 0#usize }
            pure (lists r)).reducesTo (.Err 1#u32)
 open loops_nested_exits_iter in
+#guard (do let (r, _) ← evaluate_checked slice[1#u32, 5#u32]
+              { buf := row[10#u32, 20#u32, 30#u32, 40#u32], pos := 0#usize }
+           pure (lists r)).reducesTo (.Ok [[11#u32, 22#u32], [35#u32, 46#u32]])
+open loops_nested_exits_iter in
+#guard (do let (r, _) ← evaluate_checked slice[1#u32, 5#u32]
+              { buf := row[10#u32, 9#u32, 30#u32, 40#u32], pos := 0#usize }
+           pure (lists r)).reducesTo (.Err 2#u32)
+open loops_nested_exits_iter in
+#guard (do let (r, _) ← evaluate_checked slice[1#u32, 5#u32]
+              { buf := row[10#u32, 20#u32, 30#u32], pos := 0#usize }
+           pure (lists r)).reducesTo (.Err 1#u32)
+open loops_nested_exits_iter in
 #guard (list <$> absorb slice[1#u32, 2#u32] rows[row[3#u32], row[4#u32, 5#u32]]).reducesTo
   (.Ok [1#u32, 1#u32, 3#u32, 2#u32, 4#u32, 5#u32])
 open loops_nested_exits_iter in

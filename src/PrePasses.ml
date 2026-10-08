@@ -912,32 +912,42 @@ let unnest_loop_continuations (crate : crate) (f : fun_decl) : fun_decl =
         in
         go [] after
       in
-      (* Outside of loops; [cont] is what runs after [stl] *)
-      let rec go (cont : statement list) (stl : statement list) : statement list
-          =
+      (* [cont] is what runs after [stl]; [in_loop]: whether [stl] is in a loop
+         (then only the second rewrite: moving a branch out of the loop would
+         also need the depths of its exits to outer loops adjusted) *)
+      let rec go ~(in_loop : bool) (cont : statement list)
+          (stl : statement list) : statement list =
+        let go_body (st : statement) (body : block) : statement =
+          {
+            st with
+            kind =
+              Loop
+                { body with statements = go ~in_loop:true [] body.statements };
+          }
+        in
         match stl with
         | [] -> []
         | ({ kind = Loop loop; _ } as st) :: after -> (
             match return_tail (after @ cont) with
-            | None -> st :: go cont after
+            | None -> go_body st loop :: go ~in_loop cont after
             | Some tail -> (
-                match unnest st.span loop tail with
-                | Some stl -> go [] stl
+                match if in_loop then None else unnest st.span loop tail with
+                | Some stl -> go ~in_loop [] stl
                 | None ->
                     (* Every exit of the loop goes to [tail]: make it a
                        [return], so that [lift_nested_loop_exits] handles those
                        in inner loops as such (carrying the value in [_0]) *)
                     let loop = map_exits (fun _ -> tail) 0 loop in
-                    { st with kind = Loop loop } :: go cont after))
+                    go_body st loop :: go ~in_loop cont after))
         | ({ kind = Switch (d, branches); _ } as st) :: after ->
             let branch (b : block) =
-              { b with statements = go (after @ cont) b.statements }
+              { b with statements = go ~in_loop (after @ cont) b.statements }
             in
             { st with kind = Switch (d, List.map branch branches) }
-            :: go cont after
-        | st :: after -> st :: go cont after
+            :: go ~in_loop cont after
+        | st :: after -> st :: go ~in_loop cont after
       in
-      let statements = go [] body.body.statements in
+      let statements = go ~in_loop:false [] body.body.statements in
       let locals = { body.locals with locals = !locals } in
       {
         f with
@@ -1352,6 +1362,10 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
             and replace (st : statement) : statement list =
               match st.kind with
               | Break 0 when has_escapes -> end_inner st.span @ [ st ]
+              (* The locals of the loop's body are dead at its back edge *)
+              | Continue 0 when has_escapes ->
+                  List.map (fun id -> mk st.span (StorageDead id)) inner_locals
+                  @ [ st ]
               | Break i when i > 0 -> escape st (Break (i - 1))
               | Continue i when i > 0 -> escape st (Continue (i - 1))
               | Return when depth > 0 || carry_own -> escape st Return
@@ -1373,11 +1387,41 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
                   ]
               | _ -> [ st ]
             in
+            (* Whether the loop has an exit of its own (a [break] of it), before
+               the rewrite adds the lifted ones *)
+            let rec own_break (k : int) (b : block) : bool =
+              List.exists
+                (fun (st : statement) ->
+                  match st.kind with
+                  | Break i -> i = k
+                  | Loop b -> own_break (k + 1) b
+                  | Switch (_, branches) -> List.exists (own_break k) branches
+                  | _ -> false)
+                b.statements
+            in
+            let has_own_exit = own_break 0 loop in
             let loop = replace_block loop in
             let lifted = List.rev !lifted in
+            (* If every exit of the loop was lifted, the loop is left through one
+               of them, which the checks after it take: the code after the checks
+               is unreachable. Say so (it translates to a failure), as otherwise
+               the symbolic execution explores it, e.g. returning an unset [_0]. *)
+            let unreachable =
+              if lifted <> [] && not has_own_exit then
+                [
+                  {
+                    (mk st.span UndefinedBehavior) with
+                    comments_before =
+                      [
+                        "aeneas: unreachable, every exit of the loop was lifted";
+                      ];
+                  };
+                ]
+              else []
+            in
             List.concat_map fst lifted
             @ [ { st with kind = Loop loop } ]
-            @ List.map snd lifted
+            @ List.map snd lifted @ unreachable
         | Switch (data, branches) ->
             [
               {

@@ -259,14 +259,14 @@ def absorb
   | some r => ok r
 
 /-- [loops_nested_exits_iter::Reader]
-    Source: 'tests/src/loops-nested-exits-iter.rs', lines 61:0-64:1
+    Source: 'tests/src/loops-nested-exits-iter.rs', lines 80:0-83:1
     Visibility: public -/
 structure Reader where
   buf : alloc.vec.Vec Std.U32
   pos : Std.Usize
 
 /-- [loops_nested_exits_iter::{loops_nested_exits_iter::Reader}::read]:
-    Source: 'tests/src/loops-nested-exits-iter.rs', lines 67:4-75:5
+    Source: 'tests/src/loops-nested-exits-iter.rs', lines 86:4-94:5
     Visibility: public -/
 def Reader.read
   (self : Reader) :
@@ -379,5 +379,126 @@ def evaluate
   := do
   let iter ← core.slice.Slice.iter labels
   evaluate_loop0 iter t (alloc.vec.Vec.new (alloc.vec.Vec Std.U32))
+
+/-- [loops_nested_exits_iter::evaluate_checked]: loop body 1:
+    Source: 'tests/src/loops-nested-exits-iter.rs', lines 1:0-75:5
+    Visibility: public -/
+@[rust_loop_body]
+def evaluate_checked_loop0_loop0.body
+  (out : alloc.vec.Vec (alloc.vec.Vec Std.U32))
+  (iter : alloc.vec.into_iter.IntoIter Std.U32) (t : Reader)
+  (evals : alloc.vec.Vec Std.U32) :
+  Result (ControlFlow ((alloc.vec.into_iter.IntoIter Std.U32) × Reader ×
+    (alloc.vec.Vec Std.U32)) (Reader × (alloc.vec.Vec (alloc.vec.Vec Std.U32))
+    × (Option (core.result.Result (alloc.vec.Vec (alloc.vec.Vec Std.U32))
+    Std.U32)) × Bool × (Option (core.result.Result (alloc.vec.Vec
+    (alloc.vec.Vec Std.U32)) Std.U32))))
+  := do
+  let (o, iter1) ← alloc.vec.into_iter.IteratorIntoIter.next iter
+  match o with
+  | none =>
+    let i ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice Std.U32) evals
+        0#usize
+    let i1 ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice Std.U32) evals
+        1#usize
+    if i = i1
+    then ok (done (t, out, some (core.result.Result.Err 2#u32), false, none))
+    else
+      let out1 ← alloc.vec.Vec.push out evals
+      ok (done (t, out1, none, true, none))
+  | some point =>
+    let (r, t1) ← Reader.read t
+    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue val =>
+      let i ← point + val
+      let evals1 ← alloc.vec.Vec.push evals i
+      ok (cont (iter1, t1, evals1))
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      let r1 ←
+        core.result.Result.Insts.CoreOpsTry_traitFromResidualResult.from_residual
+          (alloc.vec.Vec (alloc.vec.Vec Std.U32)) (core.convert.FromSame
+          Std.U32) residual
+      ok (done (t1, out, none, false, some r1))
+
+/-- [loops_nested_exits_iter::evaluate_checked]: loop 1:
+    Source: 'tests/src/loops-nested-exits-iter.rs', lines 1:0-75:5
+    Visibility: public -/
+@[rust_loop]
+def evaluate_checked_loop0_loop0
+  (iter : alloc.vec.into_iter.IntoIter Std.U32) (t : Reader)
+  (out : alloc.vec.Vec (alloc.vec.Vec Std.U32)) (evals : alloc.vec.Vec Std.U32)
+  :
+  Result (Reader × (alloc.vec.Vec (alloc.vec.Vec Std.U32)) × (Option
+    (core.result.Result (alloc.vec.Vec (alloc.vec.Vec Std.U32)) Std.U32)) ×
+    Bool × (Option (core.result.Result (alloc.vec.Vec (alloc.vec.Vec Std.U32))
+    Std.U32)))
+  := do
+  loop
+    (fun (iter1, t1, evals1) => evaluate_checked_loop0_loop0.body out iter1 t1
+      evals1)
+    (iter, t, evals)
+
+/-- [loops_nested_exits_iter::evaluate_checked]: loop body 0:
+    Source: 'tests/src/loops-nested-exits-iter.rs', lines 65:4-77:1
+    Visibility: public -/
+@[rust_loop_body]
+def evaluate_checked_loop0.body
+  (iter : core.slice.iter.Iter Std.U32) (t : Reader)
+  (out : alloc.vec.Vec (alloc.vec.Vec Std.U32)) :
+  Result (ControlFlow ((core.slice.iter.Iter Std.U32) × Reader ×
+    (alloc.vec.Vec (alloc.vec.Vec Std.U32))) ((core.result.Result
+    (alloc.vec.Vec (alloc.vec.Vec Std.U32)) Std.U32) × Reader))
+  := do
+  let (o, iter1) ← core.slice.iter.IteratorSliceIter.next iter
+  match o with
+  | none => ok (done (core.result.Result.Ok out, t))
+  | some label =>
+    let i ← label + 1#u32
+    let y ←
+      lift (Std.Array.to_slice (Array.make 2#usize [ label, i ] : Array Std.U32
+        2#usize))
+    let ret := alloc.slice.Slice.into_vec y
+    let i1 := alloc.vec.Vec.len ret
+    let evals := alloc.vec.Vec.with_capacity Std.U32 i1
+    let iter2 ← alloc.vec.IntoIteratorVec.into_iter ret
+    let (t1, out1, loop_return, loop_exit, loop_return1) ←
+      evaluate_checked_loop0_loop0 iter2 t out evals
+    match loop_return with
+    | none =>
+      if loop_exit
+      then ok (cont (iter1, t1, out1))
+      else
+        match loop_return1 with
+        | none => fail panic
+        | some r => ok (done (r, t1))
+    | some r => ok (done (r, t1))
+
+/-- [loops_nested_exits_iter::evaluate_checked]: loop 0:
+    Source: 'tests/src/loops-nested-exits-iter.rs', lines 65:4-77:1
+    Visibility: public -/
+@[rust_loop]
+def evaluate_checked_loop0
+  (iter : core.slice.iter.Iter Std.U32) (t : Reader)
+  (out : alloc.vec.Vec (alloc.vec.Vec Std.U32)) :
+  Result ((core.result.Result (alloc.vec.Vec (alloc.vec.Vec Std.U32)) Std.U32)
+    × Reader)
+  := do
+  loop
+    (fun (iter1, t1, out1) => evaluate_checked_loop0.body iter1 t1 out1)
+    (iter, t, out)
+
+/-- [loops_nested_exits_iter::evaluate_checked]:
+    Source: 'tests/src/loops-nested-exits-iter.rs', lines 63:0-77:1
+    Visibility: public -/
+def evaluate_checked
+  (labels : Slice Std.U32) (t : Reader) :
+  Result ((core.result.Result (alloc.vec.Vec (alloc.vec.Vec Std.U32)) Std.U32)
+    × Reader)
+  := do
+  let iter ← core.slice.Slice.iter labels
+  evaluate_checked_loop0 iter t (alloc.vec.Vec.new (alloc.vec.Vec Std.U32))
 
 end loops_nested_exits_iter
