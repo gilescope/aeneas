@@ -3375,6 +3375,195 @@ let extract_trait_decl_extra_info (ctx : extraction_ctx) (fmt : F.formatter)
   | Coq -> extract_trait_decl_coq_arguments ctx fmt trait_decl
   | _ -> ()
 
+(** The shape of a method's pure output: the forward output (unless
+    [out_ignored]), then one component per backward function which is not
+    filtered, in region group order. *)
+type method_shape = {
+  can_fail : bool;
+  out_ignored : bool;
+  fwd_output : ty;
+  backs : (ty * bool) list;
+      (** The type of each backward component, and whether it gives back [self]
+          (for a method taking [&mut self]) *)
+  has_back_fun : bool;
+      (** Some backward component is a function (the method returns a borrow) *)
+  num_inputs : int;
+}
+
+let compute_method_shape (ctx : extraction_ctx) (fid : FunDeclId.id) :
+    method_shape option =
+  match FunDeclId.Map.find_opt fid ctx.trans_ctx.fun_ctx.fun_decls with
+  | None -> None
+  | Some fdef ->
+      let sg = LlbcAstUtils.bound_fun_sig_of_decl fdef in
+      let dsg =
+        (SymbolicToPureTypes.translate_fun_sigs_from_decl ctx.trans_ctx fdef)
+          .dsg
+          .fun_ty
+      in
+      let self_region =
+        match fdef.signature.inputs with
+        | T.TRef (RVar (Free r), _, RMut) :: _ -> Some r
+        | _ -> None
+      in
+      let hierarchy =
+        RegionsHierarchy.compute_regions_hierarchy_for_sig
+          (Some fdef.item_meta.span) ctx.trans_ctx.crate sg
+      in
+      let gives_back_self gid =
+        match self_region with
+        | None -> false
+        | Some r ->
+            List.exists
+              (fun (g : T.region_var_group) ->
+                g.id = gid && List.mem r g.regions)
+              hierarchy
+      in
+      let backs =
+        List.filter_map
+          (fun ((gid, _), back) ->
+            Option.map
+              (fun ((info : back_sg_info), ty) ->
+                (ty, info.inputs <> [], gives_back_self gid))
+              back)
+          (List.combine
+             (RegionGroupId.Map.bindings dsg.back_sg)
+             (SymbolicToPureTypes.compute_back_tys_with_info dsg))
+      in
+      Some
+        {
+          can_fail = dsg.fwd_info.effect_info.can_fail;
+          out_ignored = dsg.fwd_info.ignore_output;
+          fwd_output = dsg.fwd_output;
+          backs = List.map (fun (ty, _, self) -> (ty, self)) backs;
+          has_back_fun = List.exists (fun (_, f, _) -> f) backs;
+          num_inputs = List.length dsg.fwd_inputs;
+        }
+
+type fn_trait = FnOnce | FnMut | Fn
+
+(** How to fit a method of a builtin trait impl into the model of the trait.
+
+    The models of the [Fn*] traits know nothing of borrows: in
+    [call_mut : Self → Args → Result (Output × Self)], [Args] cannot give back
+    the [&mut] borrows a closure receives, nor can [Output] carry the captured
+    borrows a [call_once] gives back. Aeneas returns those given back values
+    after the forward output (and drops a [()] output when there are some,
+    aeneas#960). We put them in the instance's [Output]:
+    [Output' = Output × (b₀ × … × bₙ)], so the instance is the closure's whole
+    effect. Opaque functions taking such closures (e.g. [Iterator::for_each])
+    are modelled by hand, and must follow this encoding.
+
+    A method returning a borrow (e.g. [IterMut::next]) gives back a backward
+    function, for which no trait model has room: the field becomes a function
+    which always fails, so that nothing can be proved about a call through the
+    instance - while code calling the method directly, and the opaque functions
+    taking the instance (modelled by hand), are unaffected. *)
+type method_adapter =
+  | NoAdapter
+  | FnAdapter of fn_trait * method_shape * ty  (** The adjusted [Output] *)
+  | Unsupported of int  (** The number of inputs *)
+
+let compute_method_adapter (ctx : extraction_ctx) (impl : trait_impl)
+    (fn : fun_decl_ref binder) : method_adapter =
+  let builtin =
+    Option.bind
+      (TraitDeclId.Map.find_opt impl.impl_trait.trait_decl_id
+         ctx.trans_trait_decls) (fun (d : trait_decl) -> d.builtin_info)
+  in
+  match (backend (), builtin) with
+  | Lean, Some info when fn.binder_generics = empty_generic_params -> (
+      match compute_method_shape ctx fn.binder_value.fun_id with
+      | None -> NoAdapter
+      | Some shape when shape.has_back_fun -> Unsupported shape.num_inputs
+      | Some shape -> (
+          let kind =
+            match info.extract_name with
+            | "core.ops.function.FnOnce" -> Some FnOnce
+            | "core.ops.function.FnMut" -> Some FnMut
+            | "core.ops.function.Fn" -> Some Fn
+            | _ -> None
+          in
+          match kind with
+          | None -> NoAdapter
+          | Some kind ->
+              let others =
+                List.filter_map
+                  (fun (ty, self) ->
+                    if self && kind = FnMut then None else Some ty)
+                  shape.backs
+              in
+              if others = [] && (not shape.out_ignored) && shape.can_fail then
+                NoAdapter
+              else
+                let output =
+                  if others = [] then shape.fwd_output
+                  else
+                    mk_simpl_tuple_ty
+                      [ shape.fwd_output; mk_simpl_tuple_ty others ]
+                in
+                FnAdapter (kind, shape, output)))
+  | _ -> NoAdapter
+
+(** The impl's trait ref, with the [Output] of an [Fn*] trait adjusted for the
+    given back values (see {!method_adapter}). *)
+let fn_impl_trait (ctx : extraction_ctx) (impl : trait_impl) : trait_decl_ref =
+  let outputs =
+    List.filter_map
+      (fun (_, _, fn) ->
+        match compute_method_adapter ctx impl fn with
+        | FnAdapter (_, _, output) -> Some output
+        | _ -> None)
+      impl.methods
+  in
+  match (outputs, impl.impl_trait.decl_generics.types) with
+  | output :: _, [ self; args; _ ] ->
+      {
+        impl.impl_trait with
+        decl_generics =
+          { impl.impl_trait.decl_generics with types = [ self; args; output ] };
+      }
+  | _ -> impl.impl_trait
+
+(** Print a method field's value: [f], or [f] wrapped in its adapter. *)
+let extract_adapted_method (fmt : F.formatter) (adapter : method_adapter)
+    (print_fun : unit -> unit) : unit =
+  match adapter with
+  | NoAdapter -> print_fun ()
+  | Unsupported n ->
+      F.pp_print_string fmt
+        ("fun"
+        ^ String.concat "" (List.init n (fun _ -> " _"))
+        ^ " => Result.fail Error.undef")
+  | FnAdapter (kind, shape, _) ->
+      let ins = List.init shape.num_inputs (fun i -> "x" ^ string_of_int i) in
+      let backs =
+        List.mapi
+          (fun i (_, self) ->
+            if self && kind = FnMut then "self'" else "b" ^ string_of_int i)
+          shape.backs
+      in
+      let comps = (if shape.out_ignored then [] else [ "out" ]) @ backs in
+      let tuple = function
+        | [ x ] -> x
+        | xs -> "(" ^ String.concat ", " xs ^ ")"
+      in
+      let others = List.filter (fun b -> b <> "self'") backs in
+      let out = if shape.out_ignored then "()" else "out" in
+      let out = if others = [] then out else tuple [ out; tuple others ] in
+      let ret = if kind = FnMut then tuple [ out; "self'" ] else out in
+      let args = " " ^ String.concat " " ins in
+      let k = "(fun " ^ tuple comps ^ " => ok " ^ ret ^ ")" in
+      F.pp_print_string fmt ("fun" ^ args ^ " =>");
+      F.pp_print_space fmt ();
+      if shape.can_fail then F.pp_print_string fmt "Bind.bind (("
+      else F.pp_print_string fmt (k ^ " ((");
+      print_fun ();
+      F.pp_print_string fmt (")" ^ args ^ ")");
+      if shape.can_fail then (
+        F.pp_print_space fmt ();
+        F.pp_print_string fmt k)
+
 (** Small helper.
 
     Extract the items for a method in a trait impl. *)
@@ -3415,10 +3604,11 @@ let extract_trait_impl_method_items_aux (ctx : extraction_ctx)
     (* Extract the function call *)
     F.pp_print_space fmt ();
     let fun_name = ctx_get_local_function span method_decl_id None ctx in
-    F.pp_print_string fmt fun_name;
-    extract_generic_args span ctx fmt TypeDeclId.Set.empty
-      ~explicit:(Some trans.f.signature.explicit_info)
-      fn.binder_value.fun_generics
+    extract_adapted_method fmt (compute_method_adapter ctx impl fn) (fun () ->
+        F.pp_print_string fmt fun_name;
+        extract_generic_args span ctx fmt TypeDeclId.Set.empty
+          ~explicit:(Some trans.f.signature.explicit_info)
+          fn.binder_value.fun_generics)
   in
 
   extract_trait_impl_item ctx fmt fun_name ty
@@ -3430,6 +3620,26 @@ let extract_trait_impl_method_items (ctx : extraction_ctx) (fmt : F.formatter)
   with CFailure _ ->
     F.pp_print_space fmt ();
     extract_admit fmt
+
+(** If the [filter_trait_impl_methods] option is on, we skip the methods which
+    are absent from the model of the trait declaration. *)
+let trait_impl_keep_method (ctx : extraction_ctx) (span : Meta.span)
+    (impl : trait_impl) : string -> bool =
+  if not !filter_trait_impl_methods then fun _ -> true
+  else
+    let pure_trait_decl =
+      [%unwrap_with_span] span
+        (TraitDeclId.Map.find_opt impl.impl_trait.trait_decl_id
+           ctx.trans_trait_decls)
+        "Could not lookup the translated trait declaration"
+    in
+    match pure_trait_decl.builtin_info with
+    | None -> fun _ -> true
+    | Some info ->
+        let method_names =
+          Collections.StringSet.of_list (List.map fst info.methods)
+        in
+        fun item_name -> Collections.StringSet.mem item_name method_names
 
 (** Print a trait impl as a structure literal, its generics instantiated with
     [generics]. Used for the impls of a group of functions which recurse through
@@ -3475,9 +3685,10 @@ let extract_trait_impl_literal (ctx : extraction_ctx) (fmt : F.formatter)
               (subst_visitor#visit_trait_ref subst trait_ref) ))
       (List.combine trait_decl.implied_clauses impl.parent_trait_refs)
   in
+  let keep_method = trait_impl_keep_method ctx span impl in
   let methods =
-    List.map
-      (fun (method_id, _, (fn : fun_decl_ref binder)) ->
+    List.filter_map
+      (fun (method_id, name, (fn : fun_decl_ref binder)) ->
         [%cassert] span
           (fn.binder_generics = empty_generic_params)
           "Inlining trait impls with generic methods is not supported";
@@ -3486,13 +3697,27 @@ let extract_trait_impl_literal (ctx : extraction_ctx) (fmt : F.formatter)
             (ctx_lookup_fun_decl_info ctx fn.binder_value.fun_id)
             "Could not lookup the translated method"
         in
-        ( ctx_get_trait_method span trait_decl_id method_id ctx,
-          fun () ->
-            F.pp_print_string fmt
-              (ctx_get_local_function span fn.binder_value.fun_id None ctx);
-            extract_generic_args span ctx fmt TypeDeclId.Set.empty
-              ~explicit:(Some trans.f.signature.explicit_info)
-              (generic_args_substitute subst fn.binder_value.fun_generics) ))
+        let print_fun () =
+          (* In parentheses: a line break before an argument would otherwise
+             end the field *)
+          F.pp_print_string fmt "(";
+          F.pp_print_string fmt
+            (ctx_get_local_function span fn.binder_value.fun_id None ctx);
+          extract_generic_args span ctx fmt TypeDeclId.Set.empty
+            ~explicit:(Some trans.f.signature.explicit_info)
+            (generic_args_substitute subst fn.binder_value.fun_generics);
+          F.pp_print_string fmt ")"
+        in
+        if keep_method name then
+          Some
+            ( ctx_get_trait_method span trait_decl_id method_id ctx,
+              fun () ->
+                F.pp_print_string fmt "(";
+                extract_adapted_method fmt
+                  (compute_method_adapter ctx impl fn)
+                  print_fun;
+                F.pp_print_string fmt ")" )
+        else None)
       impl.methods
   in
   if inside then F.pp_print_string fmt "(";
@@ -3627,7 +3852,7 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
   F.pp_print_string fmt ":";
   F.pp_print_space fmt ();
   extract_trait_decl_ref span ctx fmt TypeDeclId.Set.empty ~inside:false
-    impl.impl_trait;
+    (fn_impl_trait ctx impl);
 
   let is_empty = trait_impl_is_empty impl in
 
@@ -3736,22 +3961,7 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
 
        If the [filter_trait_impl_methods] option is on, we skip the methods
        which are absent from the model of the trait declaration. *)
-    let keep_method : string -> bool =
-      if not !filter_trait_impl_methods then fun _ -> true
-      else
-        let pure_trait_decl =
-          [%unwrap_with_span] span
-            (TraitDeclId.Map.find_opt trait_decl_id ctx.trans_trait_decls)
-            "Could not lookup the translated trait declaration"
-        in
-        match pure_trait_decl.builtin_info with
-        | None -> fun _ -> true
-        | Some info ->
-            let method_names =
-              Collections.StringSet.of_list (List.map fst info.methods)
-            in
-            fun item_name -> Collections.StringSet.mem item_name method_names
-    in
+    let keep_method = trait_impl_keep_method ctx span impl in
     List.iter
       (fun (method_id, name, bound_fn) ->
         if keep_method name then
