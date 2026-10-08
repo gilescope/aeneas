@@ -2345,6 +2345,91 @@ let fix_closure_signature_regions (crate : crate) (f : fun_decl) : fun_decl =
       else f
   | _ -> f
 
+(** Let a closure's output borrow from anything the closure receives.
+
+    Charon gives a closure method's output lifetimes as fresh parameters,
+    unrelated to the inputs (https://github.com/AeneasVerif/charon/issues/1040):
+    for [xs.iter().flat_map(|v| v.iter().map(f))] we get
+    {[
+      call_mut<'0, '1, '2>(state : &'2 mut closure, args : (&'0 Vec<u32>,))
+        -> Map<Iter<'1, u32>, f>
+    ]}
+    although the result borrows from ['0]. Symbolic execution must then end ['0]
+    before returning, which it cannot do with an input region.
+    [fix_closure_lifetimes] repairs the case of a single captured region and a
+    bare reference output; here, for every output region that no input mentions,
+    we add the outlives bounds ['r : 'out] for every region ['r] the closure
+    receives (captured in its state, or in its arguments). This is exactly what
+    Rust allows: the result may borrow from any of them, for at most as long as
+    each lives. The region of the [&mut] or [&] borrow of the state itself is
+    excluded, as [Fn]/[FnMut] results cannot borrow from it.
+
+    TODO: remove once the Charon issue is fixed. *)
+let fix_closure_output_outlives (crate : crate) (f : fun_decl) : fun_decl =
+  let is_closure (id : TypeDeclId.id) : bool =
+    match TypeDeclId.Map.find_opt id crate.type_decls with
+    | Some { src = ClosureType _; _ } -> true
+    | _ -> false
+  in
+  let free_regions (tys : ty list) : RegionId.Set.t =
+    let acc = ref RegionId.Set.empty in
+    let visitor =
+      object
+        inherit [_] iter_ty
+
+        method! visit_region _ r =
+          match r with
+          | RVar (Free rid) -> acc := RegionId.Set.add rid !acc
+          | _ -> ()
+      end
+    in
+    List.iter (visitor#visit_ty ()) tys;
+    !acc
+  in
+  match f.signature.inputs with
+  | state :: args -> (
+      (* The state, possibly behind the [&]/[&mut] of [call]/[call_mut] *)
+      let state_ty =
+        match state with
+        | TAdt { id; _ } when is_closure id -> Some state
+        | TRef (_, (TAdt { id; _ } as ty), _) when is_closure id -> Some ty
+        | _ -> None
+      in
+      match state_ty with
+      | None -> f
+      | Some state_ty ->
+          let received = free_regions (state_ty :: args) in
+          let all_inputs = free_regions f.signature.inputs in
+          let outs =
+            RegionId.Set.diff (free_regions [ f.signature.output ]) all_inputs
+          in
+          if RegionId.Set.is_empty outs || RegionId.Set.is_empty received then f
+          else
+            let preds =
+              List.concat_map
+                (fun out ->
+                  List.map
+                    (fun r ->
+                      {
+                        binder_regions = [];
+                        binder_value = (RVar (Free r), RVar (Free out));
+                      })
+                    (RegionId.Set.elements received))
+                (RegionId.Set.elements outs)
+            in
+            let generics =
+              {
+                f.generics with
+                regions_outlive = f.generics.regions_outlive @ preds;
+              }
+            in
+            let f = { f with generics } in
+            [%ltrace
+              let env = Print.crate_to_fmt_env crate in
+              "Updated: " ^ Print.fun_decl_to_string env "" " " f];
+            f)
+  | [] -> f
+
 let apply_passes (crate : crate) : crate =
   (* Passes that apply to the whole crate *)
   let crate = update_array_default crate in
@@ -2353,6 +2438,7 @@ let apply_passes (crate : crate) : crate =
     [
       ("fix_closure_lifetimes", fix_closure_lifetimes);
       ("fix_closure_signature_regions", fix_closure_signature_regions);
+      ("fix_closure_output_outlives", fix_closure_output_outlives);
       ("erase_body_regions", erase_body_regions);
       ("remove_unreachable", remove_unreachable);
       ("update_loop", update_loops);

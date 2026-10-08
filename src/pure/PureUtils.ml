@@ -2444,6 +2444,14 @@ let filter_generic_params_used_in_texpr (generic : generic_params) (e : texpr) :
     end
   in
   visitor#visit_texpr () e;
+  (* A trait clause we keep must keep the parameters it mentions too: a loop
+     calling [next] through an [IntoIterator I Item IntoIter] clause uses [I] only
+     there, and dropping [I] left the clause dangling. *)
+  List.iter
+    (fun (clause : trait_param) ->
+      if TraitClauseId.Set.mem clause.clause_id !clause_ids then
+        visitor#visit_trait_param () clause)
+    generic.trait_clauses;
 
   (* Filter *)
   let { types; const_generics; trait_clauses } : generic_params = generic in

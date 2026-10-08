@@ -25,6 +25,7 @@ package «tests» {}
 @[default_target] lean_lib CastSigned
 @[default_target] lean_lib ChunksExact
 @[default_target] lean_lib ClosureMutArgs
+@[default_target] lean_lib ClosureOutputBorrows
 @[default_target] lean_lib Closures
 @[default_target] lean_lib Constants
 @[default_target] lean_lib ConstantsLean
@@ -80,6 +81,7 @@ package «tests» {}
 @[default_target] lean_lib LeanKeywords
 @[default_target] lean_lib LeanKeywordsClash
 @[default_target] lean_lib ListBorrows
+@[default_target] lean_lib LoopGenericIntoIter
 @[default_target] lean_lib Loops
 @[default_target] lean_lib LoopsAdts
 @[default_target] lean_lib LoopSharedBorrowProj
