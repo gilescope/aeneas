@@ -2511,6 +2511,11 @@ let fix_closure_output_outlives (crate : crate) (f : fun_decl) : fun_decl =
 
     TODO: remove once Charon identifies them. *)
 let unify_diamond_assoc_types (crate : crate) (f : fun_decl) : fun_decl =
+  (* Only the crate's own functions: a library function keeps the signature its
+     Lean model was written for (e.g. [Iterator::rev]'s default, modelled with
+     both [Item]s), or calls to it would pass the merged parameter explicitly. *)
+  if not f.item_meta.is_local then f
+  else
   let is_assoc (p : type_param) =
     String.length p.name > 5 && String.sub p.name 0 5 = "Self_"
   in
