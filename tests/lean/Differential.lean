@@ -144,5 +144,9 @@ open static_str in
 #guard (check 3#usize true).reducesTo (.Ok 3#usize)
 open static_str in
 #guard (check 3#usize false).reducesTo (.Err (toStr "Cannot convert into Column<Advice>"))
+-- Kernel-checked: `unwrap`'s `Debug` instance is noncomputable
+open static_str in
+example : advice_or_panic 4#usize = .ok 4#usize := by
+  simp [advice_or_panic, check, advice_index, Column.impl.column_type, core.result.Result.unwrap]
 
 end Differential

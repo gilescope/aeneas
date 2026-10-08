@@ -48,6 +48,11 @@ pub fn check(i: usize, b: bool) -> Result<usize, &'static str> {
     advice_index(c)
 }
 
+/// `get_any_query_index`'s shape: `unwrap` instantiates the error's erased region with its own
+pub fn advice_or_panic(i: usize) -> usize {
+    check(i, true).unwrap()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -57,5 +62,6 @@ mod tests {
         assert_eq!(check(3, true), Ok(3));
         assert!(check(3, false).is_err());
         assert_eq!(renamed(), "column");
+        assert_eq!(advice_or_panic(4), 4);
     }
 }

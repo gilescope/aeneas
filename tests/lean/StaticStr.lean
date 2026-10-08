@@ -17,7 +17,28 @@ set_option maxHeartbeats 1000000
 /- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
 set_option maxRecDepth 2048
 
+/- You can remove the following line by using the CLI option `-all-computable`: -/
+noncomputable section
+
 namespace static_str
+
+/-- [core::fmt::{impl core::fmt::Debug for str}::fmt]:
+    Source: '/rustc/library/core/src/fmt/mod.rs', lines 2917:4-2917:50
+    Name pattern: [core::fmt::{core::fmt::Debug<str>}::fmt]
+    Visibility: public -/
+@[rust_fun "core::fmt::{core::fmt::Debug<str>}::fmt"]
+axiom Str.Insts.CoreFmtDebug.fmt
+  :
+  Str → core.fmt.Formatter → Result ((core.result.Result Unit
+    core.fmt.Error) × core.fmt.Formatter)
+
+/-- Trait implementation: [core::fmt::{impl core::fmt::Debug for str}]
+    Source: '/rustc/library/core/src/fmt/mod.rs', lines 2916:0-2916:18
+    Name pattern: [core::fmt::Debug<str>] -/
+@[reducible, rust_trait_impl "core::fmt::Debug<str>"]
+def Str.Insts.CoreFmtDebug : core.fmt.Debug Str := {
+  fmt := Str.Insts.CoreFmtDebug.fmt
+}
 
 /-- [static_str::name]:
     Source: 'tests/src/static-str.rs', lines 7:0-9:1
@@ -118,5 +139,12 @@ def check
             then ok Any.Advice
             else ok Any.Fixed
   advice_index { index := i, column_type := a }
+
+/-- [static_str::advice_or_panic]:
+    Source: 'tests/src/static-str.rs', lines 52:0-54:1
+    Visibility: public -/
+def advice_or_panic (i : Std.Usize) : Result Std.Usize := do
+  let r ← check i true
+  core.result.Result.unwrap (core.fmt.DebugShared Str.Insts.CoreFmtDebug) r
 
 end static_str
