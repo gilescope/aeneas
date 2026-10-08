@@ -2047,10 +2047,15 @@ let decompose_str_borrows (_ : crate) (f : fun_decl) : fun_decl =
               *)
               method! visit_Constant env (cv : constant_expr) =
                 match (cv.kind, cv.ty) with
+                (* Shared literals ([&'static str]) are left to the
+                   interpreter, which keeps the string in a static loan: a
+                   local would be popped with the frame, so a literal which
+                   escapes (e.g. [Err("...")]) would dangle. *)
                 | ( CStr str,
                     TRef
-                      (_, (TAdt { builtin = Some TStr; _ } as str_ty), ref_kind)
-                  ) ->
+                      ( _,
+                        (TAdt { builtin = Some TStr; _ } as str_ty),
+                        (RMut as ref_kind) ) ) ->
                     (* We need to introduce intermediate assignments *)
                     (* First the string initialization *)
                     let local_id =

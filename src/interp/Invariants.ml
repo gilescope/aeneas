@@ -529,7 +529,9 @@ let check_typing_invariant_visitor span ctx (lookups : bool) =
                 | _ -> [%craise] span "Inconsistent context"))
       | VSymbolic sv, ty ->
           check_symbolic_value_type sv.sv_id sv.sv_ty;
-          let ty' = Substitute.erase_regions sv.sv_ty in
+          (* Values have erased types, ['static] included (see [visit_EBinding]):
+             [Substitute.erase_regions] keeps ['static] *)
+          let ty' = Contexts.erase_regions sv.sv_ty in
           [%sanity_check] span (ty' = ty)
       | VLiteral (VStr _), TAdt { builtin = Some TStr; _ } -> ()
       | _ ->

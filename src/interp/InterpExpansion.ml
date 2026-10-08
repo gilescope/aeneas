@@ -346,9 +346,12 @@ let compute_expanded_symbolic_adt_value (span : Meta.span)
       [%craise] span
         "compute_expanded_symbolic_adt_value: unexpected combination"
 
+(** [static_loan]: the borrow is ['static], which no abstraction owns, so none
+    receives the loan: we keep it in a dummy variable, which never ends, as for
+    references to globals and string literals (see [eval_operand]). *)
 let expand_symbolic_value_shared_borrow (span : Meta.span)
-    (original_sv : symbolic_value) (original_sv_place : SA.mplace option)
-    (ref_ty : rty) : cm_fun =
+    ?(static_loan = false) (original_sv : symbolic_value)
+    (original_sv_place : SA.mplace option) (ref_ty : rty) : cm_fun =
  fun ctx ->
   (* First, replace the projectors on borrows. *)
   let bid = ctx.fresh_borrow_id () in
@@ -485,6 +488,15 @@ let expand_symbolic_value_shared_borrow (span : Meta.span)
   (* Finally, replace the projectors on loans *)
   let see = SeSharedRef (bid, shared_sv) in
   let ctx = apply_symbolic_expansion_to_aevalues span original_sv see ctx in
+  let ctx =
+    if static_loan then
+      let sval = mk_tvalue_from_symbolic_value shared_sv in
+      let loan : tvalue =
+        { value = VLoan (VSharedLoan (bid, sval)); ty = sval.ty }
+      in
+      ctx_push_dummy_var ctx (ctx.fresh_dummy_var_id ()) loan
+    else ctx
+  in
   ( ctx,
     (* Update the synthesized program *)
     S.synthesize_symbolic_expansion_no_branching span original_sv
@@ -524,8 +536,8 @@ let expand_symbolic_value_borrow (span : Meta.span)
           S.synthesize_symbolic_expansion_no_branching span original_sv
             original_sv_place see e )
   | RShared ->
-      expand_symbolic_value_shared_borrow span original_sv original_sv_place
-        ref_ty ctx
+      expand_symbolic_value_shared_borrow span ~static_loan:(region = RStatic)
+        original_sv original_sv_place ref_ty ctx
 
 let expand_symbolic_bool (span : Meta.span) (sv : symbolic_value)
     (sv_place : SA.mplace option) :

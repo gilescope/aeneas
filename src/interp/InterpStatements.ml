@@ -1396,7 +1396,14 @@ and eval_function_call_symbolic_from_inst_sig (config : config)
   (* Generate a fresh symbolic value for the return value *)
   let ret_sv_ty = inst_sg.output in
   let ret_spc = mk_fresh_symbolic_value span ctx ret_sv_ty in
-  let ret_value = mk_tvalue_from_symbolic_value ret_spc in
+  (* Values have erased types: [mk_tvalue_from_symbolic_value] keeps ['static]
+     (e.g. [fn name() -> &'static str]), which the symbolic value needs *)
+  let ret_value =
+    {
+      (mk_tvalue_from_symbolic_value ret_spc) with
+      ty = Contexts.erase_regions ret_sv_ty;
+    }
+  in
   let args_places =
     List.map (fun p -> S.mk_opt_place_from_op span p ctx) args
   in

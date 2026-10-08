@@ -4,6 +4,7 @@ import AssocTypeDiamond
 import LoopsNestedExits
 import LoopsNestedExitsIter
 import NestedSharedIter
+import StaticStr
 
 /-! # Differential checks: the extracted Lean computes what Rust computes
 
@@ -133,5 +134,15 @@ open nested_shared_iter in
 #guard (absorb slices[slice[1#u32, 2#u32], slice[]]).reducesTo (.Err 7#u32)
 open nested_shared_iter in
 #guard (absorb slices[slice[1#u32, 0#u32]]).reducesTo (.Err 7#u32)
+
+-- tests/src/static-str.rs
+open static_str in
+#guard «name».reducesTo (toStr "column")
+open static_str in
+#guard renamed.reducesTo (toStr "column")
+open static_str in
+#guard (check 3#usize true).reducesTo (.Ok 3#usize)
+open static_str in
+#guard (check 3#usize false).reducesTo (.Err (toStr "Cannot convert into Column<Advice>"))
 
 end Differential
