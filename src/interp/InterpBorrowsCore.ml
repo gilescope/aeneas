@@ -509,20 +509,36 @@ let projections_intersect (span : Meta.span) (ctx : eval_ctx)
 
     A region is nested under an ended region if it appears inside a borrow whose
     region ended, or as an argument of an ADT one of whose region parameters
-    ended. For ADTs this is conservative: we don't know how an (opaque) ADT uses
-    its parameters, so all the regions of [Pair<'a, 'b>] are nested under ['a].
-    The regions of [Zip<IterMut<'a, T>, IterMut<'b, T>>], however, are not
+    ended. For opaque ADTs this is conservative: we don't know how they use
+    their parameters, so all the regions of [Pair<'a, 'b>] are nested under
+    ['a]. The regions of [Zip<IterMut<'a, T>, IterMut<'b, T>>], however, are not
     nested under each other: ending ['a] gives back nothing which lives in ['b].
+    Structs and enums whose fields we see (closures in particular) are looked
+    through: in [{closure}<'a, 'b>] with fields [&'a u32] and [&'b mut T], ['b]
+    is not nested under ['a].
 
     Like [projections_intersect], [ty1] and [ty2] are two views of the same
     symbolic value. *)
-let rec nested_projections_intersect (span : Meta.span) (_ctx : eval_ctx)
-    ?(under = false) (ended1 : RegionId.Set.t) (ty1 : rty)
+let rec nested_projections_intersect (span : Meta.span) (ctx : eval_ctx)
+    ?(under = false) ?(seen = []) (ended1 : RegionId.Set.t) (ty1 : rty)
     (rset2 : RegionId.Set.t) (ty2 : rty) : bool =
-  let intersect under ty1 ty2 =
-    nested_projections_intersect span _ctx ~under ended1 ty1 rset2 ty2
+  let intersect ?(seen = seen) under ty1 ty2 =
+    nested_projections_intersect span ctx ~under ~seen ended1 ty1 rset2 ty2
+  in
+  let transparent (tref1 : type_decl_ref) (tref2 : type_decl_ref) =
+    match tref1 with
+    | { id; builtin = None; _ } ->
+        Option.map
+          (fun fields -> (id, fields))
+          (transparent_adt_fields span ctx seen id tref1.generics tref2.generics)
+    | _ -> None
   in
   match (ty1, ty2) with
+  | TAdt tref1, TAdt tref2 when transparent tref1 tref2 <> None ->
+      let id, fields = Option.get (transparent tref1 tref2) in
+      List.exists
+        (fun (fty1, fty2) -> intersect ~seen:(id :: seen) under fty1 fty2)
+        fields
   | TAdt tref1, TAdt tref2 ->
       let regions =
         List.combine tref1.generics.regions tref2.generics.regions
@@ -546,6 +562,38 @@ let rec nested_projections_intersect (span : Meta.span) (_ctx : eval_ctx)
   | _ ->
       [%sanity_check] span (ty_is_rty ty1 && ty_is_rty ty2);
       false
+
+(** The instantiated field types (of every variant) of the two views of a struct
+    or enum, provided we can look through them: not opaque, not recursive (we
+    stop at a type we are already inside), and their field types are built only
+    from references, ADTs, arrays, slices, scalars and type variables (which
+    hold no borrows), so that [nested_projections_intersect] sees every region
+    (an associated type or a function pointer may hide some). *)
+and transparent_adt_fields (span : Meta.span) (ctx : eval_ctx)
+    (seen : TypeDeclId.id list) (id : TypeDeclId.id) (generics1 : generic_args)
+    (generics2 : generic_args) : (rty * rty) list option =
+  let rec structural (ty : ty) : bool =
+    match ty with
+    | TScalar _ | TNever | TVar _ -> true
+    | TAdt tref -> List.for_all structural tref.generics.types
+    | TRef (_, ty, _) | TArray (ty, _, _) | TSlice (ty, _) -> structural ty
+    | _ -> false
+  in
+  if List.mem id seen then None
+  else
+    let def = ctx_lookup_type_decl span ctx id in
+    match def.kind with
+    | Struct _ | Enum _ ->
+        let fields generics =
+          List.concat_map snd
+            (Substitute.type_decl_get_instantiated_variants_fields_types span
+               def generics)
+        in
+        let fields1 = fields generics1 and fields2 = fields generics2 in
+        if List.for_all structural fields1 && List.for_all structural fields2
+        then Some (List.combine fields1 fields2)
+        else None
+    | Alias _ | Opaque | TDeclError _ | Union _ -> None
 
 (** Check if the first projection contains the second projection. We use this
     function when checking invariants.
