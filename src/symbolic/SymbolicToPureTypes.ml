@@ -407,10 +407,9 @@ let rec translate_fwd_ty (span : Meta.span option) (decls_ctx : C.decls_ctx)
           in
           let sigs = translate_fun_sigs_from_decl decls_ctx fdecl in
           let sg = sigs.sg in
-          (* Check that the function lives in the expected effect - otherwise we
-                 have to lift it *)
-          [%cassert_opt_span] span sg.fwd_info.effect_info.can_fail
-            "Unimplemented";
+          (* The item's type is its function's, fallible or not (e.g. the pure
+             [usize::cmp] passed to [max_by]): only the [Fn*] instance's
+             [call_*] live in [Result]. *)
           [%cassert_opt_span] span
             (RegionGroupId.Map.for_all
                (fun _ (e : fun_effect_info) -> not e.can_fail)

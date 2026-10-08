@@ -22,6 +22,58 @@ noncomputable section
 
 namespace fn_item_higher_ranked
 
+/-- [core::cmp::impls::{impl core::cmp::Ord for usize}::{impl core::ops::function::FnMut<(&'_0 usize, &'_1 usize), core::cmp::Ordering> for core::cmp::impls::{impl core::cmp::Ord for usize}::cmp<'static, 'static>}::call_mut]:
+    Source: '/rustc/library/core/src/cmp.rs', lines 2347:16-2347:55
+    Name pattern: [core::cmp::impls::{core::cmp::Ord<usize>}::{core::ops::function::FnMut<@, (&'0 usize, &'1 usize), core::cmp::Ordering>}::call_mut]
+    Visibility: public -/
+@[rust_fun
+  "core::cmp::impls::{core::cmp::Ord<usize>}::{core::ops::function::FnMut<@, (&'0 usize, &'1 usize), core::cmp::Ordering>}::call_mut"]
+axiom
+  core.cmp.impls.OrdUsize.cmp.Insts.CoreOpsFunctionFnMutPairShared0UsizeShared1UsizeOrdering.call_mut
+  :
+  (Std.Usize → Std.Usize → Ordering) → (Std.Usize × Std.Usize) →
+    Result (Ordering × (Std.Usize → Std.Usize → Ordering))
+
+/-- [core::cmp::impls::{impl core::cmp::Ord for usize}::{impl core::ops::function::FnOnce<(&'_0 usize, &'_1 usize), core::cmp::Ordering> for core::cmp::impls::{impl core::cmp::Ord for usize}::cmp<'static, 'static>}::call_once]:
+    Source: '/rustc/library/core/src/cmp.rs', lines 2347:16-2347:55
+    Name pattern: [core::cmp::impls::{core::cmp::Ord<usize>}::{core::ops::function::FnOnce<@, (&'0 usize, &'1 usize), core::cmp::Ordering>}::call_once]
+    Visibility: public -/
+@[rust_fun
+  "core::cmp::impls::{core::cmp::Ord<usize>}::{core::ops::function::FnOnce<@, (&'0 usize, &'1 usize), core::cmp::Ordering>}::call_once"]
+axiom
+  core.cmp.impls.OrdUsize.cmp.Insts.CoreOpsFunctionFnOncePairShared0UsizeShared1UsizeOrdering.call_once
+  :
+  (Std.Usize → Std.Usize → Ordering) → (Std.Usize × Std.Usize) →
+    Result Ordering
+
+/-- Trait implementation: [core::cmp::impls::{impl core::cmp::Ord for usize}::{impl core::ops::function::FnOnce<(&'_0 usize, &'_1 usize), core::cmp::Ordering> for core::cmp::impls::{impl core::cmp::Ord for usize}::cmp<'static, 'static>}]
+    Source: '/rustc/library/core/src/cmp.rs', lines 2347:16-2347:55
+    Name pattern: [core::ops::function::FnOnce<@, (&'0 usize, &'1 usize), core::cmp::Ordering>] -/
+@[reducible, rust_trait_impl
+  "core::ops::function::FnOnce<@, (&'0 usize, &'1 usize), core::cmp::Ordering>"]
+def
+  core.cmp.impls.OrdUsize.cmp.Insts.CoreOpsFunctionFnOncePairShared0UsizeShared1UsizeOrdering
+  : core.ops.function.FnOnce (Std.Usize → Std.Usize → Ordering) (Std.Usize
+  × Std.Usize) Ordering := {
+  call_once :=
+    core.cmp.impls.OrdUsize.cmp.Insts.CoreOpsFunctionFnOncePairShared0UsizeShared1UsizeOrdering.call_once
+}
+
+/-- Trait implementation: [core::cmp::impls::{impl core::cmp::Ord for usize}::{impl core::ops::function::FnMut<(&'_0 usize, &'_1 usize), core::cmp::Ordering> for core::cmp::impls::{impl core::cmp::Ord for usize}::cmp<'static, 'static>}]
+    Source: '/rustc/library/core/src/cmp.rs', lines 2347:16-2347:55
+    Name pattern: [core::ops::function::FnMut<@, (&'0 usize, &'1 usize), core::cmp::Ordering>] -/
+@[reducible, rust_trait_impl
+  "core::ops::function::FnMut<@, (&'0 usize, &'1 usize), core::cmp::Ordering>"]
+def
+  core.cmp.impls.OrdUsize.cmp.Insts.CoreOpsFunctionFnMutPairShared0UsizeShared1UsizeOrdering
+  : core.ops.function.FnMut (Std.Usize → Std.Usize → Ordering) (Std.Usize
+  × Std.Usize) Ordering := {
+  FnOnceInst :=
+    core.cmp.impls.OrdUsize.cmp.Insts.CoreOpsFunctionFnOncePairShared0UsizeShared1UsizeOrdering
+  call_mut :=
+    core.cmp.impls.OrdUsize.cmp.Insts.CoreOpsFunctionFnMutPairShared0UsizeShared1UsizeOrdering.call_mut
+}
+
 /-- [core::cmp::impls::{impl core::cmp::Ord for &'_0 A}::cmp]:
     Source: '/rustc/library/core/src/cmp.rs', lines 2519:8-2519:47
     Name pattern: [core::cmp::impls::{core::cmp::Ord<&'0 @A>}::cmp]
@@ -96,6 +148,68 @@ axiom core.iter.traits.iterator.Iterator.max_by.default
   core.ops.function.FnMut F (Clause0_Item × Clause0_Item) Ordering) :
   Self → F → Result (Option Clause0_Item)
 
+/-- [core::iter::traits::iterator::Iterator::map]:
+    Source: '/rustc/library/core/src/iter/traits/iterator.rs', lines 845:4-848:34
+    Name pattern: [core::iter::traits::iterator::Iterator::map]
+    Visibility: public -/
+@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::map"]
+axiom core.iter.traits.iterator.Iterator.map.default
+  {Self : Type} {B : Type} {F : Type} {Clause0_Item : Type} (IteratorInst :
+  core.iter.traits.iterator.Iterator Self Clause0_Item)
+  (opsfunctionFnMutFTupleClause0_ItemBInst : core.ops.function.FnMut F
+  Clause0_Item B) :
+  Self → F → Result (core.iter.adapters.map.Map Self F)
+
+/-- [core::iter::adapters::map::{impl core::iter::traits::iterator::Iterator<B> for core::iter::adapters::map::Map<I, F>}::next]:
+    Source: '/rustc/library/core/src/iter/adapters/map.rs', lines 106:4-106:35
+    Name pattern: [core::iter::adapters::map::{core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>}::next]
+    Visibility: public -/
+@[rust_fun
+  "core::iter::adapters::map::{core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>}::next"]
+axiom core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next
+  {B : Type} {I : Type} {F : Type} {Clause0_Item : Type}
+  (traitsiteratorIteratorInst : core.iter.traits.iterator.Iterator I
+  Clause0_Item) (opsfunctionFnMutFTupleClause0_ItemBInst :
+  core.ops.function.FnMut F Clause0_Item B) :
+  core.iter.adapters.map.Map I F → Result ((Option B) ×
+    (core.iter.adapters.map.Map I F))
+
+/-- Trait implementation: [core::iter::adapters::map::{impl core::iter::traits::iterator::Iterator<B> for core::iter::adapters::map::Map<I, F>}]
+    Source: '/rustc/library/core/src/iter/adapters/map.rs', lines 99:0-101:27
+    Name pattern: [core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>] -/
+@[reducible, rust_trait_impl
+  "core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>"]
+impl_def core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator {B :
+  Type} {I : Type} {F : Type} {Clause0_Item : Type} (traitsiteratorIteratorInst
+  : core.iter.traits.iterator.Iterator I Clause0_Item)
+  (opsfunctionFnMutFTupleClause0_ItemBInst : core.ops.function.FnMut F
+  Clause0_Item B) : core.iter.traits.iterator.Iterator
+  (core.iter.adapters.map.Map I F) B := {
+  next := core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next
+    traitsiteratorIteratorInst opsfunctionFnMutFTupleClause0_ItemBInst
+  map := fun {B1 : Type} {F1 : Type} (opsfunctionFnMutPTupleBPInst :
+    core.ops.function.FnMut F1 B B1) =>
+    core.iter.traits.iterator.Iterator.map.default
+    (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
+    traitsiteratorIteratorInst opsfunctionFnMutFTupleClause0_ItemBInst)
+    opsfunctionFnMutPTupleBPInst
+  max_by := fun {F1 : Type} (opsfunctionFnMutPPairSharedFSharedFOrderingInst :
+    core.ops.function.FnMut F1 (B × B) Ordering) =>
+    core.iter.traits.iterator.Iterator.max_by.default
+    (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
+    traitsiteratorIteratorInst opsfunctionFnMutFTupleClause0_ItemBInst)
+    opsfunctionFnMutPPairSharedFSharedFOrderingInst
+}
+
+/-- [core::option::{core::option::Option<T>}::unwrap_or_default]:
+    Source: '/rustc/library/core/src/option.rs', lines 1093:4-1095:27
+    Name pattern: [core::option::{core::option::Option<@T>}::unwrap_or_default]
+    Visibility: public -/
+@[rust_fun "core::option::{core::option::Option<@T>}::unwrap_or_default"]
+axiom core.option.Option.unwrap_or_default
+  {T : Type} (defaultDefaultInst : core.default.Default T) :
+  Option T → Result T
+
 /-- [fn_item_higher_ranked::longest]:
     Source: 'tests/src/fn-item-higher-ranked.rs', lines 6:0-8:1
     Visibility: public -/
@@ -105,5 +219,70 @@ def longest (lens : Slice Std.Usize) : Result (Option Std.Usize) := do
     (core.iter.traits.iterator.IteratorSliceIter Std.Usize)
     (core.cmp.impls.OrdShared0A.cmp.Insts.CoreOpsFunctionFnMutPairShared1Shared0AShared2Shared0AOrdering
     core.cmp.OrdUsize) i (Shared0A.Insts.CoreCmpOrd.cmp core.cmp.OrdUsize)
+
+/-- [fn_item_higher_ranked::longest_len::{closure}]
+    Source: 'tests/src/fn-item-higher-ranked.rs', lines 13:19-13:32 -/
+@[reducible]
+def longest_len.closure := Unit
+
+/-- [fn_item_higher_ranked::longest_len::{impl core::ops::function::FnMut<(&'_0 alloc::vec::Vec<u8>,), usize> for fn_item_higher_ranked::longest_len::{closure}}::call_mut]:
+    Source: 'tests/src/fn-item-higher-ranked.rs', lines 13:19-13:32 -/
+def
+  longest_len.closure.Insts.CoreOpsFunctionFnMutTupleShared0VecU8Usize.call_mut
+  (c : longest_len.closure) (tupled_args : alloc.vec.Vec Std.U8) :
+  Result (Std.Usize × longest_len.closure)
+  := do
+  let i := alloc.vec.Vec.len tupled_args
+  ok (i, c)
+
+/-- [fn_item_higher_ranked::longest_len::{impl core::ops::function::FnOnce<(&'_0 alloc::vec::Vec<u8>,), usize> for fn_item_higher_ranked::longest_len::{closure}}::call_once]:
+    Source: 'tests/src/fn-item-higher-ranked.rs', lines 13:19-13:32 -/
+def
+  longest_len.closure.Insts.CoreOpsFunctionFnOnceTupleShared0VecU8Usize.call_once
+  (c : longest_len.closure) (v : alloc.vec.Vec Std.U8) : Result Std.Usize := do
+  let (i, _) ←
+    longest_len.closure.Insts.CoreOpsFunctionFnMutTupleShared0VecU8Usize.call_mut
+      c v
+  ok i
+
+/-- Trait implementation: [fn_item_higher_ranked::longest_len::{impl core::ops::function::FnOnce<(&'_0 alloc::vec::Vec<u8>,), usize> for fn_item_higher_ranked::longest_len::{closure}}]
+    Source: 'tests/src/fn-item-higher-ranked.rs', lines 13:19-13:32 -/
+@[reducible]
+def longest_len.closure.Insts.CoreOpsFunctionFnOnceTupleShared0VecU8Usize :
+  core.ops.function.FnOnce longest_len.closure (alloc.vec.Vec Std.U8) Std.Usize
+  := {
+  call_once :=
+    longest_len.closure.Insts.CoreOpsFunctionFnOnceTupleShared0VecU8Usize.call_once
+}
+
+/-- Trait implementation: [fn_item_higher_ranked::longest_len::{impl core::ops::function::FnMut<(&'_0 alloc::vec::Vec<u8>,), usize> for fn_item_higher_ranked::longest_len::{closure}}]
+    Source: 'tests/src/fn-item-higher-ranked.rs', lines 13:19-13:32 -/
+@[reducible]
+def longest_len.closure.Insts.CoreOpsFunctionFnMutTupleShared0VecU8Usize :
+  core.ops.function.FnMut longest_len.closure (alloc.vec.Vec Std.U8) Std.Usize
+  := {
+  FnOnceInst :=
+    longest_len.closure.Insts.CoreOpsFunctionFnOnceTupleShared0VecU8Usize
+  call_mut :=
+    longest_len.closure.Insts.CoreOpsFunctionFnMutTupleShared0VecU8Usize.call_mut
+}
+
+/-- [fn_item_higher_ranked::longest_len]:
+    Source: 'tests/src/fn-item-higher-ranked.rs', lines 12:0-14:1
+    Visibility: public -/
+def longest_len (xss : Slice (alloc.vec.Vec Std.U8)) : Result Std.Usize := do
+  let i ← core.slice.Slice.iter xss
+  let m ←
+    core.iter.traits.iterator.Iterator.map.default
+      (core.iter.traits.iterator.IteratorSliceIter (alloc.vec.Vec Std.U8))
+      longest_len.closure.Insts.CoreOpsFunctionFnMutTupleShared0VecU8Usize i ()
+  let o ←
+    core.iter.traits.iterator.Iterator.max_by.default
+      (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
+      (core.iter.traits.iterator.IteratorSliceIter (alloc.vec.Vec Std.U8))
+      longest_len.closure.Insts.CoreOpsFunctionFnMutTupleShared0VecU8Usize)
+      core.cmp.impls.OrdUsize.cmp.Insts.CoreOpsFunctionFnMutPairShared0UsizeShared1UsizeOrdering
+      m (core.cmp.impls.OrdUsize.cmp)
+  core.option.Option.unwrap_or_default core.default.DefaultUsize o
 
 end fn_item_higher_ranked

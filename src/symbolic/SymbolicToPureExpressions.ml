@@ -1623,10 +1623,8 @@ and translate_intro_symbolic (ectx : C.eval_ctx) (p : S.mplace option)
                   (lookup_fn_ptr_sig ctx kind)
                   "Internal error, please file an issue"
               in
-              (* Check that the function lives in the expected effect - otherwise we
-                 have to lift it *)
-              [%cassert] ctx.span sg.sg.fwd_info.effect_info.can_fail
-                "Unimplemented";
+              (* The value has its function's type, fallible or not (see
+                 [SymbolicToPureTypes.translate_fwd_ty] on [TFnDef]) *)
               [%cassert] ctx.span
                 (RegionGroupId.Map.for_all
                    (fun _ (e : fun_effect_info) -> not e.can_fail)
