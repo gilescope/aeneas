@@ -2054,10 +2054,11 @@ let destructure_abs (span : Meta.span) (abs_kind : abs_kind) ~(can_end : bool)
             (* Simply explore the child *)
             list_avalues 0 push_fail child_av
         | AEndedSharedLoan (sv, child_av) ->
-            (* We don't support nested borrows for now *)
+            (* Shared borrows nested in the shared value are shared data: they
+               belong to their own regions, and if the child holds any value of
+               this abstraction, [push_fail] below fails *)
             [%cassert] span
-              (not
-                 (ty_has_borrows (Some span) ctx.type_ctx.type_infos child_av.ty))
+              (not (ty_has_mut_borrows ctx.type_ctx.type_infos child_av.ty))
               "Nested borrows are not supported yet";
             (* Explore the shared value *)
             (* Destructure the shared value *)

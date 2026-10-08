@@ -24,6 +24,11 @@ open Contexts
     - [can_end]
     - [ctx]
     - [v] *)
+(** Add to the abstractions of [absl] the parents implied by region nesting:
+    with nested borrows, the abstraction of ['b] in [Iter<'a, &'b T>] has the
+    abstraction of ['a] as parent. *)
+val abs_list_add_nested_parents : abs list -> abs list
+
 val convert_value_to_abstractions :
   Meta.span -> abs_kind -> can_end:bool -> eval_ctx -> tvalue -> abs list
 

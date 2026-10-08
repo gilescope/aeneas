@@ -46,6 +46,49 @@ let rec decompose_shared_value span pm (rid : RegionId.id) (v : tvalue) :
         "Nested borrows are not supported yet";
       ([], v)
 
+(** With nested (shared) borrows, the abstraction of a region nested in another
+    one in the types of its values (['b] in [Iter<'a, &'b T>], which outlives
+    ['a]) has the abstraction of the outer region as parent, as for the
+    abstractions introduced by function calls: ending it ends the outer one
+    first. Add those parents among the abstractions of [absl], which were just
+    introduced. *)
+let abs_list_add_nested_parents (absl : abs list) : abs list =
+  let owner =
+    List.concat_map
+      (fun (abs : abs) ->
+        List.map
+          (fun rid -> (rid, abs.abs_id))
+          (RegionId.Set.elements abs.regions.owned))
+      absl
+  in
+  List.map
+    (fun (abs : abs) ->
+      let outer =
+        List.fold_left
+          (fun acc (av : tavalue) ->
+            let enclosing = ty_enclosing_regions av.ty in
+            RegionId.Set.fold
+              (fun rid acc ->
+                match RegionId.Map.find_opt rid enclosing with
+                | Some s -> RegionId.Set.union s acc
+                | None -> acc)
+              abs.regions.owned acc)
+          RegionId.Set.empty abs.avalues
+      in
+      let outer = RegionId.Set.diff outer abs.regions.owned in
+      let parents =
+        List.filter_map
+          (fun (rid, aid) ->
+            if RegionId.Set.mem rid outer && aid <> abs.abs_id then Some aid
+            else None)
+          owner
+      in
+      {
+        abs with
+        parents = AbsId.Set.union abs.parents (AbsId.Set.of_list parents);
+      })
+    absl
+
 let convert_value_to_abstractions (span : Meta.span) (abs_kind : abs_kind)
     ~(can_end : bool) (ctx : eval_ctx) (v : tvalue) : abs list =
   [%ltrace tvalue_to_string ctx v];
@@ -236,7 +279,44 @@ let convert_value_to_abstractions (span : Meta.span) (abs_kind : abs_kind)
             let input = { value = EValue (ctx.env, v); ty } in
             (* *)
             push_abs rid [ nv ] (Some output) (Some input))
-          regions
+          regions;
+        (* With nested (shared) borrows, the abstraction of a region nested in
+           another one has the abstraction of the outer one as parent (see
+           [ty_enclosing_regions]) *)
+        let enclosing = ty_enclosing_regions ty in
+        let new_rids = RegionId.Set.of_list (RegionId.Map.values regions) in
+        let abs_of_rid =
+          List.filter_map
+            (fun (abs : abs) ->
+              match RegionId.Set.elements abs.regions.owned with
+              | [ rid ] when RegionId.Set.mem rid new_rids ->
+                  Some (rid, abs.abs_id)
+              | _ -> None)
+            !absl
+        in
+        absl :=
+          List.map
+            (fun (abs : abs) ->
+              match RegionId.Set.elements abs.regions.owned with
+              | [ rid ] when RegionId.Set.mem rid new_rids ->
+                  let outer =
+                    Option.value ~default:RegionId.Set.empty
+                      (RegionId.Map.find_opt rid enclosing)
+                  in
+                  let parents =
+                    List.filter_map
+                      (fun (r, aid) ->
+                        if r <> rid && RegionId.Set.mem r outer then Some aid
+                        else None)
+                      abs_of_rid
+                  in
+                  {
+                    abs with
+                    parents =
+                      AbsId.Set.union abs.parents (AbsId.Set.of_list parents);
+                  }
+              | _ -> abs)
+            !absl
   in
 
   (* Apply *)
@@ -2302,6 +2382,31 @@ let merge_into_first_abstraction (span : Meta.span) (abs_kind : abs_kind)
      remove the abstraction 1 *)
   let ctx = fst (ctx_subst_abs span ctx abs_id0 nabs) in
   let ctx = fst (ctx_remove_abs span ctx abs_id1) in
+
+  (* The abstractions whose parent was one of the merged ones now have the
+     merged abstraction as parent (with nested borrows, e.g. an iterator over
+     [&[&T]], the abstraction of the inner region has the outer one as parent) *)
+  let ctx =
+    let merged = AbsId.Set.of_list [ abs_id0; abs_id1 ] in
+    let update (abs : abs) : abs =
+      if AbsId.Set.disjoint abs.parents merged then abs
+      else
+        {
+          abs with
+          parents =
+            AbsId.Set.add nabs.abs_id (AbsId.Set.diff abs.parents merged);
+        }
+    in
+    let env =
+      List.map
+        (fun (e : env_elem) ->
+          match e with
+          | EAbs abs -> EAbs (update abs)
+          | e -> e)
+        ctx.env
+    in
+    { ctx with env }
+  in
 
   (* Merge all the regions from the abstraction into one (the first - i.e., the
      one with the smallest id). Note that we need to do this in the whole

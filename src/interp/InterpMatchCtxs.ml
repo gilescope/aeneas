@@ -197,9 +197,14 @@ let compute_abs_borrows_loans_maps (span : Meta.span) (explore : abs -> bool)
         | AEndedSharedLoan (sv, child) ->
             (* TODO: there may be a problem here, because we need the marker which was
                in [ASharedLoan] to explore the shared value and register its borrows.
-               For now we check that there are no loans/borrows inside. *)
+               For now we check that there are no loans/borrows inside, except for
+               shared borrows (nested shared borrows, e.g. the [&'b T] of a
+               [&'a &'b T]): we don't register those, which can only prevent a
+               merge, not cause a wrong one. *)
             [%cassert] span
-              (not (tvalue_has_loans_or_borrows (Some span) ctx sv))
+              (not
+                 (tvalue_has_loans sv
+                 || value_has_mut_borrows (Some span) ctx sv.value))
               "Not implemented yet";
             self#visit_tavalue (abs, pm) child
 
@@ -570,8 +575,11 @@ module MakeMatcher (M : PrimMatcher) : Matcher = struct
             [%ldebug "shared loans"];
             let sv = match_rec sv0 sv1 in
             let av = match_arec av0 av1 in
-            [%sanity_check_recover] M.recover M.span
-              (not (value_has_borrows sv.value));
+            (* As for the loans in values: if the two loans are the same, the
+               shared value was matched by [match_rec] like any other *)
+            [%cassert_recover] M.recover M.span
+              (id0 = id1 || not (value_has_borrows sv.value))
+              "The join of nested borrows is not supported yet";
             M.match_ashared_loans match_rec ctx0 ctx1 v0.ty pm0 id0 sv0 av0
               v1.ty pm1 id1 sv1 av1 ty sv av
         | AMutLoan (pm0, id0, av0), AMutLoan (pm1, id1, av1) ->
@@ -581,8 +589,12 @@ module MakeMatcher (M : PrimMatcher) : Matcher = struct
             [%ldebug "mut loans: matched children values"];
             M.match_amut_loans match_rec ctx0 ctx1 v0.ty pm0 id0 av0 v1.ty pm1
               id1 av1 ty av
-        | AIgnoredMutLoan _, AIgnoredMutLoan _
-        | AIgnoredSharedLoan _, AIgnoredSharedLoan _ ->
+        | AIgnoredSharedLoan child0, AIgnoredSharedLoan child1 ->
+            (* Nested shared borrows: the abstraction of the inner region of an
+               input [&'a &'b T] keeps the projections of the loan of ['a] *)
+            let child = match_arec child0 child1 in
+            { value = ALoan (AIgnoredSharedLoan child); ty }
+        | AIgnoredMutLoan _, AIgnoredMutLoan _ ->
             (* Those should have been filtered when destructuring the abstractions -
                they are necessary only when there are nested borrows *)
             [%craise_recover] M.recover M.span "Unreachable"
@@ -682,6 +694,26 @@ module MakeJoinMatcher (S : MatchJoinState) : PrimMatcher = struct
     let sv = add_fresh_symbolic_value ctx0 ty_with_regions v0 v1 in
     let sv_s = tvalue_as_symbolic span sv in
 
+    (* With nested borrows, a region nested in another one in the type (['b] in
+       [Iter<'a, &'b T>], which outlives ['a]) has the abstraction of the outer
+       region as parent, as for the abstractions introduced by function calls:
+       ending it ends the outer one first. *)
+    let abs_ids =
+      List.map (fun rid -> (rid, ctx0.fresh_abs_id ())) fresh_regions
+    in
+    let enclosing = ty_enclosing_regions ty_with_regions in
+    let parents_of (rid : RegionId.id) : AbsId.Set.t =
+      let outer =
+        Option.value ~default:RegionId.Set.empty
+          (RegionId.Map.find_opt rid enclosing)
+      in
+      AbsId.Set.of_list
+        (List.filter_map
+           (fun (r, aid) ->
+             if r <> rid && RegionId.Set.mem r outer then Some aid else None)
+           abs_ids)
+    in
+
     (* Project the ADTs into different region abstractions *)
     let project (rid : RegionId.id) =
       let regions = RegionId.Set.singleton rid in
@@ -760,10 +792,10 @@ module MakeJoinMatcher (S : MatchJoinState) : PrimMatcher = struct
       (* Generate the abstraction *)
       let abs =
         {
-          abs_id = ctx0.fresh_abs_id ();
+          abs_id = List.assoc rid abs_ids;
           kind = S.fresh_abs_kind;
           can_end = true;
-          parents = AbsId.Set.empty;
+          parents = parents_of rid;
           regions = { owned = RegionId.Set.singleton rid };
           ended_subabs = AbsLevelSet.empty;
           avalues = avl0 @ avl1 @ [ av ];

@@ -849,7 +849,11 @@ let join_ctxs (span : Meta.span) (fresh_abs_kind : abs_kind)
 
       (* Concatenate the suffixes and append the abstractions introduced while
        joining the prefixes *)
-      let absl = List.map (fun abs -> EAbs abs) (List.rev !nabs) in
+      let absl =
+        List.map
+          (fun abs -> EAbs abs)
+          (abs_list_add_nested_parents (List.rev !nabs))
+      in
       List.concat [ env0; env1; absl ]
     in
 
@@ -1127,6 +1131,63 @@ let loop_join_origin_with_continue_ctxs (config : config) (span : Meta.span)
   [%sanity_check] span (List.length ctxl' = List.length ctxl + 1);
   ((List.hd ctxl', List.tl ctxl'), joined_ctx)
 
+(** Drop the loan projections over symbolic values which appear nowhere else in
+    the context (continuations included), in the abstractions which only hold
+    shared borrows.
+
+    With nested shared borrows, the abstraction of the inner region of an
+    iterator over [&[&T]] keeps a loan projection over each value of the
+    iterator ([⌊s <: Iter<'a, &'b T>⌋] in ['b]), which nothing ends once the
+    iterator is dead (the projection in the outer region ends with the [&mut]
+    borrow given to [next]). Such a projection lends nothing anyone can still
+    use, and gives nothing back (the abstraction holds no mutable borrow):
+    dropping it changes nothing but lets the contexts be joined. *)
+let drop_orphan_shared_loan_projs (ctx : eval_ctx) : eval_ctx =
+  let is_candidate (abs : abs) (av : tavalue) =
+    abs.can_end
+    && List.for_all
+         (fun (av : tavalue) ->
+           not (TypesUtils.ty_has_mut_borrows ctx.type_ctx.type_infos av.ty))
+         abs.avalues
+    &&
+    match av.value with
+    | ASymbolic (_, AProjLoans { consumed = []; borrows = []; _ }) -> true
+    | _ -> false
+  in
+  let without_candidates =
+    List.map
+      (fun (e : env_elem) ->
+        match e with
+        | EAbs abs ->
+            EAbs
+              {
+                abs with
+                avalues =
+                  List.filter (fun av -> not (is_candidate abs av)) abs.avalues;
+              }
+        | e -> e)
+      ctx.env
+  in
+  let sids =
+    (fst (compute_ctx_ids { ctx with env = without_candidates })).sids
+  in
+  let keep (abs : abs) (av : tavalue) =
+    match av.value with
+    | ASymbolic (_, AProjLoans { proj; _ }) when is_candidate abs av ->
+        SymbolicValueId.Set.mem proj.sv_id sids
+    | _ -> true
+  in
+  let env =
+    List.map
+      (fun (e : env_elem) ->
+        match e with
+        | EAbs abs ->
+            EAbs { abs with avalues = List.filter (keep abs) abs.avalues }
+        | e -> e)
+      ctx.env
+  in
+  { ctx with env }
+
 let loop_join_break_ctxs (config : config) (span : Meta.span)
     (loop_id : LoopId.id) (fixed_aids : AbsId.Set.t)
     (fixed_dids : DummyVarId.Set.t) (ctxl : eval_ctx list) : eval_ctx =
@@ -1146,6 +1207,7 @@ let loop_join_break_ctxs (config : config) (span : Meta.span)
 
     (* Destructure the abstractions introduced in the new context *)
     let ctx = destructure_new_abs span fixed_aids ctx in
+    let ctx = drop_orphan_shared_loan_projs ctx in
     [%ltrace
       "prepare_ctx: after destructure:\n"
       ^ eval_ctx_to_string ~span:(Some span) ctx];
@@ -1155,6 +1217,7 @@ let loop_join_break_ctxs (config : config) (span : Meta.span)
       reduce_ctx config span ~with_abs_conts:false (Loop loop_id) fixed_aids
         fixed_dids ctx
     in
+    let ctx = drop_orphan_shared_loan_projs ctx in
     [%ltrace
       "prepare_ctx: after reduce:\n" ^ eval_ctx_to_string ~span:(Some span) ctx];
     (* Sanity check *)
@@ -1465,6 +1528,7 @@ let match_ctx_with_target (config : config) (span : Meta.span)
     reduce_ctx config span ~with_abs_conts:true fresh_abs_kind fixed_aids
       fixed_dids tgt_ctx
   in
+  let tgt_ctx = drop_orphan_shared_loan_projs tgt_ctx in
   [%ltrace "- tgt_ctx after reduce_ctx:\n" ^ eval_ctx_to_string tgt_ctx];
 
   (* Join the source context with the target context *)

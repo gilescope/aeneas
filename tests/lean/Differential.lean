@@ -3,6 +3,7 @@ import ClosureNestedBorrows
 import AssocTypeDiamond
 import LoopsNestedExits
 import LoopsNestedExitsIter
+import NestedSharedIter
 
 /-! # Differential checks: the extracted Lean computes what Rust computes
 
@@ -105,5 +106,20 @@ open loops_nested_exits_iter in
 #guard (list <$> absorb slice[1#u32] rows[row[3#u32], row[]]).reducesTo (.Err 7#u32)
 open loops_nested_exits_iter in
 #guard (list <$> absorb slice[1#u32] rows[row[3#u32, 0#u32]]).reducesTo (.Err 7#u32)
+-- tests/src/nested-shared-iter.rs
+/-- A literal slice of slices -/
+macro "slices[" rs:term,* "]" : term =>
+  `(Slice.from [$rs,*] (by scalar_tac))
+
+open nested_shared_iter in
+#guard (total_len slices[slice[1#u32, 2#u32], slice[], slice[3#u32]]).reducesTo 3#u32
+open nested_shared_iter in
+#guard (total slices[slice[1#u32, 2#u32], slice[], slice[3#u32]]).reducesTo 6#u32
+open nested_shared_iter in
+#guard (absorb slices[slice[1#u32, 2#u32], slice[3#u32]]).reducesTo (.Ok 9#u32)
+open nested_shared_iter in
+#guard (absorb slices[slice[1#u32, 2#u32], slice[]]).reducesTo (.Err 7#u32)
+open nested_shared_iter in
+#guard (absorb slices[slice[1#u32, 0#u32]]).reducesTo (.Err 7#u32)
 
 end Differential

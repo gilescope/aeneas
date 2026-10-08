@@ -219,6 +219,14 @@ let compute_back_fun_name (ctx : bs_ctx) (decl : LlbcAst.fun_decl) : string =
           (* We shouldn't get there *)
           [%craise] decl.item_meta.span "Unexpected")
 
+(** Whether no value of [abs] has a mutable borrow in its type: the abstraction
+    gives nothing back *)
+let abs_is_shared_only (ectx : C.eval_ctx) (abs : V.abs) : bool =
+  List.for_all
+    (fun (av : V.tavalue) ->
+      not (TypesUtils.ty_has_mut_borrows ectx.type_ctx.type_infos av.ty))
+    abs.avalues
+
 let rec translate_expr (e : S.expr) (ctx : bs_ctx) : texpr =
   [%ldebug "e:\n" ^ bs_ctx_expr_to_string ctx e];
   match e with
@@ -1265,73 +1273,84 @@ and translate_end_abstraction_synth_ret (ectx : C.eval_ctx) (abs : V.abs)
 and translate_end_abstraction_join_or_loop (ectx : C.eval_ctx) (abs : V.abs)
     (abs_level : abs_level) (e : S.expr) (ctx : bs_ctx) : texpr =
   let span = ctx.span in
-  [%cassert] span (abs_level = 0) "Unimplemented";
-  (* Compute the input and output values *)
-  let back_inputs = abs_to_consumed ctx ectx abs abs_level in
-  let ctx, outputs = abs_to_given_back None abs abs_level ctx in
-  let output = mk_simpl_tuple_pat outputs in
-  (* Lookup the continuation to check if the abstraction is output by a join
+  if abs_level <> 0 && abs_is_shared_only ectx abs then
+    (* A sub-abstraction of an abstraction holding only shared borrows (nested
+       shared borrows): ending it gives nothing back *)
+    translate_expr e ctx
+  else begin
+    [%cassert] span (abs_level = 0) "Unimplemented";
+    (* Compute the input and output values *)
+    let back_inputs = abs_to_consumed ctx ectx abs abs_level in
+    let ctx, outputs = abs_to_given_back None abs abs_level ctx in
+    let output = mk_simpl_tuple_pat outputs in
+    (* Lookup the continuation to check if the abstraction is output by a join
      or a loop - note that it might not be there if the backward function was
      filtered because if it consumes nothing and outputs nothing *)
-  let func = V.AbsId.Map.find_opt abs.abs_id ctx.abs_id_to_info in
-  (* Translate the next expression *)
-  let next_e ctx = translate_expr e ctx in
-  (* Put everything together *)
-  let inputs = back_inputs in
-  let args_mplaces = List.map (fun _ -> None) inputs in
-  let args =
-    List.map
-      (fun (arg, mp) -> mk_opt_mplace_texpr mp arg)
-      (List.combine inputs args_mplaces)
-  in
-  match func with
-  | None ->
-      [%ldebug
-        "No backward function found for abstraction: "
-        ^ V.AbsId.to_string abs.abs_id];
-      (* TODO: generalize. We should always translate the continuation expression
+    let func = V.AbsId.Map.find_opt abs.abs_id ctx.abs_id_to_info in
+    (* Translate the next expression *)
+    let next_e ctx = translate_expr e ctx in
+    (* Put everything together *)
+    let inputs = back_inputs in
+    let args_mplaces = List.map (fun _ -> None) inputs in
+    let args =
+      List.map
+        (fun (arg, mp) -> mk_opt_mplace_texpr mp arg)
+        (List.combine inputs args_mplaces)
+    in
+    match func with
+    | None ->
+        [%ldebug
+          "No backward function found for abstraction: "
+          ^ V.AbsId.to_string abs.abs_id];
+        (* TODO: generalize. We should always translate the continuation expression
          directly.
 
          Note that we can get here when ending a loop abstraction which has
          to be ignored, but also when ending an abstraction which comes from
          converting the shared loan introduced when accessing a global value
          through a reference. *)
-      [%sanity_check] span
-        (V.AbsId.Set.mem abs.abs_id ctx.ignored_abs_ids
-        || (back_inputs = [] && outputs = []));
-      next_e ctx
-  | Some { fvar = func; can_fail } ->
-      [%ltrace
-        let args = List.map (texpr_to_string ctx) args in
-        "func: " ^ texpr_to_string ctx func ^ "\nfunc type: "
-        ^ pure_ty_to_string ctx func.ty
-        ^ "\n\nargs:\n" ^ String.concat "\n" args];
-      let call = [%add_loc] mk_apps ctx.span func args in
-      (* Introduce a match if necessary *)
-      let ctx, (output, call) = decompose_let_match ctx output call in
-      (* Translate the next expression and construct the let *)
-      let next_e = next_e ctx in
-      [%ltrace
-        "About to reconstruct let-bindings:" ^ "\n- output: "
-        ^ tpat_to_string ctx output ^ "\n- call: " ^ texpr_to_string ctx call
-        ^ "\n- next:\n" ^ texpr_to_string ctx next_e];
-      [%add_loc] mk_closed_checked_let ctx can_fail output call next_e
+        [%sanity_check] span
+          (V.AbsId.Set.mem abs.abs_id ctx.ignored_abs_ids
+          || (back_inputs = [] && outputs = []));
+        next_e ctx
+    | Some { fvar = func; can_fail } ->
+        [%ltrace
+          let args = List.map (texpr_to_string ctx) args in
+          "func: " ^ texpr_to_string ctx func ^ "\nfunc type: "
+          ^ pure_ty_to_string ctx func.ty
+          ^ "\n\nargs:\n" ^ String.concat "\n" args];
+        let call = [%add_loc] mk_apps ctx.span func args in
+        (* Introduce a match if necessary *)
+        let ctx, (output, call) = decompose_let_match ctx output call in
+        (* Translate the next expression and construct the let *)
+        let next_e = next_e ctx in
+        [%ltrace
+          "About to reconstruct let-bindings:" ^ "\n- output: "
+          ^ tpat_to_string ctx output ^ "\n- call: " ^ texpr_to_string ctx call
+          ^ "\n- next:\n" ^ texpr_to_string ctx next_e];
+        [%add_loc] mk_closed_checked_let ctx can_fail output call next_e
+  end
 
 and translate_end_abstraction_with_cont (ectx : C.eval_ctx) (abs : V.abs)
     (abs_level : abs_level) (e : S.expr) (ctx : bs_ctx) : texpr =
   [%ldebug "abs:\n" ^ abs_to_string ctx abs];
-  [%cassert] ctx.span (abs_level = 0) "Unimplemented";
-  (* Translate the continuation *)
-  let ctx, can_fail, output, abs_e =
-    translate_ended_abs_to_texpr ctx ectx abs abs_level
-  in
-  [%ldebug
-    "- output:\n" ^ tpat_to_string ctx output ^ "\n- abs_e:\n"
-    ^ texpr_to_string ctx abs_e];
-  (* Translate the next expression *)
-  let next_e = translate_expr e ctx in
-  (* Put everything together *)
-  [%add_loc] mk_closed_checked_let ctx can_fail output abs_e next_e
+  if abs_level <> 0 && abs_is_shared_only ectx abs then
+    (* See [translate_end_abstraction_join_or_loop] *)
+    translate_expr e ctx
+  else begin
+    [%cassert] ctx.span (abs_level = 0) "Unimplemented";
+    (* Translate the continuation *)
+    let ctx, can_fail, output, abs_e =
+      translate_ended_abs_to_texpr ctx ectx abs abs_level
+    in
+    [%ldebug
+      "- output:\n" ^ tpat_to_string ctx output ^ "\n- abs_e:\n"
+      ^ texpr_to_string ctx abs_e];
+    (* Translate the next expression *)
+    let next_e = translate_expr e ctx in
+    (* Put everything together *)
+    [%add_loc] mk_closed_checked_let ctx can_fail output abs_e next_e
+  end
 
 and translate_global_eval (gid : A.GlobalDeclId.id) (generics : T.generic_args)
     (sval : V.symbolic_value) (e : S.expr) (ctx : bs_ctx) : texpr =
