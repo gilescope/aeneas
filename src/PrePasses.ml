@@ -1023,6 +1023,10 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
       (* Marks the [return]s this pass moves up a level, so that the loop they
          now sit in ends its locals on every exit too (see [inner_locals]) *)
       let lifted_return = "aeneas: return lifted out of a nested loop" in
+      (* Marks the [break]s and [continue]s this pass moves up a level: as for
+         a lifted [return], the loop they now sit in ends its locals on every
+         exit *)
+      let lifted_exit = "aeneas: exit lifted out of a nested loop" in
       let is_lifted_return (st : statement) =
         st.kind = Return && List.mem lifted_return st.comments_before
       in
@@ -1050,8 +1054,8 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
            scope: otherwise it is set on a loop's back-edge but not on entry. *)
         let dead = mk span (StorageDead (local_of flag)) in
         let block statements = { b with span; statements } in
-        mk span
-          (Switch (data, [ block [ dead; mk span exit ]; block [ dead ] ]))
+        let exit = { (mk span exit) with comments_before = [ lifted_exit ] } in
+        mk span (Switch (data, [ block [ dead; exit ]; block [ dead ] ]))
       in
       (* Whether [b] exits a loop it is in, [k] loops deep *)
       let rec exits_loop (k : int) (b : block) : bool =
@@ -1138,7 +1142,8 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
               and in_st (st : statement) =
                 match st.kind with
                 | Return -> depth > 0 || carry_own || is_lifted_return st
-                | Break i | Continue i -> i > 0
+                | Break i | Continue i ->
+                    i > 0 || List.mem lifted_exit st.comments_before
                 | Loop _ -> false
                 | Switch (_, branches) -> List.exists in_block branches
                 | _ -> false
@@ -1291,6 +1296,12 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
                   @ end_inner st.span
                   @ [ mk st.span (Break 0) ]
             in
+            let exits_outer (st : statement) =
+              match st.kind with
+              | Return -> depth > 0 || carry_own
+              | Break i | Continue i -> i > 0
+              | _ -> false
+            in
             let rec replace_block (b : block) : block =
               (* Rust kills every live local right before a [return]: a [return]
                  we turn into a [break] out of this loop must not kill the locals of
@@ -1299,10 +1310,23 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
               let rec go (acc : statement list) (stl : statement list) =
                 match stl with
                 | [] -> List.rev acc
-                | ({ kind = Return; _ } as st) :: stl
-                  when depth > 0 || carry_own ->
+                | st :: stl when exits_outer st ->
                     (* ... nor drop them (the [drop]s Rust interleaves with the
-                       deaths before a [return]) *)
+                       deaths before a [return]). The same holds for a [break] or
+                       [continue] to an outer loop: the deaths of the outer loops'
+                       locals Rust puts before it are aligned at their own level.
+                       A [Some(move _0)] carrying the value of a return out (see
+                       [unnest_loop_continuations]) may come after the deaths. *)
+                    let is_carry (st : statement) =
+                      match st.kind with
+                      | Assign
+                          ( _,
+                            Aggregate
+                              ( AggregatedAdt (_, Some _, None),
+                                [ Move { kind = PlaceLocal id; _ } ] ) ) ->
+                          id = LocalId.zero
+                      | _ -> false
+                    in
                     let rec drop_outer_deaths acc =
                       match acc with
                       | ({ kind = StorageDead id; _ } : statement) :: acc'
@@ -1316,6 +1340,7 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
                           drop_outer_deaths acc'
                       | ({ kind = StorageDead _ | Drop _; _ } as d) :: acc' ->
                           d :: drop_outer_deaths acc'
+                      | c :: acc' when is_carry c -> c :: drop_outer_deaths acc'
                       | _ -> acc
                     in
                     go

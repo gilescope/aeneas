@@ -64,7 +64,8 @@ pub struct Trace {
     pub v: Vec<u32>,
 }
 
-/// `parse_trace` itself, generic: committed instances then instances, each length then values.
+/// `parse_trace` itself, generic: committed instances then instances, each length then values,
+/// then labels.
 pub fn parse<F: Field, C: Hashable, T: Transcript>(
     committed: &[C],
     instances: &[&[F]],
@@ -80,7 +81,14 @@ pub fn parse<F: Field, C: Hashable, T: Transcript>(
             t.common(value)?;
         }
     }
-    Ok(trace)
+    // Code after the loops, so that the instances loop is not followed by a return: its inner
+    // `?` is a `break` to it (red before the inner exit ended the outer loop's locals only at
+    // the outer level).
+    let mut labels = trace.v;
+    for i in 0..instances.len() {
+        labels.push(i as u32);
+    }
+    Ok(Trace { v: labels })
 }
 
 // Concrete results, checked against the extracted Lean in tests/lean/Differential.lean.
