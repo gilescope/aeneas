@@ -1836,6 +1836,19 @@ let ctx_compute_trait_impl_name_raw (ctx : extraction_ctx)
                       name_with_generics_to_simple_name ctx.trans_ctx name
                         params generics
                       |> flatten_name)
+              | TFnDef { binder_value = { kind = Fun fid; generics }; _ }
+                when FunDeclId.Map.mem fid ctx.crate.fun_decls ->
+                  (* A function item used as a closure, e.g. an enum constructor
+                     passed to [map]: name the impl after the function, as the
+                     pattern of its type does not distinguish two of them (all
+                     [Label::A], [Label::B]... would get the same name). *)
+                  let decl = FunDeclId.Map.find fid ctx.crate.fun_decls in
+                  let name =
+                    opt_ctx_prepare_name decl.item_meta ctx decl.item_meta.name
+                  in
+                  name_with_generics_to_simple_name ctx.trans_ctx name params
+                    generics
+                  |> flatten_name
               | _ ->
                   let name =
                     NameMatcher.ty_to_pattern nm_ctx

@@ -534,6 +534,7 @@ def read_then_incr (x : Std.U32) : Result (Std.U32 × Std.U32) := do
 /-- [no_nested_borrows::Tuple]
     Source: 'tests/src/no_nested_borrows.rs', lines 490:0-490:33
     Visibility: public -/
+@[reducible]
 def Tuple (T1 : Type) (T2 : Type) := T1 × T2
 
 /-- [no_nested_borrows::read_tuple]:
@@ -619,6 +620,7 @@ def borrow_mut_tuple
 /-- [no_nested_borrows::ExpandSimpliy::Wrapper]
     Source: 'tests/src/no_nested_borrows.rs', lines 541:4-541:32
     Visibility: public -/
+@[reducible]
 def ExpandSimpliy.Wrapper (T : Type) := T × T
 
 /-- [no_nested_borrows::ExpandSimpliy::check_expand_simplify_symb1]:

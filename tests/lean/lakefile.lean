@@ -24,10 +24,12 @@ package «tests» {}
 @[default_target] lean_lib BuiltinAuto
 @[default_target] lean_lib CastSigned
 @[default_target] lean_lib ChunksExact
+@[default_target] lean_lib ClosureMutArgs
 @[default_target] lean_lib Closures
 @[default_target] lean_lib Constants
 @[default_target] lean_lib ConstantsLean
 @[default_target] lean_lib ConstShadow
+@[default_target] lean_lib CtorClosures
 @[default_target] lean_lib Curve25519
 @[default_target] lean_lib Default
 @[default_target] lean_lib DefaultedMethod
@@ -41,7 +43,6 @@ package «tests» {}
 @[default_target] lean_lib DynamicSize
 @[default_target] lean_lib FromTo
 @[default_target] lean_lib GenericUnitOutput
-@[default_target] lean_lib ClosureMutArgs
 @[default_target] lean_lib Hashmap
 @[default_target] lean_lib HigherRankedTraitBounds
 @[default_target] lean_lib Into
@@ -51,12 +52,12 @@ package «tests» {}
 @[default_target] lean_lib Issue1140GlobalLoop
 @[default_target] lean_lib Issue1141ImplFnRef
 @[default_target] lean_lib Issue1206LoopBreak
-@[default_target] lean_lib Issue1264Closure
-@[default_target] lean_lib Issue1264Join
-@[default_target] lean_lib Issue1264Proofs
 @[default_target] lean_lib Issue1207ClosureSignatureRegions
 @[default_target] lean_lib Issue1250AnonymousConst
 @[default_target] lean_lib Issue1260EliminateSharedLoans
+@[default_target] lean_lib Issue1264Closure
+@[default_target] lean_lib Issue1264Join
+@[default_target] lean_lib Issue1264Proofs
 @[default_target] lean_lib Issue134LoopSharedBorrows
 @[default_target] lean_lib Issue194RecursiveStructProjector
 @[default_target] lean_lib Issue270LoopList

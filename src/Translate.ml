@@ -412,9 +412,20 @@ let translate_crate_to_pure (crate : crate) (marked_ids : marked_ids) :
           TraitDeclId.Map.find trait_decl.def_id
             trans_ctx.trait_methods_to_extract
         in
-        List.map
+        (* As for functions above: a method whose signature cannot be translated
+           (e.g. it has an associated-type equality bound, like
+           [Iterator::try_for_each]'s [R: Try<Output = ()>]) is reported and
+           skipped, rather than aborting the whole translation. *)
+        List.filter_map
           (fun (method_id, bound_method) ->
-            translate_method_sig trait_decl method_id bound_method)
+            try Some (translate_method_sig trait_decl method_id bound_method)
+            with CFailure error ->
+              [%warn_opt_span] error.span
+                ("Could not translate the signature of method '"
+                ^ name_to_string trans_ctx trait_decl.item_meta.name
+                ^ "::" ^ bound_method.binder_value.name
+                ^ "' because of previous error");
+              None)
           (TraitMethodId.Map.to_list methods)
       in
       let entries =

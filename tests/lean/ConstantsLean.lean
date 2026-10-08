@@ -48,6 +48,7 @@ def use_params
 
 /-- [constants_lean::Wrapper]
     Source: 'tests/src/constants-lean.rs', lines 16:0-16:65 -/
+@[reducible]
 def Wrapper (N1 : Std.Usize) (M1 : Std.Usize) :=
   Array Std.U8 N1 × Array Std.U8 N1
 
