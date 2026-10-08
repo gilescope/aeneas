@@ -1,17 +1,21 @@
 import ClosureOutputBorrows
 import ClosureNestedBorrows
 import AssocTypeDiamond
+import LoopsNestedExits
 
 /-! # Differential checks: the extracted Lean computes what Rust computes
 
 Each value here is the one the test's Rust unit test asserts (`#[cfg(test)] mod tests` in
 `tests/src/<test>.rs`, run by `make cargo-test`). They pin down the borrow-handling prepasses
 (closure results that borrow their inputs, erased lifetimes in closure results, diamond
-associated types): a translation that typechecks but computes something else fails here. -/
+associated types, exits lifted out of nested loops): a translation that typechecks but computes something else fails here. -/
 
 open Aeneas Aeneas.Std
 
 namespace Differential
+
+-- To compare Rust `Result`s
+deriving instance BEq for core.result.Result
 
 -- tests/src/closure-output-borrows.rs
 open closure_output_borrows in
@@ -40,5 +44,26 @@ open assoc_type_diamond in
 def base : Base Unit Std.U32 := { coremarkerCopyInst := BuiltinCopy Std.U32 }
 open assoc_type_diamond in
 #guard (both Std.U32 { BaseInst := base } { BaseInst := base } 17#u32).reducesTo 17#u32
+
+-- tests/src/loops-nested-exits.rs
+/-- A literal row -/
+macro "row[" xs:term,* "]" : term =>
+  `(alloc.vec.Vec.from [$xs,*] (by scalar_tac))
+/-- A literal slice of rows -/
+macro "rows[" rs:term,* "]" : term =>
+  `(Slice.from [$rs,*] (by scalar_tac))
+
+open loops_nested_exits in
+#guard (sum_checked rows[row[1#u32, 2#u32], row[3#u32]]).reducesTo (.Ok 6#u32)
+open loops_nested_exits in
+#guard (sum_checked rows[row[1#u32, 2#u32], row[0#u32, 3#u32]]).reducesTo (.Err 7#u32)
+open loops_nested_exits in
+#guard (find3 5#u32).reducesTo 13#u32
+open loops_nested_exits in
+#guard (find3 2#u32).reducesTo 0#u32
+open loops_nested_exits in
+#guard (prefix_sums rows[row[1#u32, 0#u32, 5#u32], row[2#u32, 3#u32]]).reducesTo 1006#u32
+open loops_nested_exits in
+#guard (until_zero rows[row[1#u32, 2#u32], row[3#u32, 0#u32, 9#u32], row[4#u32]]).reducesTo 6#u32
 
 end Differential

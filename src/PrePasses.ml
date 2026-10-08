@@ -678,6 +678,344 @@ let update_loops (crate : crate) (f : fun_decl) : fun_decl =
     ^ Print.fun_decl_to_string env "" " " f];
   f
 
+(** Lift exits out of nested loops with flags.
+
+    [update_loops] supports a [return] only in an outermost loop and [break]s
+    and [continue]s only to the current loop. A [?] in an inner loop of an outer
+    loop (e.g. [for i in xs { for v in i { t.common(v)?; } }]) is a return from
+    two loops deep, which it rejects. We rewrite each such exit, innermost loops
+    first:
+    {[
+      loop { .. loop { .. return; .. } .. }
+
+        ~~>
+
+      loop {
+        ..
+        flag := false;
+        loop { .. flag := true; break; .. }
+        if flag { return; }
+        ..
+      }
+    ]}
+    and likewise [break (i + 1)] / [continue (i + 1)] become a [break] out of
+    the inner loop followed by [if flag { break i }] / [if flag { continue i }].
+    A [return] carries its value out instead: the return local [_0] must not be
+    live across the loop (it is unset on the loop's other exits, and the
+    symbolic execution cannot join a set value with an unset one), so we move it
+    into a fresh [ret : Option<T>]:
+    {[
+      ret := None; loop { .. ret := Some(move _0); break; .. }
+      match ret { Some => { _0 := move (ret as Some).0; return; } _ => {} }
+    ]}
+    The flag is set only on the rewritten exit, which leaves the inner loop at
+    once, so after the loop it is true exactly when that exit was taken, and the
+    exit then continues one level up; repeating this at each level lifts it to
+    where [update_loops] handles it. A [return] in an outermost loop is left to
+    [update_loops]. *)
+let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
+  match f.body with
+  | StructuredBody body ->
+      let bool_ty = TScalar TBool in
+      let locals = ref body.locals.locals in
+      let fresh_flag (span : span) : place =
+        let index = LocalId.of_int (List.length !locals) in
+        locals :=
+          !locals
+          @ [
+              {
+                index;
+                name = Some "loop_exit";
+                span;
+                local_ty = bool_ty;
+                drop_flag_for = None;
+              };
+            ];
+        { kind = PlaceLocal index; ty = bool_ty }
+      in
+      let fresh_local (span : span) (name : string) (local_ty : ty) : place =
+        let index = LocalId.of_int (List.length !locals) in
+        locals :=
+          !locals
+          @ [
+              { index; name = Some name; span; local_ty; drop_flag_for = None };
+            ];
+        { kind = PlaceLocal index; ty = local_ty }
+      in
+      (* [Option<T>] for the return value, with its [None] and [Some] variants *)
+      let ret_option =
+        let pat = NameMatcher.parse_pattern "core::option::Option" in
+        let match_name = ExtractName.match_name crate in
+        List.find_map
+          (fun (d : type_decl) ->
+            match d.kind with
+            | Enum variants when match_name pat d.item_meta.name -> (
+                let find n =
+                  List.find_opt
+                    (fun (v : variant) -> v.variant_name = n)
+                    variants
+                in
+                match (find "None", find "Some") with
+                | Some none, Some some -> Some (d.def_id, none.id, some.id)
+                | _ -> None)
+            | _ -> None)
+          (TypeDeclId.Map.values crate.type_decls)
+      in
+      let ret_ty = (List.hd body.locals.locals).local_ty in
+      let ret_place : place =
+        { kind = PlaceLocal (LocalId.of_int 0); ty = ret_ty }
+      in
+      let mk (span : span) (kind : statement_kind) : statement =
+        { span; statement_id = StatementId.zero; kind; comments_before = [] }
+      in
+      (* Marks the [return]s this pass moves up a level, so that the loop they
+         now sit in ends its locals on every exit too (see [inner_locals]) *)
+      let lifted_return = "aeneas: return lifted out of a nested loop" in
+      let is_lifted_return (st : statement) =
+        st.kind = Return && List.mem lifted_return st.comments_before
+      in
+      let local_of (p : place) : local_id =
+        match p.kind with
+        | PlaceLocal id -> id
+        | _ -> [%internal_error] f.item_meta.span
+      in
+      let set (span : span) (flag : place) (b : bool) : statement =
+        mk span
+          (Assign
+             (flag, Use (Constant { kind = CBool b; ty = bool_ty }, NoRetag)))
+      in
+      let if_flag (span : span) (b : block) (flag : place)
+          (exit : statement_kind) : statement =
+        let data : switch_data =
+          {
+            scrutinee = SwitchValue (Copy flag);
+            branches =
+              [ ({ kind = CBool true; ty = bool_ty }, BranchId.of_int 0) ];
+            fallback = Some (BranchId.of_int 1);
+          }
+        in
+        (* The flag dies on both branches, as a Rust local dies at the end of its
+           scope: otherwise it is set on a loop's back-edge but not on entry. *)
+        let dead = mk span (StorageDead (local_of flag)) in
+        let block statements = { b with span; statements } in
+        mk span
+          (Switch (data, [ block [ dead; mk span exit ]; block [ dead ] ]))
+      in
+      (* [depth]: the number of loops around the block *)
+      let rec update_block (depth : int) (b : block) : block =
+        {
+          b with
+          statements = List.concat_map (update_statement depth b) b.statements;
+        }
+      and update_statement (depth : int) (_parent : block) (st : statement) :
+          statement list =
+        match st.kind with
+        | Loop loop ->
+            (* Inner loops first: their escaping exits now sit in this body *)
+            let loop = update_block (depth + 1) loop in
+            (* The exits of this loop's body (outside its inner loops) that go
+               further than this loop *)
+            (* Locals whose storage starts inside this loop: they are dead outside
+               it, so we end them on every exit, the rewritten ones as well as the
+               loop's own [break]s. Rust leaves some alive at a [break] (e.g. the
+               [&mut iter] of a [for] loop's [next]) and kills all of them at a
+               [return]: without this, the loop's exits would leave different
+               borrows alive and could not be joined. *)
+            let inner_locals =
+              let acc = ref [] in
+              (object
+                 inherit [_] iter_statement
+
+                 method! visit_StorageLive _ id =
+                   if not (List.mem id !acc) then acc := id :: !acc
+              end)
+                #visit_block
+                () loop;
+              List.rev !acc
+            in
+            (* Whether this loop's body (outside its inner loops) returns from a
+               nested position: only then do the exits need the locals' deaths
+               aligned (a [break]/[continue] out of it kills what Rust's own
+               [break] does) *)
+            let has_escapes =
+              let rec in_block (b : block) = List.exists in_st b.statements
+              and in_st (st : statement) =
+                match st.kind with
+                | Return -> depth > 0 || is_lifted_return st
+                | Loop _ -> false
+                | Switch (_, branches) -> List.exists in_block branches
+                | _ -> false
+              in
+              in_block loop
+            in
+            let end_inner (span : span) : statement list =
+              List.map (fun id -> mk span (StorageDead id)) inner_locals
+            in
+            let lifted = ref [] in
+            let escape (st : statement) (exit : statement_kind) : statement list
+                =
+              match exit with
+              | Return -> (
+                  match ret_option with
+                  | None ->
+                      [%craise] st.span
+                        "Returns inside of nested loops need `Option` in the \
+                         crate"
+                  | Some (opt_id, none, some) ->
+                      let tref : type_decl_ref =
+                        {
+                          id = opt_id;
+                          generics =
+                            {
+                              regions = [];
+                              types = [ ret_ty ];
+                              const_generics = [];
+                              trait_refs = [];
+                            };
+                          builtin = None;
+                        }
+                      in
+                      let slot =
+                        fresh_local st.span "loop_return" (TAdt tref)
+                      in
+                      let init =
+                        [
+                          mk st.span (StorageLive (local_of slot));
+                          mk st.span
+                            (Assign
+                               ( slot,
+                                 Aggregate
+                                   (AggregatedAdt (tref, Some none, None), [])
+                               ));
+                        ]
+                      in
+                      let take =
+                        let field : place =
+                          {
+                            kind =
+                              PlaceProjection
+                                (slot, Field (Some some, FieldId.of_int 0));
+                            ty = ret_ty;
+                          }
+                        in
+                        let data : switch_data =
+                          {
+                            scrutinee = SwitchDiscriminant slot;
+                            branches =
+                              [
+                                ( {
+                                    kind = CDiscriminant (tref, some);
+                                    ty = TAdt tref;
+                                  },
+                                  BranchId.of_int 0 );
+                              ];
+                            fallback = Some (BranchId.of_int 1);
+                          }
+                        in
+                        let block statements =
+                          { loop with span = st.span; statements }
+                        in
+                        mk st.span
+                          (Switch
+                             ( data,
+                               [
+                                 block
+                                   [
+                                     mk st.span
+                                       (Assign
+                                          (ret_place, Use (Move field, NoRetag)));
+                                     mk st.span (StorageDead (local_of slot));
+                                     {
+                                       (mk st.span Return) with
+                                       comments_before = [ lifted_return ];
+                                     };
+                                   ];
+                                 block
+                                   [ mk st.span (StorageDead (local_of slot)) ];
+                               ] ))
+                      in
+                      lifted := (init, take) :: !lifted;
+                      [
+                        mk st.span
+                          (Assign
+                             ( slot,
+                               Aggregate
+                                 ( AggregatedAdt (tref, Some some, None),
+                                   [ Move ret_place ] ) ));
+                      ]
+                      @ end_inner st.span
+                      @ [ mk st.span (Break 0) ])
+              | _ ->
+                  let flag = fresh_flag st.span in
+                  lifted :=
+                    ( [
+                        mk st.span (StorageLive (local_of flag));
+                        set st.span flag false;
+                      ],
+                      if_flag st.span loop flag exit )
+                    :: !lifted;
+                  [ set st.span flag true; mk st.span (Break 0) ]
+            in
+            let rec replace_block (b : block) : block =
+              (* Rust kills every live local right before a [return]: a [return]
+                 we turn into a [break] out of this loop must not kill the locals of
+                 the enclosing scopes, which live on after it (the real return,
+                 once lifted, ends them). *)
+              let rec go (acc : statement list) (stl : statement list) =
+                match stl with
+                | [] -> List.rev acc
+                | ({ kind = Return; _ } as st) :: stl when depth > 0 ->
+                    let rec drop_outer_deaths acc =
+                      match acc with
+                      | ({ kind = StorageDead id; _ } : statement) :: acc'
+                        when not (List.mem id inner_locals) ->
+                          drop_outer_deaths acc'
+                      | ({ kind = StorageDead _; _ } as d) :: acc' ->
+                          d :: drop_outer_deaths acc'
+                      | _ -> acc
+                    in
+                    go
+                      (List.rev_append (replace st) (drop_outer_deaths acc))
+                      stl
+                | st :: stl -> go (List.rev_append (replace st) acc) stl
+              in
+              { b with statements = go [] b.statements }
+            and replace (st : statement) : statement list =
+              match st.kind with
+              | Break 0 when has_escapes -> end_inner st.span @ [ st ]
+              | Break i when i > 0 -> escape st (Break (i - 1))
+              | Continue i when i > 0 -> escape st (Continue (i - 1))
+              | Return when depth > 0 -> escape st Return
+              | Return when is_lifted_return st -> end_inner st.span @ [ st ]
+              | Loop _ -> [ st ]
+              | Switch (data, branches) ->
+                  [
+                    {
+                      st with
+                      kind = Switch (data, List.map replace_block branches);
+                    };
+                  ]
+              | _ -> [ st ]
+            in
+            let loop = replace_block loop in
+            let lifted = List.rev !lifted in
+            List.concat_map fst lifted
+            @ [ { st with kind = Loop loop } ]
+            @ List.map snd lifted
+        | Switch (data, branches) ->
+            [
+              {
+                st with
+                kind = Switch (data, List.map (update_block depth) branches);
+              };
+            ]
+        | _ -> [ st ]
+      in
+      let body_block = update_block 0 body.body in
+      let locals = { body.locals with locals = !locals } in
+      { f with body = StructuredBody { body with body = body_block; locals } }
+  | _ -> f
+
 (** Inline what comes after an [if then else], a [switch] or a [match], etc.
     under certain conditions, to prevent useless joins from being performed by
     the symbolic execution.
@@ -2516,95 +2854,96 @@ let unify_diamond_assoc_types (crate : crate) (f : fun_decl) : fun_decl =
      both [Item]s), or calls to it would pass the merged parameter explicitly. *)
   if not f.item_meta.is_local then f
   else
-  let is_assoc (p : type_param) =
-    String.length p.name > 5 && String.sub p.name 0 5 = "Self_"
-  in
-  (* The trait references implied by the bounds, with their declarations *)
-  let refs = ref [] in
-  let rec explore (depth : int) (tr : trait_decl_ref) =
-    if depth <= 16 then
-      match TraitDeclId.Map.find_opt tr.id crate.trait_decls with
-      | None -> ()
-      | Some d ->
-          refs := (tr, d) :: !refs;
-          let subst =
-            [%add_loc] Substitute.make_subst_from_generics None d.generics
-              tr.generics Self
-          in
-          List.iter
-            (fun (c : trait_param) ->
-              explore (depth + 1)
-                (Substitute.trait_decl_ref_substitute subst c.trait.binder_value))
-            d.implied_clauses
-  in
-  (try
-     List.iter
-       (fun (c : trait_param) -> explore 0 c.trait.binder_value)
-       f.generics.trait_clauses
-   with Invalid_argument _ -> refs := []);
-  (* Union-find over the function's type variables *)
-  let parent = Hashtbl.create 8 in
-  let rec find id =
-    match Hashtbl.find_opt parent id with
-    | Some p when p <> id -> find p
-    | _ -> id
-  in
-  let union a b =
-    let a = find a and b = find b in
-    if a <> b then
-      if TypeVarId.compare_id a b < 0 then Hashtbl.replace parent b a
-      else Hashtbl.replace parent a b
-  in
-  let split ((tr, d) : trait_decl_ref * trait_decl) =
-    if List.length d.generics.types <> List.length tr.generics.types then None
-    else
-      let pairs = List.combine d.generics.types tr.generics.types in
-      let key =
-        ( tr.id,
-          List.filter_map
-            (fun (p, t) -> if is_assoc p then None else Some t)
-            pairs,
-          tr.generics.const_generics )
-      in
-      Some
-        ( key,
-          List.filter_map
-            (fun (p, t) -> if is_assoc p then Some t else None)
-            pairs )
-  in
-  let groups = Hashtbl.create 8 in
-  List.iter
-    (fun r ->
-      match split r with
-      | None -> ()
-      | Some (key, assoc) -> (
-          match Hashtbl.find_opt groups key with
-          | None -> Hashtbl.add groups key assoc
-          | Some assoc0 ->
-              List.iter2
-                (fun t0 t ->
-                  match (t0, t) with
-                  | TVar (Free a), TVar (Free b) -> union a b
-                  | _ -> ())
-                assoc0 assoc))
-    !refs;
-  if Hashtbl.length parent = 0 then f
-  else
-    let visitor =
-      object
-        inherit [_] map_crate as super
-
-        method! visit_TVar env var =
-          match var with
-          | Free id -> TVar (Free (find id))
-          | _ -> super#visit_TVar env var
-      end
+    let is_assoc (p : type_param) =
+      String.length p.name > 5 && String.sub p.name 0 5 = "Self_"
     in
-    let f = visitor#visit_fun_decl () f in
-    [%ltrace
-      let env = Print.crate_to_fmt_env crate in
-      "Updated: " ^ Print.fun_decl_to_string env "" " " f];
-    f
+    (* The trait references implied by the bounds, with their declarations *)
+    let refs = ref [] in
+    let rec explore (depth : int) (tr : trait_decl_ref) =
+      if depth <= 16 then
+        match TraitDeclId.Map.find_opt tr.id crate.trait_decls with
+        | None -> ()
+        | Some d ->
+            refs := (tr, d) :: !refs;
+            let subst =
+              [%add_loc] Substitute.make_subst_from_generics None d.generics
+                tr.generics Self
+            in
+            List.iter
+              (fun (c : trait_param) ->
+                explore (depth + 1)
+                  (Substitute.trait_decl_ref_substitute subst
+                     c.trait.binder_value))
+              d.implied_clauses
+    in
+    (try
+       List.iter
+         (fun (c : trait_param) -> explore 0 c.trait.binder_value)
+         f.generics.trait_clauses
+     with Invalid_argument _ -> refs := []);
+    (* Union-find over the function's type variables *)
+    let parent = Hashtbl.create 8 in
+    let rec find id =
+      match Hashtbl.find_opt parent id with
+      | Some p when p <> id -> find p
+      | _ -> id
+    in
+    let union a b =
+      let a = find a and b = find b in
+      if a <> b then
+        if TypeVarId.compare_id a b < 0 then Hashtbl.replace parent b a
+        else Hashtbl.replace parent a b
+    in
+    let split ((tr, d) : trait_decl_ref * trait_decl) =
+      if List.length d.generics.types <> List.length tr.generics.types then None
+      else
+        let pairs = List.combine d.generics.types tr.generics.types in
+        let key =
+          ( tr.id,
+            List.filter_map
+              (fun (p, t) -> if is_assoc p then None else Some t)
+              pairs,
+            tr.generics.const_generics )
+        in
+        Some
+          ( key,
+            List.filter_map
+              (fun (p, t) -> if is_assoc p then Some t else None)
+              pairs )
+    in
+    let groups = Hashtbl.create 8 in
+    List.iter
+      (fun r ->
+        match split r with
+        | None -> ()
+        | Some (key, assoc) -> (
+            match Hashtbl.find_opt groups key with
+            | None -> Hashtbl.add groups key assoc
+            | Some assoc0 ->
+                List.iter2
+                  (fun t0 t ->
+                    match (t0, t) with
+                    | TVar (Free a), TVar (Free b) -> union a b
+                    | _ -> ())
+                  assoc0 assoc))
+      !refs;
+    if Hashtbl.length parent = 0 then f
+    else
+      let visitor =
+        object
+          inherit [_] map_crate as super
+
+          method! visit_TVar env var =
+            match var with
+            | Free id -> TVar (Free (find id))
+            | _ -> super#visit_TVar env var
+        end
+      in
+      let f = visitor#visit_fun_decl () f in
+      [%ltrace
+        let env = Print.crate_to_fmt_env crate in
+        "Updated: " ^ Print.fun_decl_to_string env "" " " f];
+      f
 
 (** Normalise function-item types: no binder, ['static] regions.
 
@@ -2638,10 +2977,44 @@ let normalize_fn_def_types (crate : crate) : crate =
   in
   visitor#visit_crate () crate
 
+(** Make sure [Option] is in the declaration groups when it is in the crate.
+
+    [lift_nested_loop_exits] carries the value of a [return] out of nested loops
+    in an [Option], which the crate may not otherwise use; Charon then has its
+    declaration but no group for it, and the type analysis (which goes over the
+    groups) would not know it. *)
+let declare_option (crate : crate) : crate =
+  let pat = NameMatcher.parse_pattern "core::option::Option" in
+  let match_name = ExtractName.match_name crate in
+  match
+    List.find_opt
+      (fun (d : type_decl) -> match_name pat d.item_meta.name)
+      (TypeDeclId.Map.values crate.type_decls)
+  with
+  | None -> crate
+  | Some d ->
+      let declarations = Option.value ~default:[] crate.declarations in
+      let declared =
+        List.exists
+          (fun (g : declaration_group) ->
+            match g with
+            | TypeGroup (NonRecGroup id) -> id = d.def_id
+            | TypeGroup (RecGroup ids) -> List.mem d.def_id ids
+            | _ -> false)
+          declarations
+      in
+      if declared then crate
+      else
+        {
+          crate with
+          declarations = Some (TypeGroup (NonRecGroup d.def_id) :: declarations);
+        }
+
 let apply_passes (crate : crate) : crate =
   (* Passes that apply to the whole crate *)
   let crate = update_array_default crate in
   let crate = normalize_fn_def_types crate in
+  let crate = declare_option crate in
   (* Passes that apply to individual function bodies *)
   let function_passes =
     [
@@ -2651,6 +3024,7 @@ let apply_passes (crate : crate) : crate =
       ("unify_diamond_assoc_types", unify_diamond_assoc_types);
       ("erase_body_regions", erase_body_regions);
       ("remove_unreachable", remove_unreachable);
+      ("lift_nested_loop_exits", lift_nested_loop_exits);
       ("update_loop", update_loops);
       ("remove_useless_joins", remove_useless_joins);
       ( "remove_shallow_borrows_storage_live_dead",
