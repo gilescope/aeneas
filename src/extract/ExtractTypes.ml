@@ -1453,13 +1453,6 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
     TypesUtils.type_decl_from_decl_id_is_tuple_struct
       ctx.trans_ctx.type_ctx.type_infos def.def_id
   in
-  let is_tuple_struct_one_or_zero_field =
-    is_tuple_struct
-    &&
-    match def.kind with
-    | Struct [] | Struct [ _ ] -> true
-    | _ -> false
-  in
   let type_kind =
     if extract_body then
       if is_tuple_struct then Some Tuple
@@ -1502,11 +1495,13 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
    (* Extract the attributes.
 
       Note that we need the [reducible] attribute in Lean, otherwise Lean sometimes
-      doesn't manage to typecheck the expressions when it needs to coerce the type. *)
+      doesn't manage to typecheck the expressions when it needs to coerce the type.
+      This holds for every tuple struct (e.g. a closure's state, extracted as a
+      product): since Lean 4.34, unification no longer unfolds a semireducible
+      [def X := A * B] when checking implicit arguments, so a tuple literal
+      [(a, b)] would not match a parameter of type [X]. *)
    let reducible_attr =
-     if is_tuple_struct_one_or_zero_field && backend () = Lean then
-       [ "reducible" ]
-     else []
+     if is_tuple_struct && backend () = Lean then [ "reducible" ] else []
    in
    (* The attribute to automatically generate the [read_discriminant] function *)
    let discr_attr =
