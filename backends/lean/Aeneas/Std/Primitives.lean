@@ -65,6 +65,9 @@ def RustEffect : Effect := {
 @[irreducible]
 def Result (α : Type u) : Type u := ITree RustEffect α
 unseal Result
+-- Lean 4.34 no longer unfolds `Result` when unifying implicit arguments (e.g. a `cases`
+-- motive over `Result α` against one over `ITree`); this file's proofs rely on it.
+set_option backward.isDefEq.respectTransparency false
 
 def Result.ok {α} (a : α) : Result α := .ret a
 
