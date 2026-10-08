@@ -169,6 +169,51 @@ let reborrow_ashared_loans (span : Meta.span) (loop_id : LoopId.id option)
       }
     in
     fresh_absl := fresh_abs :: !fresh_absl;
+    (* Nested (shared) borrows: if the shared value is a symbolic value whose
+       type has regions (the [&'b T] of a [&'a &'b T]), the borrows it contains
+       are loaned by the abstraction of those regions, as for an input (where the
+       abstraction of ['b] holds an ignored shared loan projecting the value).
+       The fresh value needs the same: a child abstraction, on a fresh region,
+       with the loan projection over it. *)
+    (match nsv.value with
+    | VSymbolic nsv_s ->
+        let inner = RegionId.Set.remove nrid (ty_regions nsv_s.sv_ty) in
+        if not (RegionId.Set.is_empty inner) then begin
+          let crid = ctx.fresh_region_id () in
+          let proj_ty =
+            Substitute.ty_subst_rids span
+              (fun r -> if RegionId.Set.mem r inner then crid else r)
+              nsv_s.sv_ty
+          in
+          let av : tavalue =
+            {
+              value =
+                ASymbolic
+                  ( PNone,
+                    AProjLoans
+                      {
+                        proj = { sv_id = nsv_s.sv_id; proj_ty };
+                        consumed = [];
+                        borrows = [];
+                      } );
+              ty = proj_ty;
+            }
+          in
+          let child_abs =
+            {
+              abs_id = ctx.fresh_abs_id ();
+              kind;
+              can_end;
+              parents = AbsId.Set.singleton fresh_abs.abs_id;
+              ended_subabs = AbsLevelSet.empty;
+              regions = { owned = RegionId.Set.singleton crid };
+              avalues = [ av ];
+              cont;
+            }
+          in
+          fresh_absl := child_abs :: !fresh_absl
+        end
+    | _ -> ());
     (nlid, nsid)
   in
 
@@ -1174,7 +1219,13 @@ let drop_orphan_shared_loan_projs (ctx : eval_ctx) : eval_ctx =
   let keep (abs : abs) (av : tavalue) =
     match av.value with
     | ASymbolic (_, AProjLoans { proj; _ }) when is_candidate abs av ->
-        SymbolicValueId.Set.mem proj.sv_id sids
+        let keep = SymbolicValueId.Set.mem proj.sv_id sids in
+        if not keep then
+          [%ltrace
+            "dropping the orphan loan projection over s@"
+            ^ SymbolicValueId.to_string proj.sv_id
+            ^ " in abs@" ^ AbsId.to_string abs.abs_id];
+        keep
     | _ -> true
   in
   let env =

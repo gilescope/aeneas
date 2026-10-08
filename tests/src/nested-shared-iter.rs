@@ -44,6 +44,45 @@ pub fn absorb(xss: &[&[u32]]) -> Result<u32, u32> {
     Ok(s)
 }
 
+/// A value which can be absorbed by a transcript
+pub trait Hashable {
+    fn bytes(&self) -> u32;
+}
+
+/// A field
+pub trait Field: Hashable + Copy {
+    fn from_u128(x: u128) -> Self;
+}
+
+/// A transcript
+pub trait Transcript {
+    fn common<V: Hashable>(&mut self, x: &V) -> Result<(), u32>;
+}
+
+/// The value returned, with drop glue (which makes Charon nest the loops)
+pub struct Trace {
+    pub v: Vec<u32>,
+}
+
+/// `parse_trace` itself, generic: committed instances then instances, each length then values.
+pub fn parse<F: Field, C: Hashable, T: Transcript>(
+    committed: &[C],
+    instances: &[&[F]],
+    t: &mut T,
+) -> Result<Trace, u32> {
+    let trace = Trace { v: vec![1] };
+    for c in committed.iter() {
+        t.common(c)?
+    }
+    for instance in instances.iter() {
+        t.common(&F::from_u128(instance.len() as u128))?;
+        for value in instance.iter() {
+            t.common(value)?;
+        }
+    }
+    Ok(trace)
+}
+
 // Concrete results, checked against the extracted Lean in tests/lean/Differential.lean.
 #[cfg(test)]
 mod tests {

@@ -17,7 +17,17 @@ set_option maxHeartbeats 1000000
 /- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
 set_option maxRecDepth 2048
 
+/- You can remove the following line by using the CLI option `-all-computable`: -/
+noncomputable section
+
 namespace nested_shared_iter
+
+/-- [core::mem::maybe_uninit::MaybeUninit]
+    Source: '/rustc/library/core/src/mem/maybe_uninit.rs', lines 355:0-355:24
+    Name pattern: [core::mem::maybe_uninit::MaybeUninit]
+    Visibility: public -/
+@[rust_type "core::mem::maybe_uninit::MaybeUninit"]
+axiom core.mem.maybe_uninit.MaybeUninit (T : Type) : Type
 
 /-- [nested_shared_iter::total_len]: loop body 0:
     Source: 'tests/src/nested-shared-iter.rs', lines 10:4-12:5
@@ -216,5 +226,175 @@ def absorb
   := do
   let iter ← core.slice.Slice.iter xss
   absorb_loop0 iter 0#u32
+
+/-- Trait declaration: [nested_shared_iter::Hashable]
+    Source: 'tests/src/nested-shared-iter.rs', lines 48:0-50:1
+    Visibility: public -/
+structure Hashable (Self : Type) where
+  bytes : Self → Result Std.U32
+
+/-- Trait declaration: [nested_shared_iter::Field]
+    Source: 'tests/src/nested-shared-iter.rs', lines 53:0-55:1
+    Visibility: public -/
+structure Field (Self : Type) where
+  HashableInst : Hashable Self
+  coremarkerCopyInst : core.marker.Copy Self
+  from_u128 : Std.U128 → Result Self
+
+/-- Trait declaration: [nested_shared_iter::Transcript]
+    Source: 'tests/src/nested-shared-iter.rs', lines 58:0-60:1
+    Visibility: public -/
+structure Transcript (Self : Type) where
+  common : forall {V : Type} (HashableInst : Hashable V), Self → V → Result
+    ((core.result.Result Unit Std.U32) × Self)
+
+/-- [nested_shared_iter::Trace]
+    Source: 'tests/src/nested-shared-iter.rs', lines 63:0-65:1
+    Visibility: public -/
+structure Trace where
+  v : alloc.vec.Vec Std.U32
+
+/-- [nested_shared_iter::parse]: loop body 0:
+    Source: 'tests/src/nested-shared-iter.rs', lines 1:0-84:1
+    Visibility: public -/
+@[rust_loop_body]
+def parse_loop0.body
+  {C : Type} {T : Type} (HashableInst : Hashable C) (TranscriptInst :
+  Transcript T) (iter : core.slice.iter.Iter C) (t : T) :
+  Result (ControlFlow ((core.slice.iter.Iter C) × T) (T × (Option
+    (core.result.Result Trace Std.U32))))
+  := do
+  let (o, iter1) ← core.slice.iter.IteratorSliceIter.next iter
+  match o with
+  | none => ok (done (t, none))
+  | some c =>
+    let (r, t1) ← TranscriptInst.common HashableInst t c
+    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue _ => ok (cont (iter1, t1))
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      let r1 ←
+        core.result.Result.Insts.CoreOpsTry_traitFromResidualResult.from_residual
+          Trace (core.convert.FromSame Std.U32) residual
+      ok (done (t1, some r1))
+
+/-- [nested_shared_iter::parse]: loop 0:
+    Source: 'tests/src/nested-shared-iter.rs', lines 1:0-84:1
+    Visibility: public -/
+@[rust_loop]
+def parse_loop0
+  {C : Type} {T : Type} (HashableInst : Hashable C) (TranscriptInst :
+  Transcript T) (iter : core.slice.iter.Iter C) (t : T) :
+  Result (T × (Option (core.result.Result Trace Std.U32)))
+  := do
+  loop
+    (fun (iter1, t1) => parse_loop0.body HashableInst TranscriptInst iter1 t1)
+    (iter, t)
+
+/-- [nested_shared_iter::parse]: loop body 2:
+    Source: 'tests/src/nested-shared-iter.rs', lines 1:0-81:9
+    Visibility: public -/
+@[rust_loop_body]
+def parse_loop1_loop0.body
+  {F : Type} {T : Type} (FieldInst : Field F) (TranscriptInst : Transcript T)
+  (iter : core.slice.iter.Iter F) (t : T) :
+  Result (ControlFlow ((core.slice.iter.Iter F) × T) (T × (Option
+    (core.result.Result Trace Std.U32))))
+  := do
+  let (o, iter1) ← core.slice.iter.IteratorSliceIter.next iter
+  match o with
+  | none => ok (done (t, none))
+  | some value =>
+    let (r, t1) ← TranscriptInst.common FieldInst.HashableInst t value
+    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue _ => ok (cont (iter1, t1))
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      let r1 ←
+        core.result.Result.Insts.CoreOpsTry_traitFromResidualResult.from_residual
+          Trace (core.convert.FromSame Std.U32) residual
+      ok (done (t1, some r1))
+
+/-- [nested_shared_iter::parse]: loop 2:
+    Source: 'tests/src/nested-shared-iter.rs', lines 1:0-81:9
+    Visibility: public -/
+@[rust_loop]
+def parse_loop1_loop0
+  {F : Type} {T : Type} (FieldInst : Field F) (TranscriptInst : Transcript T)
+  (iter : core.slice.iter.Iter F) (t : T) :
+  Result (T × (Option (core.result.Result Trace Std.U32)))
+  := do
+  loop
+    (fun (iter1, t1) => parse_loop1_loop0.body FieldInst TranscriptInst iter1
+      t1)
+    (iter, t)
+
+/-- [nested_shared_iter::parse]: loop body 1:
+    Source: 'tests/src/nested-shared-iter.rs', lines 1:0-84:1
+    Visibility: public -/
+@[rust_loop_body]
+def parse_loop1.body
+  {F : Type} {T : Type} (FieldInst : Field F) (TranscriptInst : Transcript T)
+  (v : alloc.vec.Vec Std.U32) (iter : core.slice.iter.Iter (Slice F)) 
+  (t : T) :
+  Result (ControlFlow ((core.slice.iter.Iter (Slice F)) × T)
+    ((core.result.Result Trace Std.U32) × T))
+  := do
+  let (o, iter1) ← core.slice.iter.IteratorSliceIter.next iter
+  match o with
+  | none => ok (done (core.result.Result.Ok { v }, t))
+  | some «instance» =>
+    let i := Slice.len «instance»
+    let i1 ← lift (UScalar.cast .U128 i)
+    let t1 ← FieldInst.from_u128 i1
+    let (r, t2) ← TranscriptInst.common FieldInst.HashableInst t t1
+    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue _ =>
+      let iter2 ← core.slice.Slice.iter «instance»
+      let (t3, loop_return) ←
+        parse_loop1_loop0 FieldInst TranscriptInst iter2 t2
+      match loop_return with
+      | none => ok (cont (iter1, t3))
+      | some r1 => ok (done (r1, t3))
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      let r1 ←
+        core.result.Result.Insts.CoreOpsTry_traitFromResidualResult.from_residual
+          Trace (core.convert.FromSame Std.U32) residual
+      ok (done (r1, t2))
+
+/-- [nested_shared_iter::parse]: loop 1:
+    Source: 'tests/src/nested-shared-iter.rs', lines 1:0-84:1
+    Visibility: public -/
+@[rust_loop]
+def parse_loop1
+  {F : Type} {T : Type} (FieldInst : Field F) (TranscriptInst : Transcript T)
+  (iter : core.slice.iter.Iter (Slice F)) (t : T) (v : alloc.vec.Vec Std.U32) :
+  Result ((core.result.Result Trace Std.U32) × T)
+  := do
+  loop
+    (fun (iter1, t1) => parse_loop1.body FieldInst TranscriptInst v iter1 t1)
+    (iter, t)
+
+/-- [nested_shared_iter::parse]:
+    Source: 'tests/src/nested-shared-iter.rs', lines 68:0-84:1
+    Visibility: public -/
+def parse
+  {F : Type} {C : Type} {T : Type} (FieldInst : Field F) (HashableInst :
+  Hashable C) (TranscriptInst : Transcript T) (committed : Slice C)
+  (instances : Slice (Slice F)) (t : T) :
+  Result ((core.result.Result Trace Std.U32) × T)
+  := do
+  let y ←
+    lift (Std.Array.to_slice (Array.make 1#usize [ 1#u32 ] : Array Std.U32
+      1#usize))
+  let ret := alloc.slice.Slice.into_vec y
+  let iter ← core.slice.Slice.iter committed
+  let (t1, loop_return) ← parse_loop0 HashableInst TranscriptInst iter t
+  match loop_return with
+  | none =>
+    let iter1 ← core.slice.Slice.iter instances
+    parse_loop1 FieldInst TranscriptInst iter1 t1 ret
+  | some r => ok (r, t1)
 
 end nested_shared_iter
