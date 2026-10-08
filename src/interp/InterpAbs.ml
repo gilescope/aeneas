@@ -1957,6 +1957,57 @@ let merge_abs_conts_aux (span : Meta.span) (ctx : eval_ctx) (abs0 : abs)
     ^ "\n- bound_inputs_outputs:\n"
     ^ bound_inputs_outputs_to_string ctx !bound];
 
+  (* A loan of [abs0] whose borrow is an output of [abs1] disappears from the
+     merged abstraction together with that borrow, even when the continuation of
+     [abs0] does not read it (e.g. a loan projection over a region holding only
+     shared borrows, whose continuation gives nothing back). Consume such outputs
+     here: otherwise the composed continuation outputs a borrow which is no
+     longer in the abstraction, still carrying its marker. Dropping the value is
+     exactly what the continuation of [abs0] does with it. *)
+  List.iter
+    (fun (av : tavalue) ->
+      match av.value with
+      | ALoan (AMutLoan (pm, bid, _))
+        when List.mem (Either.Left bid) bindings1
+             &&
+             match BorrowId.Map.find_opt bid !bound.borrows with
+             | Some l ->
+                 List.exists
+                   (fun (pm', _, _) -> proj_markers_intersect pm pm')
+                   l
+             | None -> false ->
+          let bound', _ =
+            bound_inputs_outputs_update_input_loan span bid av.ty pm !bound
+          in
+          [%ltrace "consumed the unread output l@" ^ BorrowId.to_string bid];
+          bound := bound'
+      | ASymbolic (pm, AProjLoans { proj; _ })
+        when List.mem (Either.Right proj.sv_id) bindings1 ->
+          let ty = proj.proj_ty in
+          let norm_proj_ty = normalize_proj_ty abs0.regions.owned ty in
+          let unread =
+            match SymbolicValueId.Map.find_opt proj.sv_id !bound.symbolic with
+            | Some l ->
+                List.exists
+                  (fun (pm', proj_ty', _, _) ->
+                    proj_markers_intersect pm pm'
+                    && norm_proj_tys_intersect span ctx norm_proj_ty proj_ty')
+                  l
+            | None -> false
+          in
+          if unread then begin
+            let bound', _ =
+              bound_inputs_outputs_update_input_symbolic span ctx proj.sv_id pm
+                ty norm_proj_ty !bound
+            in
+            [%ltrace
+              "consumed the unread output s@"
+              ^ SymbolicValueId.to_string proj.sv_id];
+            bound := bound'
+          end
+      | _ -> ())
+    abs0.avalues;
+
   (* Create the outputs for the composed continuation, and its corresponding inputs.
 
      We simply list all the bound outputs which were not consumed (the free variables

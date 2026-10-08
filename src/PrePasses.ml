@@ -678,6 +678,275 @@ let update_loops (crate : crate) (f : fun_decl) : fun_decl =
     ^ Print.fun_decl_to_string env "" " " f];
   f
 
+(** [core::option::Option], with its [None] and [Some] variants *)
+let find_option (crate : crate) :
+    (type_decl_id * variant_id * variant_id) option =
+  let pat = NameMatcher.parse_pattern "core::option::Option" in
+  let match_name = ExtractName.match_name crate in
+  List.find_map
+    (fun (d : type_decl) ->
+      match d.kind with
+      | Enum variants when match_name pat d.item_meta.name -> (
+          let find n =
+            List.find_opt (fun (v : variant) -> v.variant_name = n) variants
+          in
+          match (find "None", find "Some") with
+          | Some none, Some some -> Some (d.def_id, none.id, some.id)
+          | _ -> None)
+      | _ -> None)
+    (TypeDeclId.Map.values crate.type_decls)
+
+(** Move the code which Charon nests in a loop's exit branch after the loop.
+
+    For a [for] loop with a [?] while a value with drop glue is live, Charon
+    puts the code which follows the loop in its exit branch, and the loop's
+    [return]s become [break]s to a single [return] after it:
+    {[
+      loop {
+        match next(&mut it) { None => { REST; return }, Some => {} }
+        .. { _0 := e; break 0 } ..
+      }
+      return
+    ]}
+    If [REST] contains a loop, the symbolic execution evaluates that loop in the
+    last iteration of the outer one, and cannot join its contexts. We carry
+    which exit was taken out of the loop instead:
+    {[
+      ret := None;
+      loop {
+        match next(&mut it) { None => { break 0 }, Some => {} }
+        .. { _0 := e; ret := Some(move _0); break 0 } ..
+      }
+      match ret { Some => { _0 := move (ret as Some).0; return }, _ => { REST'; return } }
+    ]}
+    where [REST'] is [REST] with its exits to the loop replaced by the [return].
+    Every other exit of the loop goes straight to the [return], so it set [_0];
+    moving [_0] into [ret] leaves it unset on every exit, so that they can be
+    joined. Only for outermost loops followed by nothing but [StorageDead]s,
+    [drop]s and a [return], with no [continue] of the loop in [REST]. *)
+let unnest_loop_continuations (crate : crate) (f : fun_decl) : fun_decl =
+  match (f.body, find_option crate) with
+  | StructuredBody body, Some (opt_id, none, some) ->
+      let locals = ref body.locals.locals in
+      let ret_ty = (List.hd body.locals.locals).local_ty in
+      let ret_place : place =
+        { kind = PlaceLocal (LocalId.of_int 0); ty = ret_ty }
+      in
+      let tref : type_decl_ref =
+        {
+          id = opt_id;
+          generics =
+            {
+              regions = [];
+              types = [ ret_ty ];
+              const_generics = [];
+              trait_refs = [];
+            };
+          builtin = None;
+        }
+      in
+      let mk (span : span) (kind : statement_kind) : statement =
+        { span; statement_id = StatementId.zero; kind; comments_before = [] }
+      in
+      let rec has_loop (b : block) : bool =
+        List.exists
+          (fun (st : statement) ->
+            match st.kind with
+            | Loop _ -> true
+            | Switch (_, branches) -> List.exists has_loop branches
+            | _ -> false)
+          b.statements
+      in
+      (* Whether [b], [k] loops deep in the loop, continues the loop *)
+      let rec continues (k : int) (b : block) : bool =
+        List.exists
+          (fun (st : statement) ->
+            match st.kind with
+            | Continue i -> i >= k
+            | Loop b -> continues (k + 1) b
+            | Switch (_, branches) -> List.exists (continues k) branches
+            | _ -> false)
+          b.statements
+      in
+      (* Map the exits of [b] ([k] loops deep in the loop) to the loop *)
+      let rec map_exits (f : statement -> statement list) (k : int) (b : block)
+          : block =
+        let st_map (st : statement) : statement list =
+          match st.kind with
+          | Break i when i = k -> f st
+          | Loop lb -> [ { st with kind = Loop (map_exits f (k + 1) lb) } ]
+          | Switch (d, branches) ->
+              [
+                { st with kind = Switch (d, List.map (map_exits f k) branches) };
+              ]
+          | _ -> [ st ]
+        in
+        { b with statements = List.concat_map st_map b.statements }
+      in
+      (* Marks the [break] which replaces the moved branch: [_0] is not set there *)
+      let moved_rest =
+        "aeneas: code after the loop moved out of its exit branch"
+      in
+      let unnest (span : span) (loop : block) (tail : statement list) :
+          statement list option =
+        (* The exit branch: the first one (outside the inner loops) which ends
+           with a [break] of the loop or a [return] and contains a loop *)
+        let found = ref None in
+        let rec go_block (b : block) : block =
+          { b with statements = List.map go_st b.statements }
+        and go_st (st : statement) : statement =
+          match st.kind with
+          | Switch (d, branches) when !found = None ->
+              let branch (b : block) : block =
+                match List.rev b.statements with
+                | ({ kind = Break 0 | Return; _ } as last) :: _
+                  when !found = None && has_loop b && not (continues 0 b) ->
+                    (* Rust ends the loop's locals first: keep that in the loop, so
+                       that its exits leave the same locals alive *)
+                    let rec split acc (stl : statement list) =
+                      match stl with
+                      | ({ kind = StorageDead _; _ } as d) :: stl ->
+                          split (d :: acc) stl
+                      | _ -> (List.rev acc, stl)
+                    in
+                    let deaths, rest = split [] b.statements in
+                    found := Some { b with statements = rest };
+                    let brk =
+                      {
+                        last with
+                        kind = Break 0;
+                        comments_before = [ moved_rest ];
+                      }
+                    in
+                    { b with statements = deaths @ [ brk ] }
+                | _ -> go_block b
+              in
+              { st with kind = Switch (d, List.map branch branches) }
+          | _ -> st
+        in
+        let loop = go_block loop in
+        match !found with
+        | None -> None
+        | Some rest ->
+            let index = LocalId.of_int (List.length !locals) in
+            locals :=
+              !locals
+              @ [
+                  {
+                    index;
+                    name = Some "loop_return";
+                    span;
+                    local_ty = TAdt tref;
+                    drop_flag_for = None;
+                  };
+                ];
+            let slot : place = { kind = PlaceLocal index; ty = TAdt tref } in
+            (* The other exits carry [_0] out *)
+            let carry (brk : statement) =
+              if List.mem moved_rest brk.comments_before then [ brk ]
+              else
+                [
+                  mk brk.span
+                    (Assign
+                       ( slot,
+                         Aggregate
+                           ( AggregatedAdt (tref, Some some, None),
+                             [ Move ret_place ] ) ));
+                  brk;
+                ]
+            in
+            let loop = map_exits carry 0 loop in
+            let rest = map_exits (fun _ -> tail) 0 rest in
+            let field : place =
+              {
+                kind =
+                  PlaceProjection (slot, Field (Some some, FieldId.of_int 0));
+                ty = ret_ty;
+              }
+            in
+            let data : switch_data =
+              {
+                scrutinee = SwitchDiscriminant slot;
+                branches =
+                  [
+                    ( { kind = CDiscriminant (tref, some); ty = TAdt tref },
+                      BranchId.of_int 0 );
+                  ];
+                fallback = Some (BranchId.of_int 1);
+              }
+            in
+            let dead = mk span (StorageDead index) in
+            let block statements = { loop with span; statements } in
+            Some
+              [
+                mk span (StorageLive index);
+                mk span
+                  (Assign
+                     ( slot,
+                       Aggregate (AggregatedAdt (tref, Some none, None), []) ));
+                mk span (Loop loop);
+                mk span
+                  (Switch
+                     ( data,
+                       [
+                         block
+                           ([
+                              mk span
+                                (Assign (ret_place, Use (Move field, NoRetag)));
+                              dead;
+                            ]
+                           @ tail);
+                         block (dead :: rest.statements);
+                       ] ));
+              ]
+      in
+      (* What follows a loop up to the [return], through the end of the
+         enclosing switch branches, if it is only [StorageDead]s and [drop]s *)
+      let return_tail (after : statement list) : statement list option =
+        let rec go acc (stl : statement list) =
+          match stl with
+          | ({ kind = Return; _ } as st) :: _ -> Some (List.rev (st :: acc))
+          | ({ kind = StorageDead _ | Drop _ | Nop; _ } as st) :: stl ->
+              go (st :: acc) stl
+          | _ -> None
+        in
+        go [] after
+      in
+      (* Outside of loops; [cont] is what runs after [stl] *)
+      let rec go (cont : statement list) (stl : statement list) : statement list
+          =
+        match stl with
+        | [] -> []
+        | ({ kind = Loop loop; _ } as st) :: after -> (
+            match return_tail (after @ cont) with
+            | None -> st :: go cont after
+            | Some tail -> (
+                match unnest st.span loop tail with
+                | Some stl -> go [] stl
+                | None ->
+                    (* Every exit of the loop goes to [tail]: make it a
+                       [return], so that [lift_nested_loop_exits] handles those
+                       in inner loops as such (carrying the value in [_0]) *)
+                    let loop = map_exits (fun _ -> tail) 0 loop in
+                    { st with kind = Loop loop } :: go cont after))
+        | ({ kind = Switch (d, branches); _ } as st) :: after ->
+            let branch (b : block) =
+              { b with statements = go (after @ cont) b.statements }
+            in
+            { st with kind = Switch (d, List.map branch branches) }
+            :: go cont after
+        | st :: after -> st :: go cont after
+      in
+      let statements = go [] body.body.statements in
+      let locals = { body.locals with locals = !locals } in
+      {
+        f with
+        body =
+          StructuredBody
+            { body with body = { body.body with statements }; locals };
+      }
+  | _ -> f
+
 (** Lift exits out of nested loops with flags.
 
     [update_loops] supports a [return] only in an outermost loop and [break]s
@@ -743,24 +1012,7 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
         { kind = PlaceLocal index; ty = local_ty }
       in
       (* [Option<T>] for the return value, with its [None] and [Some] variants *)
-      let ret_option =
-        let pat = NameMatcher.parse_pattern "core::option::Option" in
-        let match_name = ExtractName.match_name crate in
-        List.find_map
-          (fun (d : type_decl) ->
-            match d.kind with
-            | Enum variants when match_name pat d.item_meta.name -> (
-                let find n =
-                  List.find_opt
-                    (fun (v : variant) -> v.variant_name = n)
-                    variants
-                in
-                match (find "None", find "Some") with
-                | Some none, Some some -> Some (d.def_id, none.id, some.id)
-                | _ -> None)
-            | _ -> None)
-          (TypeDeclId.Map.values crate.type_decls)
-      in
+      let ret_option = find_option crate in
       let ret_ty = (List.hd body.locals.locals).local_ty in
       let ret_place : place =
         { kind = PlaceLocal (LocalId.of_int 0); ty = ret_ty }
@@ -801,18 +1053,63 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
         mk span
           (Switch (data, [ block [ dead; mk span exit ]; block [ dead ] ]))
       in
+      (* Whether [b] exits a loop it is in, [k] loops deep *)
+      let rec exits_loop (k : int) (b : block) : bool =
+        List.exists
+          (fun (st : statement) ->
+            match st.kind with
+            | Break i -> i >= k
+            | Continue i -> i > k
+            | Loop b -> exits_loop (k + 1) b
+            | Switch (_, branches) -> List.exists (exits_loop k) branches
+            | _ -> false)
+          b.statements
+      in
+      let rec has_loop (b : block) : bool =
+        List.exists
+          (fun (st : statement) ->
+            match st.kind with
+            | Loop _ -> true
+            | Switch (_, branches) -> List.exists has_loop branches
+            | _ -> false)
+          b.statements
+      in
+      (* Whether [b] returns, outside its inner loops *)
+      let rec returns (b : block) : bool =
+        List.exists
+          (fun (st : statement) ->
+            match st.kind with
+            | Return -> true
+            | Switch (_, branches) -> List.exists returns branches
+            | _ -> false)
+          b.statements
+      in
       (* [depth]: the number of loops around the block *)
       let rec update_block (depth : int) (b : block) : block =
-        {
-          b with
-          statements = List.concat_map (update_statement depth b) b.statements;
-        }
-      and update_statement (depth : int) (_parent : block) (st : statement) :
-          statement list =
+        let rec go (stl : statement list) =
+          match stl with
+          | [] -> []
+          | st :: after ->
+              let after_has_loop = has_loop { b with statements = after } in
+              update_statement depth ~after_has_loop st @ go after
+        in
+        { b with statements = go b.statements }
+      and update_statement (depth : int) ~(after_has_loop : bool)
+          (st : statement) : statement list =
         match st.kind with
         | Loop loop ->
             (* Inner loops first: their escaping exits now sit in this body *)
             let loop = update_block (depth + 1) loop in
+            (* [update_loops] handles a loop which both [break]s and [return]s by
+               copying the code which follows the loop, up to its [return], into
+               the loop at each [break]. If that code contains a loop, it then
+               runs inside the last iteration of this one, which the symbolic
+               execution cannot join (e.g. [for c in cs { c? }; for r in rows {
+               .. }]). We carry the [return]s of such an outermost loop out like
+               the lifted ones instead, so that the loops run in sequence. *)
+            let carry_own =
+              depth = 0 && after_has_loop && exits_loop 0 loop && returns loop
+            in
             (* The exits of this loop's body (outside its inner loops) that go
                further than this loop *)
             (* Locals whose storage starts inside this loop: they are dead outside
@@ -834,22 +1131,58 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
               List.rev !acc
             in
             (* Whether this loop's body (outside its inner loops) returns from a
-               nested position: only then do the exits need the locals' deaths
-               aligned (a [break]/[continue] out of it kills what Rust's own
-               [break] does) *)
+               nested position or exits an outer loop: only then do the exits need
+               the locals' deaths aligned *)
             let has_escapes =
               let rec in_block (b : block) = List.exists in_st b.statements
               and in_st (st : statement) =
                 match st.kind with
-                | Return -> depth > 0 || is_lifted_return st
+                | Return -> depth > 0 || carry_own || is_lifted_return st
+                | Break i | Continue i -> i > 0
                 | Loop _ -> false
                 | Switch (_, branches) -> List.exists in_block branches
                 | _ -> false
               in
               in_block loop
             in
+            (* The locals (other than [inner_locals]) which the loop's own exits
+               ending with [exit] end, in order (e.g. a [for] loop's iterator) *)
+            let exit_deaths (exit : statement_kind) : local_id list =
+              let acc = ref [] in
+              let rec in_block (b : block) =
+                (match List.rev b.statements with
+                | last :: _ when last.kind = exit && not (is_lifted_return last)
+                  ->
+                    List.iter
+                      (fun (st : statement) ->
+                        match st.kind with
+                        | StorageDead id
+                          when not (List.mem id inner_locals || List.mem id !acc)
+                          -> acc := id :: !acc
+                        | _ -> ())
+                      b.statements
+                | _ -> ());
+                List.iter
+                  (fun (st : statement) ->
+                    match st.kind with
+                    | Switch (_, branches) -> List.iter in_block branches
+                    | _ -> ())
+                  b.statements
+              in
+              in_block loop;
+              List.rev !acc
+            in
+            (* Rust uses none of the locals a [break] of the loop ends after the
+               loop (a local dead on one path into the code after the loop is
+               dead in all of it), so every exit can end them, as it must for the
+               exits to be joined. The lifted [return]s of an outermost loop exit
+               the function: they can end what its own [return]s end. *)
+            let break_deaths = exit_deaths (Break 0) in
+            let return_deaths = if depth = 0 then exit_deaths Return else [] in
             let end_inner (span : span) : statement list =
-              List.map (fun id -> mk span (StorageDead id)) inner_locals
+              List.map
+                (fun id -> mk span (StorageDead id))
+                (inner_locals @ if has_escapes then break_deaths else [])
             in
             let lifted = ref [] in
             let escape (st : statement) (exit : statement_kind) : statement list
@@ -954,7 +1287,9 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
                       ],
                       if_flag st.span loop flag exit )
                     :: !lifted;
-                  [ set st.span flag true; mk st.span (Break 0) ]
+                  [ set st.span flag true ]
+                  @ end_inner st.span
+                  @ [ mk st.span (Break 0) ]
             in
             let rec replace_block (b : block) : block =
               (* Rust kills every live local right before a [return]: a [return]
@@ -964,13 +1299,22 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
               let rec go (acc : statement list) (stl : statement list) =
                 match stl with
                 | [] -> List.rev acc
-                | ({ kind = Return; _ } as st) :: stl when depth > 0 ->
+                | ({ kind = Return; _ } as st) :: stl
+                  when depth > 0 || carry_own ->
+                    (* ... nor drop them (the [drop]s Rust interleaves with the
+                       deaths before a [return]) *)
                     let rec drop_outer_deaths acc =
                       match acc with
                       | ({ kind = StorageDead id; _ } : statement) :: acc'
+                      | ({
+                           kind = Drop ({ kind = PlaceLocal id; _ }, _, _, _);
+                           _;
+                         } :
+                          statement)
+                        :: acc'
                         when not (List.mem id inner_locals) ->
                           drop_outer_deaths acc'
-                      | ({ kind = StorageDead _; _ } as d) :: acc' ->
+                      | ({ kind = StorageDead _ | Drop _; _ } as d) :: acc' ->
                           d :: drop_outer_deaths acc'
                       | _ -> acc
                     in
@@ -985,8 +1329,15 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
               | Break 0 when has_escapes -> end_inner st.span @ [ st ]
               | Break i when i > 0 -> escape st (Break (i - 1))
               | Continue i when i > 0 -> escape st (Continue (i - 1))
-              | Return when depth > 0 -> escape st Return
-              | Return when is_lifted_return st -> end_inner st.span @ [ st ]
+              | Return when depth > 0 || carry_own -> escape st Return
+              | Return when is_lifted_return st ->
+                  end_inner st.span
+                  @ List.map
+                      (fun id -> mk st.span (StorageDead id))
+                      (List.filter
+                         (fun id -> not (List.mem id break_deaths))
+                         return_deaths)
+                  @ [ st ]
               | Loop _ -> [ st ]
               | Switch (data, branches) ->
                   [
@@ -3024,6 +3375,7 @@ let apply_passes (crate : crate) : crate =
       ("unify_diamond_assoc_types", unify_diamond_assoc_types);
       ("erase_body_regions", erase_body_regions);
       ("remove_unreachable", remove_unreachable);
+      ("unnest_loop_continuations", unnest_loop_continuations);
       ("lift_nested_loop_exits", lift_nested_loop_exits);
       ("update_loop", update_loops);
       ("remove_useless_joins", remove_useless_joins);

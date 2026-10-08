@@ -2,6 +2,7 @@ import ClosureOutputBorrows
 import ClosureNestedBorrows
 import AssocTypeDiamond
 import LoopsNestedExits
+import LoopsNestedExitsIter
 
 /-! # Differential checks: the extracted Lean computes what Rust computes
 
@@ -65,5 +66,44 @@ open loops_nested_exits in
 #guard (prefix_sums rows[row[1#u32, 0#u32, 5#u32], row[2#u32, 3#u32]]).reducesTo 1006#u32
 open loops_nested_exits in
 #guard (until_zero rows[row[1#u32, 2#u32], row[3#u32, 0#u32, 9#u32], row[4#u32]]).reducesTo 6#u32
+
+-- tests/src/loops-nested-exits-iter.rs
+/-- The `Vec`s in a result as lists, to compare them -/
+def lists (r : core.result.Result (alloc.vec.Vec (alloc.vec.Vec Std.U32)) Std.U32) :
+    core.result.Result (List (List Std.U32)) Std.U32 :=
+  match r with
+  | .Ok v => .Ok (v.val.map (·.val))
+  | .Err e => .Err e
+/-- The `Vec` in a result as a list, to compare it -/
+def list (r : core.result.Result (alloc.vec.Vec Std.U32) Std.U32) :
+    core.result.Result (List Std.U32) Std.U32 :=
+  match r with
+  | .Ok v => .Ok v.val
+  | .Err e => .Err e
+/-- A literal slice -/
+macro "slice[" xs:term,* "]" : term =>
+  `(Slice.from [$xs,*] (by scalar_tac))
+
+open loops_nested_exits_iter in
+#guard (sum_checked rows[row[1#u32, 2#u32], row[3#u32]]).reducesTo (.Ok 6#u32)
+open loops_nested_exits_iter in
+#guard (sum_checked rows[row[1#u32, 2#u32], row[0#u32, 3#u32]]).reducesTo (.Err 7#u32)
+open loops_nested_exits_iter in
+#guard (do let (r, _) ← evaluate slice[1#u32, 5#u32]
+              { buf := row[10#u32, 20#u32, 30#u32, 40#u32], pos := 0#usize }
+           pure (lists r)).reducesTo (.Ok [[11#u32, 22#u32], [35#u32, 46#u32]])
+open loops_nested_exits_iter in
+#guard (do let (r, _) ← evaluate slice[1#u32, 5#u32]
+              { buf := row[10#u32, 20#u32, 30#u32], pos := 0#usize }
+           pure (lists r)).reducesTo (.Err 1#u32)
+open loops_nested_exits_iter in
+#guard (list <$> absorb slice[1#u32, 2#u32] rows[row[3#u32], row[4#u32, 5#u32]]).reducesTo
+  (.Ok [1#u32, 1#u32, 3#u32, 2#u32, 4#u32, 5#u32])
+open loops_nested_exits_iter in
+#guard (list <$> absorb slice[1#u32, 0#u32] rows[row[3#u32]]).reducesTo (.Err 7#u32)
+open loops_nested_exits_iter in
+#guard (list <$> absorb slice[1#u32] rows[row[3#u32], row[]]).reducesTo (.Err 7#u32)
+open loops_nested_exits_iter in
+#guard (list <$> absorb slice[1#u32] rows[row[3#u32, 0#u32]]).reducesTo (.Err 7#u32)
 
 end Differential

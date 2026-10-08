@@ -94,6 +94,7 @@ package «tests» {}
 @[default_target] lean_lib LoopsIssues
 @[default_target] lean_lib LoopsNested
 @[default_target] lean_lib LoopsNestedExits
+@[default_target] lean_lib LoopsNestedExitsIter
 @[default_target] lean_lib LoopsNestedRec
 @[default_target] lean_lib LoopsRec
 @[default_target] lean_lib LoopsSequences
