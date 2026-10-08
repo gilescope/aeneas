@@ -586,10 +586,17 @@ and aproj_to_consumed_aux (ctx : bs_ctx) (_abs_regions : T.RegionId.Set.t)
            to make sure we have to update this part of the code once we add support
            for nested borrows.
         *)
+        (* Only nesting that involves a mutable borrow matters here: shared
+           borrows of shared data (e.g. a closure capturing a reference to
+           another closure that holds references, next to the [&mut] being given
+           back) are never updated, so the value given back is the whole value. *)
         [%sanity_check] ctx.span
-          (not
-             (TypesUtils.ty_has_nested_borrows (Some ctx.span)
-                ctx.type_ctx.type_infos ty));
+          (let info =
+             TypesAnalysis.analyze_ty (Some ctx.span) ctx.type_ctx.type_infos ty
+           in
+           not
+             (info.TypesAnalysis.contains_nested_mut
+            || info.TypesAnalysis.contains_borrow_under_mut));
         (* The symbolic value was updated.
 
          We're using the projection type as the type of the symbolic value -
