@@ -475,6 +475,23 @@ let rec compare_rtys ?(allow_erased = false) (span : Meta.span) (ctx : eval_ctx)
          get trait types, we can consider them as variables *)
       [%sanity_check] span (ty1 = ty2);
       default
+  | TFnDef f1, TFnDef f2 ->
+      (* A function item (e.g. a constructor passed to [map]): a zero-sized
+         value, which holds a borrow only through its generics; we compare them
+         as for ADTs *)
+      let f1 = f1.binder_value and f2 = f2.binder_value in
+      [%sanity_check] span (f1.kind = f2.kind);
+      let generics1 = f1.generics and generics2 = f2.generics in
+      let regions_b =
+        List.fold_left
+          (fun b (r1, r2) -> combine b (compare_regions r1 r2))
+          default
+          (List.combine generics1.regions generics2.regions)
+      in
+      List.fold_left
+        (fun b (ty1, ty2) -> combine b (compare ty1 ty2))
+        regions_b
+        (List.combine generics1.types generics2.types)
   | TDynTrait _, TDynTrait _ ->
       (* TODO: this is wrong, we need to compare the regions inside TDyn *)
       [%cassert] span (not Config.use_dyn_regions) "Unimplemented";
