@@ -122,9 +122,11 @@ package «tests» {}
 @[default_target] lean_lib Slices
 @[default_target] lean_lib Static
 @[default_target] lean_lib StaticStr
+@[default_target] lean_lib StdSmallOps
 @[default_target] lean_lib StepBy
 @[default_target] lean_lib StepOverflowing
 @[default_target] lean_lib StringChars
+@[default_target] lean_lib StringOps
 @[default_target] lean_lib SwitchTest
 @[default_target] lean_lib TargetFeatures
 @[default_target] lean_lib Traits

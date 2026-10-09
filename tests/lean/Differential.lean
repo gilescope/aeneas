@@ -6,6 +6,7 @@ import LoopsNestedExitsIter
 import NestedSharedIter
 import StaticStr
 import RecursiveDeriveClone
+import StringOps
 
 /-! # Differential checks: the extracted Lean computes what Rust computes
 
@@ -166,5 +167,35 @@ open recursive_derive_clone in
 #guard (do let s ← sample; let t ← shorter; order t s).reducesTo .lt
 open recursive_derive_clone in
 #guard (do let s ← sample; order s s).reducesTo .eq
+
+-- tests/src/string-ops.rs
+open string_ops in
+#guard (copy "é").reducesTo "é"
+open string_ops in
+#guard (same "ab" "ab").reducesTo true
+open string_ops in
+#guard (same "ab" "abc").reducesTo false
+open string_ops in
+#guard (order "" "a").reducesTo .lt
+open string_ops in
+#guard (order "ab" "a").reducesTo .gt
+open string_ops in
+#guard (order "z" "é").reducesTo .lt
+open string_ops in
+#guard (order "\uFF61" "𐀀").reducesTo .lt
+open string_ops in
+#guard (order "é" "é").reducesTo .eq
+open string_ops in
+#guard (partial_order "b" "a").reducesTo (some .gt)
+open string_ops in
+#guard (do let c ← copy_tag (.Custom "x"); same_tag c (.Custom "x")).reducesTo true
+open string_ops in
+#guard (same_tag (.Custom "x") (.Custom "y")).reducesTo false
+open string_ops in
+#guard (order_tag (.Fixed 9#usize) (.Custom "x")).reducesTo .lt
+open string_ops in
+#guard (order_tag (.Custom "é") (.Custom "x")).reducesTo .gt
+open string_ops in
+#guard (partial_order_tag (.Custom "x") (.Custom "xa")).reducesTo (some .lt)
 
 end Differential

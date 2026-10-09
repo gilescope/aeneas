@@ -219,6 +219,22 @@ let lean_builtin_funs =
       ~can_fail:false ~lift:false;
     (* file: "Aeneas/Std/Vec.lean", line: 376 *)
     mk_fun "alloc::slice::{[@T]}::to_vec" "alloc.slice.Slice.to_vec";
+    (* file: "Aeneas/Std/AllocString.lean", line: 16 *)
+    mk_fun "alloc::string::{core::clone::Clone<alloc::string::String>}::clone"
+      "alloc.string.String.Insts.CoreCloneClone.clone";
+    (* file: "Aeneas/Std/AllocString.lean", line: 24 *)
+    mk_fun "alloc::string::{core::cmp::Ord<alloc::string::String>}::cmp"
+      "alloc.string.String.Insts.CoreCmpOrd.cmp";
+    (* file: "Aeneas/Std/AllocString.lean", line: 19 *)
+    mk_fun
+      "alloc::string::{core::cmp::PartialEq<alloc::string::String, \
+       alloc::string::String>}::eq"
+      "alloc.string.String.Insts.CoreCmpPartialEqString.eq";
+    (* file: "Aeneas/Std/AllocString.lean", line: 28 *)
+    mk_fun
+      "alloc::string::{core::cmp::PartialOrd<alloc::string::String, \
+       alloc::string::String>}::partial_cmp"
+      "alloc.string.String.Insts.CoreCmpPartialOrdString.partial_cmp";
     (* file: "Aeneas/Std/Vec.lean", line: 395 *)
     mk_fun "alloc::vec::from_elem" "alloc.vec.from_elem";
     (* file: "Aeneas/Std/VecIter.lean", line: 83 *)
