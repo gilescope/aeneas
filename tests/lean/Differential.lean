@@ -11,6 +11,7 @@ import StdSmallOps
 import RefOps
 import IterAdaptersStd
 import IterStdOverrides
+import Btree
 
 /-! # Differential checks: the extracted Lean computes what Rust computes
 
@@ -341,6 +342,32 @@ open iter_std_overrides
 #guard (do let (h, _) ← mut_hint u32s[1#u32, 2#u32]; .ok h).reducesTo (2#usize, some 2#usize)
 #guard (okList (halve_checked u32s[2#u32, 4#u32])).reducesTo (core.result.Result.Ok [1#u32, 2#u32])
 #guard (okList (halve_checked u32s[2#u32, 3#u32, 5#u32])).reducesTo (core.result.Result.Err 3#u32)
+end
+
+-- tests/src/btree.rs
+section
+open btree
+/-- `histogram(&[3, 1, 3, 2, 3])` -/
+def hist := histogram u32s[3#u32, 1#u32, 3#u32, 2#u32, 3#u32]
+/-- A map's `flatten`, as a list -/
+def flat (m : Result (alloc.collections.btree.map.BTreeMap Std.U32 Std.U32 Global)) :
+    Result (List Std.U32) := do
+  let m ← m
+  let v ← flatten m
+  .ok v.val
+
+#guard (insert_twice 5#u32).reducesTo (none, some 1#u32, some 2#u32)
+#guard (flat hist).reducesTo [1#u32, 1#u32, 2#u32, 1#u32, 3#u32, 3#u32]
+#guard (do let m ← hist; lookup m 3#u32).reducesTo (some 3#u32)
+#guard (do let m ← hist; lookup m 4#u32).reducesTo none
+#guard (do let m ← hist; index m 2#u32).reducesTo 1#u32
+#guard failsWith (do let m ← hist; index m 4#u32) .panic
+#guard (do let m ← hist; largest m).reducesTo (some (3#u32, 3#u32))
+#guard (do let m ← alloc.collections.btree.map.BTreeMapKVGlobal.new Std.U32 Std.U32; largest m).reducesTo none
+#guard (flat (from_pairs (Slice.from [(2#u32, 20#u32), (1#u32, 10#u32), (2#u32, 21#u32)] (by scalar_tac))))
+  |>.reducesTo [1#u32, 10#u32, 2#u32, 21#u32]
+#guard (do let v ← sorted_unique u32s[3#u32, 1#u32, 3#u32, 2#u32]; .ok v.val)
+  |>.reducesTo [1#u32, 2#u32, 3#u32]
 end
 
 end Differential

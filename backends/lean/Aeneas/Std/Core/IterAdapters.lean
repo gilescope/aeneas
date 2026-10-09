@@ -438,7 +438,7 @@ def core.iter.traits.iterator.Iterator.chain.default
 
 /-- Core's `FlattenCompat` over `Map<I, F>`: the items of the iterator in front, then of `f` of
 the next inner item (the back iterator is only filled by `next_back`, not modelled) -/
-@[rust_type "core::iter::adapters::flatten::FlatMap"]
+@[rust_type "core::iter::adapters::flatten::FlatMap" (body := .opaque)]
 structure core.iter.adapters.flatten.FlatMap (I : Type u) (U : Type v) (F : Type w)
     (Item : Type x) (IntoIter : Type y) where
   iter : Option I
@@ -550,7 +550,7 @@ def core.iter.traits.iterator.Iterator.flat_map.default
 
 /-! ## `once` and `empty` -/
 
-@[rust_type "core::iter::sources::once::Once"]
+@[rust_type "core::iter::sources::once::Once" (body := .opaque)]
 structure core.iter.sources.once.Once (T : Type u) where
   inner : Option T
 
@@ -578,7 +578,7 @@ def core.iter.sources.once.Once.Insts.CoreIterTraitsIteratorIterator (T : Type) 
   next := core.iter.sources.once.Once.Insts.CoreIterTraitsIteratorIterator.next
   size_hint := core.iter.sources.once.Once.Insts.CoreIterTraitsIteratorIterator.size_hint
 
-@[rust_type "core::iter::sources::empty::Empty"]
+@[rust_type "core::iter::sources::empty::Empty" (body := .opaque)]
 structure core.iter.sources.empty.Empty (T : Type u) where
 
 @[rust_fun "core::iter::sources::empty::empty"]

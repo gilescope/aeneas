@@ -888,6 +888,11 @@ let extract_type_decl_register_names (ctx : extraction_ctx) (def : type_decl) :
                   (fun variant_id (variant : variant) ->
                     (variant_id, StringMap.find variant.variant_name variant_map))
                   variants
+            | Some { body_info = None; _ } ->
+                (* An opaque model (e.g. [BTreeMap]'s [Entry]): no variant
+                   names, so code which builds or matches the variants fails
+                   to extract rather than meaning something else. *)
+                []
             | Some info ->
                 [%craise] span
                   ("Invalid builtin information for type "

@@ -54,6 +54,23 @@ def Pair.Insts.CoreCmpPartialEqPair.eq {U T : Type} (PartialEqInst0 : core.cmp.P
     (PartialEqInst1 : core.cmp.PartialEq T T) (a b : U × T) : Result Bool := do
   if ← PartialEqInst0.eq a.1 b.1 then PartialEqInst1.eq a.2 b.2 else ok false
 
+/-- `(U, T)`'s `Ord`: lexicographic, the second fields only on a tie -/
+@[expose, rust_fun "core::tuple::{core::cmp::Ord<(@U, @T)>}::cmp"]
+def Pair.Insts.CoreCmpOrd.cmp {U T : Type} (OrdInst0 : core.cmp.Ord U)
+    (OrdInst1 : core.cmp.Ord T) (a b : U × T) : Result Ordering := do
+  match ← OrdInst0.cmp a.1 b.1 with
+  | .eq => OrdInst1.cmp a.2 b.2
+  | o => ok o
+
+/-- `(U, T)`'s `PartialOrd`: lexicographic, the second fields only on `Some(Equal)` -/
+@[expose, rust_fun "core::tuple::{core::cmp::PartialOrd<(@U, @T), (@U, @T)>}::partial_cmp"]
+def Pair.Insts.CoreCmpPartialOrdPair.partial_cmp {U T : Type}
+    (PartialOrdInst0 : core.cmp.PartialOrd U U) (PartialOrdInst1 : core.cmp.PartialOrd T T)
+    (a b : U × T) : Result (Option Ordering) := do
+  match ← PartialOrdInst0.partial_cmp a.1 b.1 with
+  | some .eq => PartialOrdInst1.partial_cmp a.2 b.2
+  | o => ok o
+
 /-! ## `Option` -/
 
 @[expose, rust_fun "core::option::{core::option::Option<&'0 @T>}::copied"]

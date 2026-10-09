@@ -17,35 +17,7 @@ set_option maxHeartbeats 1000000
 /- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
 set_option maxRecDepth 2048
 
-/- You can remove the following line by using the CLI option `-all-computable`: -/
-noncomputable section
-
 namespace closure_mut_capture_nested
-
-/-- Trait declaration: [core::alloc::AllocatorClone]
-    Source: '/rustc/library/core/src/alloc/mod.rs', lines 541:0-541:50
-    Name pattern: [core::alloc::AllocatorClone]
-    Visibility: public -/
-@[rust_trait "core::alloc::AllocatorClone"
-  (parentClauses := ["cloneCloneInst"])]
-structure core.alloc.AllocatorClone (Self : Type) where
-  cloneCloneInst : core.clone.Clone Self
-
-/-- Trait declaration: [core::borrow::Borrow]
-    Source: '/rustc/library/core/src/borrow.rs', lines 158:0-158:40
-    Name pattern: [core::borrow::Borrow]
-    Visibility: public -/
-@[rust_trait "core::borrow::Borrow"]
-structure core.borrow.Borrow (Self : Type) (Borrowed : Type) where
-  borrow : Self → Result Borrowed
-
-/-- Trait implementation: [core::borrow::{impl core::borrow::Borrow<T> for T}]
-    Source: '/rustc/library/core/src/borrow.rs', lines 212:0-212:37
-    Name pattern: [core::borrow::Borrow<@T, @T>] -/
-@[reducible, rust_trait_impl "core::borrow::Borrow<@T, @T>"]
-def core.borrow.Borrow.Blanket (T : Type) : core.borrow.Borrow T T := {
-  borrow := core.borrow.Borrow.Blanket.borrow
-}
 
 /-- Trait declaration: [core::ops::arith::Add]
     Source: '/rustc/library/core/src/ops/arith.rs', lines 76:0-76:31
@@ -64,36 +36,6 @@ structure core.ops.arith.Add (Self : Type) (Rhs : Type) (Self_Output : Type)
 structure core.ops.arith.Mul (Self : Type) (Rhs : Type) (Self_Output : Type)
   where
   mul : Self → Rhs → Result Self_Output
-
-/-- Trait implementation: [alloc::alloc::{impl core::alloc::AllocatorClone for alloc::alloc::Global}]
-    Source: '/rustc/library/alloc/src/alloc.rs', lines 62:0-62:50
-    Name pattern: [core::alloc::AllocatorClone<alloc::alloc::Global>] -/
-@[reducible, rust_trait_impl
-  "core::alloc::AllocatorClone<alloc::alloc::Global>"]
-def alloc.alloc.Global.Insts.CoreAllocAllocatorClone :
-  core.alloc.AllocatorClone Global := {
-  cloneCloneInst := core.clone.CloneGlobal
-}
-
-/-- [alloc::collections::btree::map::BTreeMap]
-    Source: '/rustc/library/alloc/src/collections/btree/map.rs', lines 189:0-193:1
-    Name pattern: [alloc::collections::btree::map::BTreeMap]
-    Visibility: public -/
-@[rust_type "alloc::collections::btree::map::BTreeMap"]
-axiom alloc.collections.btree.map.BTreeMap (K : Type) (V : Type) (A : Type) :
-  Type
-
-/-- [alloc::collections::btree::map::{alloc::collections::btree::map::BTreeMap<K, V, A>}::get]:
-    Source: '/rustc/library/alloc/src/collections/btree/map.rs', lines 719:4-722:15
-    Name pattern: [alloc::collections::btree::map::{alloc::collections::btree::map::BTreeMap<@K, @V, @A>}::get]
-    Visibility: public -/
-@[rust_fun
-  "alloc::collections::btree::map::{alloc::collections::btree::map::BTreeMap<@K, @V, @A>}::get"]
-axiom alloc.collections.btree.map.BTreeMap.get
-  {K : Type} {V : Type} {A : Type} {Q : Type} (coreallocAllocatorCloneInst :
-  core.alloc.AllocatorClone A) (coreborrowBorrowInst : core.borrow.Borrow K Q)
-  (corecmpOrdInst : core.cmp.Ord K) (corecmpOrdInst1 : core.cmp.Ord Q) :
-  alloc.collections.btree.map.BTreeMap K V A → Q → Result (Option V)
 
 /-- [closure_mut_capture_nested::helpers::{closure}]
     Source: 'tests/src/closure-mut-capture-nested.rs', lines 17:19-17:85 -/

@@ -19,7 +19,7 @@ which they must agree with; `size_hint` and `max` follow each iterator's own bod
 /-! ## Arrays -/
 
 /-- Core keeps the array and the live index range; the items left are enough here -/
-@[rust_type "core::array::iter::IntoIter"]
+@[rust_type "core::array::iter::IntoIter" (body := .opaque)]
 structure core.array.iter.IntoIter (T : Type u) (N : Usize) where
   items : List T
 
