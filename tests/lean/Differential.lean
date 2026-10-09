@@ -8,6 +8,7 @@ import StaticStr
 import RecursiveDeriveClone
 import StringOps
 import StdSmallOps
+import RefOps
 
 /-! # Differential checks: the extracted Lean computes what Rust computes
 
@@ -241,6 +242,24 @@ open std_small_ops
 #guard (split_first (Slice.from [] (by scalar_tac))).reducesTo none
 #guard (from_ref 9#u32).reducesTo 1#usize
 #guard (borrowed 11#u32).reducesTo 11#u32
+end
+
+-- tests/src/ref-ops.rs
+section
+open ref_ops
+#guard (add_refs 200#u8 55#u8).reducesTo 255#u8
+#guard failsWith (add_refs 200#u8 56#u8) .integerOverflow
+#guard (sub_val_ref (-5)#i64 7#i64).reducesTo (-12)#i64
+#guard failsWith (sub_val_ref core.num.I64.MIN 1#i64) .integerOverflow
+#guard (mul_ref_val 6#u32 7#u32).reducesTo 42#u32
+#guard (div_ref_val (-7)#i32 2#i32).reducesTo (-3)#i32
+#guard failsWith (div_ref_val 1#i32 0#i32) .divisionByZero
+#guard failsWith (div_ref_val core.num.I32.MIN (-1)#i32) .integerOverflow
+#guard (rem_val_ref 17#usize 5#usize).reducesTo 2#usize
+#guard failsWith (rem_val_ref 1#usize 0#usize) .divisionByZero
+#guard (xor_refs 12#u64 10#u64).reducesTo 6#u64
+#guard (and_ref_val 12#u16 10#u16).reducesTo 8#u16
+#guard (or_val_ref (-128)#i8 1#i8).reducesTo (-127)#i8
 end
 
 end Differential
