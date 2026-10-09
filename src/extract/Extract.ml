@@ -3647,6 +3647,45 @@ let trait_impl_keep_method (ctx : extraction_ctx) (span : Meta.span)
         in
         fun item_name -> Collections.StringSet.mem item_name method_names
 
+(** The methods of a builtin trait whose Lean model has no default, so an impl
+    must give them. Charon only translates the methods of a std impl which the
+    crate uses, so a generated impl may lack one: it gets a body which always
+    fails, as an {!Unsupported} method does, so that nothing can be proved
+    about a call to it. A default would be wrong: [Iterator::size_hint]'s is
+    [(0, None)], which most std iterators override. *)
+let builtin_required_methods : (string * string list) list =
+  [ ("core.iter.traits.iterator.Iterator", [ "size_hint" ]) ]
+
+(** The Lean fields of the required methods (see {!builtin_required_methods})
+    which [impl] lacks *)
+let missing_required_methods (ctx : extraction_ctx) (impl : trait_impl) :
+    string list =
+  let builtin =
+    Option.bind
+      (TraitDeclId.Map.find_opt impl.impl_trait.trait_decl_id
+         ctx.trans_trait_decls) (fun (d : trait_decl) -> d.builtin_info)
+  in
+  match (backend (), builtin) with
+  | Lean, Some info ->
+      let required =
+        Option.value ~default:[]
+          (List.assoc_opt info.extract_name builtin_required_methods)
+      in
+      let present = List.map (fun (_, name, _) -> name) impl.methods in
+      List.filter_map
+        (fun m ->
+          if List.mem m present then None
+          else
+            Option.map
+              (fun (f : builtin_fun_info) -> f.extract_name)
+              (List.assoc_opt m info.methods))
+        required
+  | _ -> []
+
+(** A method body which always fails (see {!method_adapter}) *)
+let extract_failing_method (fmt : F.formatter) : unit =
+  F.pp_print_string fmt "fun _ => Result.fail Error.undef"
+
 (** Print a trait impl as a structure literal, its generics instantiated with
     [generics]. Used for the impls of a group of functions which recurse through
     them (aeneas#1264): those impls are only defined after the group, so inside
@@ -3726,6 +3765,12 @@ let extract_trait_impl_literal (ctx : extraction_ctx) (fmt : F.formatter)
                     F.pp_print_string fmt ")" )
         else None)
       impl.methods
+  in
+  let methods =
+    methods
+    @ List.map
+        (fun field -> (field, fun () -> extract_failing_method fmt))
+        (missing_required_methods ctx impl)
   in
   if inside then F.pp_print_string fmt "(";
   F.pp_print_string fmt "{ ";
@@ -3980,6 +4025,12 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
         if keep_method name then
           extract_trait_impl_method_items ctx fmt impl method_id bound_fn)
       impl.methods;
+    List.iter
+      (fun field ->
+        extract_trait_impl_item ctx fmt field (fun () ->
+            F.pp_print_space fmt ();
+            extract_failing_method fmt))
+      (missing_required_methods ctx impl);
 
     (* Close the outer boxes for the definition, as well as the brackets *)
     F.pp_close_box fmt ();
