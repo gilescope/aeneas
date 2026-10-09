@@ -77,6 +77,7 @@ package «tests» {}
 @[default_target] lean_lib Issue815GlobalReferencingFallibleGlobal
 @[default_target] lean_lib IssueCharon1172
 @[default_target] lean_lib IterAdapters
+@[default_target] lean_lib IterAdaptersStd
 @[default_target] lean_lib Iterators
 @[default_target] lean_lib IteratorsArray
 @[default_target] lean_lib IteratorsScalar

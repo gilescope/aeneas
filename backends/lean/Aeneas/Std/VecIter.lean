@@ -19,12 +19,22 @@ def alloc.vec.into_iter.IteratorIntoIter.next {T : Type} (it: alloc.vec.into_ite
   | []  => ok (none, it)
   | hd :: tl => ok (hd, .from tl (by grind) )
 
+/-- Exact: the elements left -/
+@[expose, rust_fun
+  "alloc::vec::into_iter::{core::iter::traits::iterator::Iterator<alloc::vec::into_iter::IntoIter<@T, @A>, @T>}::size_hint"
+  (keepParams := [true, false])]
+def alloc.vec.into_iter.IteratorIntoIter.size_hint {T : Type} (it : alloc.vec.into_iter.IntoIter T) :
+  Result (Usize × Option Usize) :=
+  let n : Usize := UScalar.ofNatCore it.val.length (by have := Vec.property it; scalar_tac)
+  ok (n, some n)
+
 @[reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<alloc::vec::into_iter::IntoIter<@T, @A>, @T>"
   (keepParams := [true, false])]
 impl_def core.iter.traits.iterator.IteratorVecIntoIter (T : Type) :
   core.iter.traits.iterator.Iterator (alloc.vec.into_iter.IntoIter T) T := {
   next := alloc.vec.into_iter.IteratorIntoIter.next
+  size_hint := alloc.vec.into_iter.IteratorIntoIter.size_hint
   step_by := core.iter.traits.iterator.Iterator.step_by.trait_default
     (core.iter.traits.iterator.IteratorVecIntoIter T)
   enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default

@@ -22,59 +22,6 @@ noncomputable section
 
 namespace closure_mut_capture_sibling
 
-/-- [core::iter::traits::iterator::Iterator::map]:
-    Source: '/rustc/library/core/src/iter/traits/iterator.rs', lines 845:4-848:34
-    Name pattern: [core::iter::traits::iterator::Iterator::map]
-    Visibility: public -/
-@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::map"]
-axiom core.iter.traits.iterator.Iterator.map.default
-  {Self : Type} {B : Type} {F : Type} {Clause0_Item : Type} (IteratorInst :
-  core.iter.traits.iterator.Iterator Self Clause0_Item)
-  (opsfunctionFnMutFTupleClause0_ItemBInst : core.ops.function.FnMut F
-  Clause0_Item B) :
-  Self → F → Result (core.iter.adapters.map.Map Self F)
-
-/-- [core::iter::adapters::map::{impl core::iter::traits::iterator::Iterator<B> for core::iter::adapters::map::Map<I, F>}::next]:
-    Source: '/rustc/library/core/src/iter/adapters/map.rs', lines 106:4-106:35
-    Name pattern: [core::iter::adapters::map::{core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>}::next]
-    Visibility: public -/
-@[rust_fun
-  "core::iter::adapters::map::{core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>}::next"]
-axiom core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next
-  {B : Type} {I : Type} {F : Type} {Clause0_Item : Type}
-  (traitsiteratorIteratorInst : core.iter.traits.iterator.Iterator I
-  Clause0_Item) (opsfunctionFnMutFTupleClause0_ItemBInst :
-  core.ops.function.FnMut F Clause0_Item B) :
-  core.iter.adapters.map.Map I F → Result ((Option B) ×
-    (core.iter.adapters.map.Map I F))
-
-/-- Trait implementation: [core::iter::adapters::map::{impl core::iter::traits::iterator::Iterator<B> for core::iter::adapters::map::Map<I, F>}]
-    Source: '/rustc/library/core/src/iter/adapters/map.rs', lines 99:0-101:27
-    Name pattern: [core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>] -/
-@[reducible, rust_trait_impl
-  "core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>"]
-impl_def core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator {B :
-  Type} {I : Type} {F : Type} {Clause0_Item : Type} (traitsiteratorIteratorInst
-  : core.iter.traits.iterator.Iterator I Clause0_Item)
-  (opsfunctionFnMutFTupleClause0_ItemBInst : core.ops.function.FnMut F
-  Clause0_Item B) : core.iter.traits.iterator.Iterator
-  (core.iter.adapters.map.Map I F) B := {
-  next := core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next
-    traitsiteratorIteratorInst opsfunctionFnMutFTupleClause0_ItemBInst
-  map := fun {B1 : Type} {F1 : Type} (opsfunctionFnMutPTupleBPInst :
-    core.ops.function.FnMut F1 B B1) =>
-    core.iter.traits.iterator.Iterator.map.default
-    (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
-    traitsiteratorIteratorInst opsfunctionFnMutFTupleClause0_ItemBInst)
-    opsfunctionFnMutPTupleBPInst
-  collect := fun {B1 : Type} (collectFromIteratorInst :
-    core.iter.traits.collect.FromIterator B1 B) =>
-    core.iter.traits.iterator.Iterator.collect.default
-    (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
-    traitsiteratorIteratorInst opsfunctionFnMutFTupleClause0_ItemBInst)
-    collectFromIteratorInst
-}
-
 /-- [core::mem::maybe_uninit::MaybeUninit]
     Source: '/rustc/library/core/src/mem/maybe_uninit.rs', lines 355:0-355:24
     Name pattern: [core::mem::maybe_uninit::MaybeUninit]
@@ -199,7 +146,7 @@ def evals
       Array Std.U32 3#usize))
   let ret := alloc.slice.Slice.into_vec y
   let i ← core.slice.Slice.iter columns
-  let (m, map_back) ←
+  let (m, default_back) ←
     core.iter.traits.iterator.Iterator.map.default
       (core.iter.traits.iterator.IteratorSliceIter Std.Usize)
       (evals.closure.Insts.CoreOpsFunctionFnMutTupleShared2UsizeResultU32U32
@@ -217,13 +164,13 @@ def evals
   | core.ops.control_flow.ControlFlow.Continue val =>
     let i1 := alloc.vec.Vec.len val
     let i2 ← lift (UScalar.cast .U32 i1)
-    let (t1, _) := map_back m1
+    let (t1, _) := default_back m1
     ok (core.result.Result.Ok i2, t1)
   | core.ops.control_flow.ControlFlow.Break residual =>
     let r1 ←
       core.result.Result.Insts.CoreOpsTry_traitFromResidualResult.from_residual
         Std.U32 (core.convert.FromSame Std.U32) residual
-    let (t1, _) := map_back m1
+    let (t1, _) := default_back m1
     ok (r1, t1)
 
 end closure_mut_capture_sibling

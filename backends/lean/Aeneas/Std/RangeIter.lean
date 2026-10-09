@@ -562,6 +562,23 @@ def core.ops.range.Range.Insts.DoubleEndedIterator
 }
 
 
+/-- Empty if exhausted or `start > end`; else one more than `Step::steps_between`, saturating
+the lower bound (`range.rs`) -/
+@[rust_fun
+  "core::iter::range::{core::iter::traits::iterator::Iterator<core::ops::range::RangeInclusive<@A>, @A>}::size_hint"]
+def core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator.size_hint
+  {A : Type} (StepInst : core.iter.range.Step A) (r : core.ops.range.RangeInclusive A) :
+  Result (Usize × Option Usize) := do
+  if r.exhausted then ok (0#usize, some 0#usize)
+  else if !(← StepInst.partialOrdInst.le r.start r.end) then ok (0#usize, some 0#usize)
+  else
+    let (lo, hi) ← StepInst.steps_between r.start r.end
+    let lo := if h : lo.val < Usize.max then UScalar.ofNatCore (lo.val + 1) (by scalar_tac) else lo
+    let hi := match hi with
+      | some s => if h : s.val < Usize.max then some (UScalar.ofNatCore (s.val + 1) (by scalar_tac)) else none
+      | none => none
+    ok (lo, hi)
+
 @[reducible,
   rust_trait_impl "core::iter::traits::iterator::Iterator<core::ops::range::RangeInclusive<@A>, @A>"]
 impl_def core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator
@@ -569,6 +586,8 @@ impl_def core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator
   core.iter.traits.iterator.Iterator (core.ops.range.RangeInclusive A) A := {
   next :=
     core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator.next StepInst
+  size_hint :=
+    core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator.size_hint StepInst
   step_by := core.iter.traits.iterator.Iterator.step_by.trait_default
     (core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator StepInst)
   enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default

@@ -47,37 +47,6 @@ def core.borrow.Borrow.Blanket (T : Type) : core.borrow.Borrow T T := {
   borrow := core.borrow.Borrow.Blanket.borrow
 }
 
-/-- [core::iter::adapters::chain::Chain]
-    Source: '/rustc/library/core/src/iter/adapters/chain.rs', lines 23:0-23:22
-    Name pattern: [core::iter::adapters::chain::Chain]
-    Visibility: public -/
-@[rust_type "core::iter::adapters::chain::Chain"]
-axiom core.iter.adapters.chain.Chain (A : Type) (B : Type) : Type
-
-/-- [core::iter::traits::iterator::Iterator::map]:
-    Source: '/rustc/library/core/src/iter/traits/iterator.rs', lines 845:4-848:34
-    Name pattern: [core::iter::traits::iterator::Iterator::map]
-    Visibility: public -/
-@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::map"]
-axiom core.iter.traits.iterator.Iterator.map.default
-  {Self : Type} {B : Type} {F : Type} {Clause0_Item : Type} (IteratorInst :
-  core.iter.traits.iterator.Iterator Self Clause0_Item)
-  (opsfunctionFnMutFTupleClause0_ItemBInst : core.ops.function.FnMut F
-  Clause0_Item B) :
-  Self → F → Result (core.iter.adapters.map.Map Self F)
-
-/-- [core::iter::traits::iterator::Iterator::chain]:
-    Source: '/rustc/library/core/src/iter/traits/iterator.rs', lines 524:4-527:51
-    Name pattern: [core::iter::traits::iterator::Iterator::chain]
-    Visibility: public -/
-@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::chain"]
-axiom core.iter.traits.iterator.Iterator.chain.default
-  {Self : Type} {U : Type} {Clause0_Item : Type} {Clause1_IntoIter : Type}
-  (IteratorInst : core.iter.traits.iterator.Iterator Self Clause0_Item)
-  (collectIntoIteratorInst : core.iter.traits.collect.IntoIterator U
-  Clause0_Item Clause1_IntoIter) :
-  Self → U → Result (core.iter.adapters.chain.Chain Self Clause1_IntoIter)
-
 /-- [core::iter::adapters::enumerate::{impl core::iter::traits::iterator::Iterator<(usize, Clause0_Item)> for core::iter::adapters::enumerate::Enumerate<I>}::fold]:
     Source: '/rustc/library/core/src/iter/adapters/enumerate.rs', lines 129:4-131:44
     Name pattern: [core::iter::adapters::enumerate::{core::iter::traits::iterator::Iterator<core::iter::adapters::enumerate::Enumerate<@I>, (usize, @Clause0_Item)>}::fold]
@@ -91,146 +60,6 @@ axiom
   Clause0_Item) (opsfunctionFnMutFoldPairAccPairUsizeClause0_ItemAccInst :
   core.ops.function.FnMut Fold (Acc × (Std.Usize × Clause0_Item)) Acc) :
   core.iter.adapters.enumerate.Enumerate I → Acc → Fold → Result Acc
-
-/-- [core::iter::adapters::map::{impl core::iter::traits::iterator::Iterator<B> for core::iter::adapters::map::Map<I, F>}::fold]:
-    Source: '/rustc/library/core/src/iter/adapters/map.rs', lines 124:4-126:41
-    Name pattern: [core::iter::adapters::map::{core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>}::fold]
-    Visibility: public -/
-@[rust_fun
-  "core::iter::adapters::map::{core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>}::fold"]
-axiom core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.fold
-  {B : Type} {I : Type} {F : Type} {Acc : Type} {G : Type} {Clause0_Item :
-  Type} (traitsiteratorIteratorInst : core.iter.traits.iterator.Iterator I
-  Clause0_Item) (opsfunctionFnMutFTupleClause0_ItemBInst :
-  core.ops.function.FnMut F Clause0_Item B) (opsfunctionFnMutGPairAccInst :
-  core.ops.function.FnMut G (Acc × B) Acc) :
-  core.iter.adapters.map.Map I F → Acc → G → Result Acc
-
-/-- [core::iter::adapters::map::{impl core::iter::traits::iterator::Iterator<B> for core::iter::adapters::map::Map<I, F>}::next]:
-    Source: '/rustc/library/core/src/iter/adapters/map.rs', lines 106:4-106:35
-    Name pattern: [core::iter::adapters::map::{core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>}::next]
-    Visibility: public -/
-@[rust_fun
-  "core::iter::adapters::map::{core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>}::next"]
-axiom core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next
-  {B : Type} {I : Type} {F : Type} {Clause0_Item : Type}
-  (traitsiteratorIteratorInst : core.iter.traits.iterator.Iterator I
-  Clause0_Item) (opsfunctionFnMutFTupleClause0_ItemBInst :
-  core.ops.function.FnMut F Clause0_Item B) :
-  core.iter.adapters.map.Map I F → Result ((Option B) ×
-    (core.iter.adapters.map.Map I F))
-
-/-- Trait implementation: [core::iter::adapters::map::{impl core::iter::traits::iterator::Iterator<B> for core::iter::adapters::map::Map<I, F>}]
-    Source: '/rustc/library/core/src/iter/adapters/map.rs', lines 99:0-101:27
-    Name pattern: [core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>] -/
-@[reducible, rust_trait_impl
-  "core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>"]
-impl_def core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator {B :
-  Type} {I : Type} {F : Type} {Clause0_Item : Type} (traitsiteratorIteratorInst
-  : core.iter.traits.iterator.Iterator I Clause0_Item)
-  (opsfunctionFnMutFTupleClause0_ItemBInst : core.ops.function.FnMut F
-  Clause0_Item B) : core.iter.traits.iterator.Iterator
-  (core.iter.adapters.map.Map I F) B := {
-  next := core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next
-    traitsiteratorIteratorInst opsfunctionFnMutFTupleClause0_ItemBInst
-  chain := fun {U : Type} {Clause0_IntoIter : Type} (collectIntoIteratorInst :
-    core.iter.traits.collect.IntoIterator U B Clause0_IntoIter) =>
-    core.iter.traits.iterator.Iterator.chain.default
-    (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
-    traitsiteratorIteratorInst opsfunctionFnMutFTupleClause0_ItemBInst)
-    collectIntoIteratorInst
-  map := fun {B1 : Type} {F1 : Type} (opsfunctionFnMutPTupleBPInst :
-    core.ops.function.FnMut F1 B B1) =>
-    core.iter.traits.iterator.Iterator.map.default
-    (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
-    traitsiteratorIteratorInst opsfunctionFnMutFTupleClause0_ItemBInst)
-    opsfunctionFnMutPTupleBPInst
-  enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default
-    (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
-    traitsiteratorIteratorInst opsfunctionFnMutFTupleClause0_ItemBInst)
-  collect := fun {B1 : Type} (collectFromIteratorInst :
-    core.iter.traits.collect.FromIterator B1 B) =>
-    core.iter.traits.iterator.Iterator.collect.default
-    (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
-    traitsiteratorIteratorInst opsfunctionFnMutFTupleClause0_ItemBInst)
-    collectFromIteratorInst
-  fold := fun {B1 : Type} {F1 : Type} (opsfunctionFnMutPPairPInst :
-    core.ops.function.FnMut F1 (B1 × B) B1) =>
-    core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.fold
-    traitsiteratorIteratorInst opsfunctionFnMutFTupleClause0_ItemBInst
-    opsfunctionFnMutPPairPInst
-}
-
-/-- [core::iter::sources::once::Once]
-    Source: '/rustc/library/core/src/iter/sources/once.rs', lines 66:0-66:18
-    Name pattern: [core::iter::sources::once::Once]
-    Visibility: public -/
-@[rust_type "core::iter::sources::once::Once"]
-axiom core.iter.sources.once.Once (T : Type) : Type
-
-/-- [core::iter::sources::once::once]:
-    Source: '/rustc/library/core/src/iter/sources/once.rs', lines 56:0-56:35
-    Name pattern: [core::iter::sources::once::once]
-    Visibility: public -/
-@[rust_fun "core::iter::sources::once::once"]
-axiom core.iter.sources.once.once
-  {T : Type} : T → Result (core.iter.sources.once.Once T)
-
-/-- [core::iter::traits::iterator::Iterator::fold]:
-    Source: '/rustc/library/core/src/iter/traits/iterator.rs', lines 2674:4-2677:64
-    Name pattern: [core::iter::traits::iterator::Iterator::fold]
-    Visibility: public -/
-@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::fold"]
-axiom core.iter.traits.iterator.Iterator.fold.default
-  {Self : Type} {B : Type} {F : Type} {Clause0_Item : Type} (IteratorInst :
-  core.iter.traits.iterator.Iterator Self Clause0_Item)
-  (opsfunctionFnMutFPairBInst : core.ops.function.FnMut F (B × Clause0_Item)
-  B) :
-  Self → B → F → Result B
-
-/-- [core::iter::sources::once::{impl core::iter::traits::iterator::Iterator<T> for core::iter::sources::once::Once<T>}::next]:
-    Source: '/rustc/library/core/src/iter/sources/once.rs', lines 74:4-74:35
-    Name pattern: [core::iter::sources::once::{core::iter::traits::iterator::Iterator<core::iter::sources::once::Once<@T>, @T>}::next]
-    Visibility: public -/
-@[rust_fun
-  "core::iter::sources::once::{core::iter::traits::iterator::Iterator<core::iter::sources::once::Once<@T>, @T>}::next"]
-axiom core.iter.sources.once.Once.Insts.CoreIterTraitsIteratorIterator.next
-  {T : Type} :
-  core.iter.sources.once.Once T → Result ((Option T) ×
-    (core.iter.sources.once.Once T))
-
-/-- Trait implementation: [core::iter::sources::once::{impl core::iter::traits::iterator::Iterator<T> for core::iter::sources::once::Once<T>}]
-    Source: '/rustc/library/core/src/iter/sources/once.rs', lines 71:0-71:28
-    Name pattern: [core::iter::traits::iterator::Iterator<core::iter::sources::once::Once<@T>, @T>] -/
-@[reducible, rust_trait_impl
-  "core::iter::traits::iterator::Iterator<core::iter::sources::once::Once<@T>, @T>"]
-impl_def core.iter.sources.once.Once.Insts.CoreIterTraitsIteratorIterator (T :
-  Type) : core.iter.traits.iterator.Iterator (core.iter.sources.once.Once T) T
-  := {
-  next := core.iter.sources.once.Once.Insts.CoreIterTraitsIteratorIterator.next
-  chain := fun {U : Type} {Clause0_IntoIter : Type} (collectIntoIteratorInst :
-    core.iter.traits.collect.IntoIterator U T Clause0_IntoIter) =>
-    core.iter.traits.iterator.Iterator.chain.default
-    (core.iter.sources.once.Once.Insts.CoreIterTraitsIteratorIterator T)
-    collectIntoIteratorInst
-  map := fun {B : Type} {F : Type} (opsfunctionFnMutPTupleBPInst :
-    core.ops.function.FnMut F T B) =>
-    core.iter.traits.iterator.Iterator.map.default
-    (core.iter.sources.once.Once.Insts.CoreIterTraitsIteratorIterator T)
-    opsfunctionFnMutPTupleBPInst
-  enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default
-    (core.iter.sources.once.Once.Insts.CoreIterTraitsIteratorIterator T)
-  collect := fun {B : Type} (collectFromIteratorInst :
-    core.iter.traits.collect.FromIterator B T) =>
-    core.iter.traits.iterator.Iterator.collect.default
-    (core.iter.sources.once.Once.Insts.CoreIterTraitsIteratorIterator T)
-    collectFromIteratorInst
-  fold := fun {B : Type} {F : Type} (opsfunctionFnMutPPairPInst :
-    core.ops.function.FnMut F (B × T) B) =>
-    core.iter.traits.iterator.Iterator.fold.default
-    (core.iter.sources.once.Once.Insts.CoreIterTraitsIteratorIterator T)
-    opsfunctionFnMutPPairPInst
-}
 
 /-- Trait declaration: [core::ops::arith::Add]
     Source: '/rustc/library/core/src/ops/arith.rs', lines 76:0-76:31
@@ -249,17 +78,6 @@ structure core.ops.arith.Add (Self : Type) (Rhs : Type) (Self_Output : Type)
 structure core.ops.arith.Mul (Self : Type) (Rhs : Type) (Self_Output : Type)
   where
   mul : Self → Rhs → Result Self_Output
-
-/-- [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a T> for core::slice::iter::Iter<'a, T>}::fold]:
-    Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 254:12-256:49
-    Name pattern: [core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::fold]
-    Visibility: public -/
-@[rust_fun
-  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::fold"]
-axiom core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.fold
-  {T : Type} {B : Type} {F : Type} (opsfunctionFnMutFPairBSharedATBInst :
-  core.ops.function.FnMut F (B × T) B) :
-  core.slice.iter.Iter T → B → F → Result B
 
 /-- Trait implementation: [alloc::alloc::{impl core::alloc::AllocatorClone for alloc::alloc::Global}]
     Source: '/rustc/library/alloc/src/alloc.rs', lines 62:0-62:50
@@ -493,7 +311,7 @@ def helpers
   let e ←
     core.iter.traits.iterator.Iterator.enumerate.trait_default
       (core.iter.traits.iterator.IteratorSliceIter (alloc.vec.Vec F)) i
-  let (m, map_back) ←
+  let (m, default_back) ←
     core.iter.traits.iterator.Iterator.map.default
       (core.iter.traits.iterator.IteratorEnumerate
       (core.iter.traits.iterator.IteratorSliceIter (alloc.vec.Vec F)))
@@ -508,7 +326,7 @@ def helpers
       (helpers.closure_1.Insts.CoreOpsFunctionFnMutTuplePairUsizeShared4VecF
       coremarkerCopyInst coredefaultDefaultInst coreopsarithAddInst
       coreopsarithMulInst)) (core.iter.traits.collect.FromIteratorVec F) m
-  let (_, sum1, _) := map_back m1
+  let (_, sum1, _) := default_back m1
   let o ← core.iter.sources.once.once sum1
   core.iter.traits.iterator.Iterator.chain.default
     (core.iter.sources.once.Once.Insts.CoreIterTraitsIteratorIterator F)

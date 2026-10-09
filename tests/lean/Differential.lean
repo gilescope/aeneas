@@ -9,6 +9,7 @@ import RecursiveDeriveClone
 import StringOps
 import StdSmallOps
 import RefOps
+import IterAdaptersStd
 
 /-! # Differential checks: the extracted Lean computes what Rust computes
 
@@ -260,6 +261,32 @@ open ref_ops
 #guard (xor_refs 12#u64 10#u64).reducesTo 6#u64
 #guard (and_ref_val 12#u16 10#u16).reducesTo 8#u16
 #guard (or_val_ref (-128)#i8 1#i8).reducesTo (-127)#i8
+end
+
+-- tests/src/iter-adapters-std.rs
+/-- A literal `u32` slice -/
+macro "u32s[" xs:term,* "]" : term => `((Slice.from [$xs,*] (by scalar_tac) : Slice Std.U32))
+/-- A literal `usize` slice -/
+macro "usizes[" xs:term,* "]" : term => `((Slice.from [$xs,*] (by scalar_tac) : Slice Std.Usize))
+
+section
+open iter_adapters_std
+#guard (sum_doubled u32s[1#u32, 2#u32, 3#u32]).reducesTo 12#u32
+#guard (count_even u32s[1#u32, 2#u32, 4#u32, 5#u32]).reducesTo 2#usize
+#guard (any_big u32s[1#u32, 11#u32]).reducesTo true
+#guard (any_big u32s[1#u32, 2#u32]).reducesTo false
+#guard (halves u32s[2#u32, 3#u32, 8#u32]).reducesTo 5#u32
+#guard (chained u32s[1#u32, 2#u32] u32s[3#u32]).reducesTo 3#usize
+#guard (chained_sum u32s[1#u32, 2#u32] u32s[3#u32]).reducesTo 6#u32
+#guard (flat u32s[1#u32, 3#u32]).reducesTo 1234#u32
+#guard (once_then_empty 7#u32).reducesTo 1#usize
+#guard (largest usizes[3#usize, 9#usize, 2#usize]).reducesTo (some 9#usize)
+#guard (largest usizes[]).reducesTo none
+#guard (largest_by usizes[3#usize, 9#usize, 9#usize, 2#usize]).reducesTo (some 9#usize)
+#guard (total usizes[1#usize, 2#usize, 3#usize]).reducesTo 6#usize
+#guard (hint u32s[1#u32, 2#u32, 3#u32]).reducesTo (3#usize, some 3#usize)
+#guard (filter_hint u32s[1#u32, 2#u32, 3#u32]).reducesTo (0#usize, some 3#usize)
+#guard (chain_hint u32s[1#u32, 2#u32] u32s[3#u32]).reducesTo (3#usize, some 3#usize)
 end
 
 end Differential

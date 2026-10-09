@@ -17,36 +17,7 @@ set_option maxHeartbeats 1000000
 /- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
 set_option maxRecDepth 2048
 
-/- You can remove the following line by using the CLI option `-all-computable`: -/
-noncomputable section
-
 namespace ctor_closures
-
-/-- [core::iter::adapters::map::{impl core::iter::traits::iterator::Iterator<B> for core::iter::adapters::map::Map<I, F>}::next]:
-    Source: '/rustc/library/core/src/iter/adapters/map.rs', lines 106:4-106:35
-    Name pattern: [core::iter::adapters::map::{core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>}::next]
-    Visibility: public -/
-@[rust_fun
-  "core::iter::adapters::map::{core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>}::next"]
-axiom core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next
-  {B : Type} {I : Type} {F : Type} {Clause0_Item : Type}
-  (traitsiteratorIteratorInst : core.iter.traits.iterator.Iterator I
-  Clause0_Item) (opsfunctionFnMutFTupleClause0_ItemBInst :
-  core.ops.function.FnMut F Clause0_Item B) :
-  core.iter.adapters.map.Map I F → Result ((Option B) ×
-    (core.iter.adapters.map.Map I F))
-
-/-- [core::iter::traits::iterator::Iterator::map]:
-    Source: '/rustc/library/core/src/iter/traits/iterator.rs', lines 845:4-848:34
-    Name pattern: [core::iter::traits::iterator::Iterator::map]
-    Visibility: public -/
-@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::map"]
-axiom core.iter.traits.iterator.Iterator.map.default
-  {Self : Type} {B : Type} {F : Type} {Clause0_Item : Type} (IteratorInst :
-  core.iter.traits.iterator.Iterator Self Clause0_Item)
-  (opsfunctionFnMutFTupleClause0_ItemBInst : core.ops.function.FnMut F
-  Clause0_Item B) :
-  Self → F → Result (core.iter.adapters.map.Map Self F)
 
 /-- [ctor_closures::Label]
     Source: 'tests/src/ctor-closures.rs', lines 4:0-7:1
