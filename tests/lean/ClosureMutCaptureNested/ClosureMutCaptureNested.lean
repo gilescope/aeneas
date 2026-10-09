@@ -39,13 +39,6 @@ structure core.alloc.AllocatorClone (Self : Type) where
 structure core.borrow.Borrow (Self : Type) (Borrowed : Type) where
   borrow : Self → Result Borrowed
 
-/-- [core::borrow::{impl core::borrow::Borrow<T> for T}::borrow]:
-    Source: '/rustc/library/core/src/borrow.rs', lines 214:4-214:26
-    Name pattern: [core::borrow::{core::borrow::Borrow<@T, @T>}::borrow]
-    Visibility: public -/
-@[rust_fun "core::borrow::{core::borrow::Borrow<@T, @T>}::borrow"]
-axiom core.borrow.Borrow.Blanket.borrow {T : Type} : T → Result T
-
 /-- Trait implementation: [core::borrow::{impl core::borrow::Borrow<T> for T}]
     Source: '/rustc/library/core/src/borrow.rs', lines 212:0-212:37
     Name pattern: [core::borrow::Borrow<@T, @T>] -/
@@ -256,24 +249,6 @@ structure core.ops.arith.Add (Self : Type) (Rhs : Type) (Self_Output : Type)
 structure core.ops.arith.Mul (Self : Type) (Rhs : Type) (Self_Output : Type)
   where
   mul : Self → Rhs → Result Self_Output
-
-/-- [core::option::{core::option::Option<T>}::unwrap_or_default]:
-    Source: '/rustc/library/core/src/option.rs', lines 1093:4-1095:27
-    Name pattern: [core::option::{core::option::Option<@T>}::unwrap_or_default]
-    Visibility: public -/
-@[rust_fun "core::option::{core::option::Option<@T>}::unwrap_or_default"]
-axiom core.option.Option.unwrap_or_default
-  {T : Type} (defaultDefaultInst : core.default.Default T) :
-  Option T → Result T
-
-/-- [core::option::{core::option::Option<&'_0 T>}::copied]:
-    Source: '/rustc/library/core/src/option.rs', lines 2135:4-2137:16
-    Name pattern: [core::option::{core::option::Option<&'0 @T>}::copied]
-    Visibility: public -/
-@[rust_fun "core::option::{core::option::Option<&'0 @T>}::copied"]
-axiom core.option.OptionShared0T.copied
-  {T : Type} (markerCopyInst : core.marker.Copy T) :
-  Option T → Result (Option T)
 
 /-- [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a T> for core::slice::iter::Iter<'a, T>}::fold]:
     Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 254:12-256:49

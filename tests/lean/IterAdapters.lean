@@ -17,19 +17,7 @@ set_option maxHeartbeats 1000000
 /- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
 set_option maxRecDepth 2048
 
-/- You can remove the following line by using the CLI option `-all-computable`: -/
-noncomputable section
-
 namespace iter_adapters
-
-/-- [core::option::{core::option::Option<&'_0 T>}::copied]:
-    Source: '/rustc/library/core/src/option.rs', lines 2135:4-2137:16
-    Name pattern: [core::option::{core::option::Option<&'0 @T>}::copied]
-    Visibility: public -/
-@[rust_fun "core::option::{core::option::Option<&'0 @T>}::copied"]
-axiom core.option.OptionShared0T.copied
-  {T : Type} (markerCopyInst : core.marker.Copy T) :
-  Option T → Result (Option T)
 
 /-- Trait implementation: [core::slice::iter::{impl core::iter::traits::double_ended::DoubleEndedIterator<&'_ T> for core::slice::iter::Iter<'a, T>}]
     Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 431:8-431:56

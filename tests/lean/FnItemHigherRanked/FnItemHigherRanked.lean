@@ -74,14 +74,6 @@ def
     core.cmp.impls.OrdUsize.cmp.Insts.CoreOpsFunctionFnMutPairShared0UsizeShared1UsizeOrdering.call_mut
 }
 
-/-- [core::cmp::impls::{impl core::cmp::Ord for &'_0 A}::cmp]:
-    Source: '/rustc/library/core/src/cmp.rs', lines 2519:8-2519:47
-    Name pattern: [core::cmp::impls::{core::cmp::Ord<&'0 @A>}::cmp]
-    Visibility: public -/
-@[rust_fun "core::cmp::impls::{core::cmp::Ord<&'0 @A>}::cmp"]
-axiom Shared0A.Insts.CoreCmpOrd.cmp
-  {A : Type} (OrdInst : core.cmp.Ord A) : A → A → Result Ordering
-
 /-- [core::cmp::impls::{impl core::cmp::Ord for &'_0 A}::{impl core::ops::function::FnMut<(&'_1 &'_0 A, &'_2 &'_0 A), core::cmp::Ordering> for core::cmp::impls::{impl core::cmp::Ord for &'_0 A}::cmp<'static, 'static, 'static, A>[TraitClause0]}::call_mut]:
     Source: '/rustc/library/core/src/cmp.rs', lines 2519:8-2519:47
     Name pattern: [core::cmp::impls::{core::cmp::Ord<&'0 @A>}::{core::ops::function::FnMut<@, (&'1 &'0 @A, &'2 &'0 @A), core::cmp::Ordering>}::call_mut]
@@ -201,15 +193,6 @@ impl_def core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator {B :
     opsfunctionFnMutPPairSharedFSharedFOrderingInst
 }
 
-/-- [core::option::{core::option::Option<T>}::unwrap_or_default]:
-    Source: '/rustc/library/core/src/option.rs', lines 1093:4-1095:27
-    Name pattern: [core::option::{core::option::Option<@T>}::unwrap_or_default]
-    Visibility: public -/
-@[rust_fun "core::option::{core::option::Option<@T>}::unwrap_or_default"]
-axiom core.option.Option.unwrap_or_default
-  {T : Type} (defaultDefaultInst : core.default.Default T) :
-  Option T → Result T
-
 /-- [fn_item_higher_ranked::longest]:
     Source: 'tests/src/fn-item-higher-ranked.rs', lines 6:0-8:1
     Visibility: public -/
@@ -218,7 +201,7 @@ def longest (lens : Slice Std.Usize) : Result (Option Std.Usize) := do
   core.iter.traits.iterator.Iterator.max_by.default
     (core.iter.traits.iterator.IteratorSliceIter Std.Usize)
     (core.cmp.impls.OrdShared0A.cmp.Insts.CoreOpsFunctionFnMutPairShared1Shared0AShared2Shared0AOrdering
-    core.cmp.OrdUsize) i (Shared0A.Insts.CoreCmpOrd.cmp core.cmp.OrdUsize)
+    core.cmp.OrdUsize) i (core.cmp.impls.OrdShared.cmp core.cmp.OrdUsize)
 
 /-- [fn_item_higher_ranked::longest_len::{closure}]
     Source: 'tests/src/fn-item-higher-ranked.rs', lines 14:13-14:26 -/

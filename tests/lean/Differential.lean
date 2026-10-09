@@ -7,6 +7,7 @@ import NestedSharedIter
 import StaticStr
 import RecursiveDeriveClone
 import StringOps
+import StdSmallOps
 
 /-! # Differential checks: the extracted Lean computes what Rust computes
 
@@ -197,5 +198,49 @@ open string_ops in
 #guard (order_tag (.Custom "é") (.Custom "x")).reducesTo .gt
 open string_ops in
 #guard (partial_order_tag (.Custom "x") (.Custom "xa")).reducesTo (some .lt)
+
+-- tests/src/std-small-ops.rs
+/-- `r` panics, with error `e` -/
+def failsWith {R : Type} (r : Result R) (e : Error) : Bool :=
+  match r.match with
+  | .vis (.fail e') _ => e' == e
+  | _ => false
+
+section
+open std_small_ops
+#guard (option_order none (some 0#u32)).reducesTo .lt
+#guard (option_order (some 2#u32) (some 1#u32)).reducesTo .gt
+#guard (option_order none none).reducesTo .eq
+#guard (option_partial_order (some 1#u32) (some 2#u32)).reducesTo (some .lt)
+#guard (option_same (some 3#u32) (some 3#u32)).reducesTo true
+#guard (option_same (some 3#u32) none).reducesTo false
+#guard (or_default none).reducesTo 0#u32
+#guard (or_default (some 5#u32)).reducesTo 5#u32
+#guard (pair_same (1#u32, 2#u64) (1#u32, 2#u64)).reducesTo true
+#guard (pair_same (1#u32, 2#u64) (1#u32, 3#u64)).reducesTo false
+#guard (ref_order 1#u32 2#u32).reducesTo .lt
+#guard (abs (-7)#i32).reducesTo 7#i32
+#guard failsWith (abs (-2147483648)#i32) .integerOverflow
+#guard (unsigned_abs (-9223372036854775808)#i64).reducesTo 9223372036854775808#u64
+#guard (div_ceil 7#usize 2#usize).reducesTo 4#usize
+#guard (div_ceil 8#usize 2#usize).reducesTo 4#usize
+#guard (div_ceil 0#usize 3#usize).reducesTo 0#usize
+#guard failsWith (div_ceil 1#usize 0#usize) .divisionByZero
+#guard (next_power_of_two 0#usize).reducesTo 1#usize
+#guard (next_power_of_two 5#usize).reducesTo 8#usize
+#guard (next_power_of_two 8#usize).reducesTo 8#usize
+#guard failsWith (next_power_of_two core.num.Usize.MAX) .integerOverflow
+#guard (do let (x, v) ← swap_remove row[10#u32, 20#u32, 30#u32, 40#u32] 1#usize; .ok (x, v.val))
+  |>.reducesTo (20#u32, [10#u32, 40#u32, 30#u32])
+#guard (do let (x, v) ← swap_remove row[10#u32, 40#u32, 30#u32] 2#usize; .ok (x, v.val))
+  |>.reducesTo (30#u32, [10#u32, 40#u32])
+#guard failsWith (swap_remove row[1#u32] 1#usize) .panic
+#guard (copied (some 4#u32)).reducesTo (some 4#u32)
+#guard (copied none).reducesTo none
+#guard (split_first (Slice.from [4#u32, 5#u32, 6#u32] (by scalar_tac))).reducesTo (some (4#u32, 2#usize))
+#guard (split_first (Slice.from [] (by scalar_tac))).reducesTo none
+#guard (from_ref 9#u32).reducesTo 1#usize
+#guard (borrowed 11#u32).reducesTo 11#u32
+end
 
 end Differential

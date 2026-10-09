@@ -60,6 +60,8 @@ let lean_builtin_types =
     (* file: "Aeneas/Std/Core/Iter.lean", line: 65 *)
     mk_type "core::iter::adapters::zip::Zip" "core.iter.adapters.zip.Zip"
       ~kind:(KStruct [ ("fst", Some "fst"); ("snd", Some "snd") ]);
+    (* file: "Aeneas/Std/CoreMisc.lean", line: 108 *)
+    mk_type "core::marker::PhantomData" "core.marker.PhantomData";
     (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 805 *)
     mk_type "core::num::error::TryFromIntError" "core.num.error.TryFromIntError";
     (* file: "Aeneas/Std/Core/Ops.lean", line: 92 *)
@@ -290,6 +292,10 @@ let lean_builtin_funs =
     (* file: "Aeneas/Std/Vec.lean", line: 449 *)
     mk_fun "alloc::vec::{alloc::vec::Vec<@T>}::resize" "alloc.vec.Vec.resize"
       ~keep_params:(Some [ true; false ]);
+    (* file: "Aeneas/Std/CoreMisc.lean", line: 96 *)
+    mk_fun "alloc::vec::{alloc::vec::Vec<@T>}::swap_remove"
+      "alloc.vec.Vec.swap_remove"
+      ~keep_params:(Some [ true; false ]);
     (* file: "Aeneas/Std/Vec.lean", line: 413 *)
     mk_fun "alloc::vec::{alloc::vec::Vec<@T>}::with_capacity"
       "alloc.vec.Vec.with_capacity" ~can_fail:false ~lift:false;
@@ -421,6 +427,9 @@ let lean_builtin_funs =
       "core.array.Array.index_mut";
     (* file: "Aeneas/Std/Core/CoreOption.lean", line: 122 *)
     mk_fun "core::bool::{bool}::then" "core.bool.Bool.then";
+    (* file: "Aeneas/Std/CoreMisc.lean", line: 15 *)
+    mk_fun "core::borrow::{core::borrow::Borrow<@T, @T>}::borrow"
+      "core.borrow.Borrow.Blanket.borrow";
     (* file: "Aeneas/Std/Core/Core.lean", line: 136 *)
     mk_fun "core::clone::impls::{core::clone::Clone<&'0 @T>}::clone"
       "core.clone.impls.CloneShared.clone";
@@ -443,6 +452,9 @@ let lean_builtin_funs =
     mk_fun "core::cmp::PartialOrd::le" "core.cmp.PartialOrd.le.trait_default";
     (* file: "Aeneas/Std/Core/Cmp.lean", line: 106 *)
     mk_fun "core::cmp::PartialOrd::lt" "core.cmp.PartialOrd.lt.trait_default";
+    (* file: "Aeneas/Std/CoreMisc.lean", line: 19 *)
+    mk_fun "core::cmp::impls::{core::cmp::Ord<&'0 @A>}::cmp"
+      "core.cmp.impls.OrdShared.cmp";
     (* file: "Aeneas/Std/Core/Cmp.lean", line: 232 *)
     mk_fun "core::cmp::impls::{core::cmp::Ord<()>}::cmp"
       "core.cmp.impls.OrdUnit.cmp";
@@ -913,6 +925,10 @@ let lean_builtin_funs =
     (* file: "Aeneas/Std/Core/Iter.lean", line: 711 *)
     mk_fun "core::iter::traits::iterator::Iterator::zip"
       "core.iter.traits.iterator.Iterator.zip.trait_default";
+    (* file: "Aeneas/Std/CoreMisc.lean", line: 111 *)
+    mk_fun
+      "core::marker::{core::default::Default<core::marker::PhantomData<@T>>}::default"
+      "core.marker.PhantomData.Insts.CoreDefaultDefault.default";
     (* file: "Aeneas/Std/Core/Core.lean", line: 77 *)
     mk_fun "core::mem::replace" "core.mem.replace" ~can_fail:false ~lift:false;
     (* file: "Aeneas/Std/Core/Core.lean", line: 81 *)
@@ -933,6 +949,8 @@ let lean_builtin_funs =
     (* file: "Aeneas/Std/Scalar/WrappingOps/Shr.lean", line: 44 *)
     mk_fun "core::num::{i16}::wrapping_shr" "core.num.I16.wrapping_shr"
       ~can_fail:false;
+    (* file: "Aeneas/Std/CoreMisc.lean", line: 72 *)
+    mk_fun "core::num::{i32}::abs" "core.num.I32.abs";
     (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 684 *)
     mk_fun "core::num::{i32}::cast_unsigned" "core.num.I32.cast_unsigned";
     (* file: "Aeneas/Std/Scalar/WrappingOps/Shl.lean", line: 44 *)
@@ -943,6 +961,8 @@ let lean_builtin_funs =
       ~can_fail:false;
     (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 690 *)
     mk_fun "core::num::{i64}::cast_unsigned" "core.num.I64.cast_unsigned";
+    (* file: "Aeneas/Std/CoreMisc.lean", line: 75 *)
+    mk_fun "core::num::{i64}::unsigned_abs" "core.num.I64.unsigned_abs";
     (* file: "Aeneas/Std/Scalar/WrappingOps/Shl.lean", line: 45 *)
     mk_fun "core::num::{i64}::wrapping_shl" "core.num.I64.wrapping_shl"
       ~can_fail:false;
@@ -1044,6 +1064,9 @@ let lean_builtin_funs =
     (* file: "Aeneas/Std/Scalar/Pow.lean", line: 32 *)
     mk_fun "core::num::{usize}::is_power_of_two"
       "core.num.Usize.is_power_of_two";
+    (* file: "Aeneas/Std/CoreMisc.lean", line: 79 *)
+    mk_fun "core::num::{usize}::next_power_of_two"
+      "core.num.Usize.next_power_of_two";
     (* file: "Aeneas/Std/Scalar/WrappingOps/Shl.lean", line: 41 *)
     mk_fun "core::num::{usize}::wrapping_shl" "core.num.Usize.wrapping_shl"
       ~can_fail:false;
@@ -1079,6 +1102,22 @@ let lean_builtin_funs =
     (* file: "Aeneas/Std/Core/Iter.lean", line: 650 *)
     mk_fun "core::ops::range::{core::ops::range::RangeInclusive<@Idx>}::new"
       "core.ops.range.RangeInclusive.new";
+    (* file: "Aeneas/Std/CoreMisc.lean", line: 43 *)
+    mk_fun "core::option::{core::cmp::Ord<core::option::Option<@T>>}::cmp"
+      "core.option.Option.Insts.CoreCmpOrd.cmp";
+    (* file: "Aeneas/Std/CoreMisc.lean", line: 26 *)
+    mk_fun
+      "core::option::{core::cmp::PartialEq<core::option::Option<@T>, \
+       core::option::Option<@T>>}::eq"
+      "core.option.Option.Insts.CoreCmpPartialEqOption.eq";
+    (* file: "Aeneas/Std/CoreMisc.lean", line: 34 *)
+    mk_fun
+      "core::option::{core::cmp::PartialOrd<core::option::Option<@T>, \
+       core::option::Option<@T>>}::partial_cmp"
+      "core.option.Option.Insts.CoreCmpPartialOrdOption.partial_cmp";
+    (* file: "Aeneas/Std/CoreMisc.lean", line: 59 *)
+    mk_fun "core::option::{core::option::Option<&'0 @T>}::copied"
+      "core.option.OptionShared0T.copied";
     (* file: "Aeneas/Std/Core/CoreOption.lean", line: 14 *)
     mk_fun "core::option::{core::option::Option<@T>}::expect"
       "core.option.Option.expect";
@@ -1106,6 +1145,9 @@ let lean_builtin_funs =
     (* file: "Aeneas/Std/Core/Core.lean", line: 104 *)
     mk_fun "core::option::{core::option::Option<@T>}::unwrap_or"
       "core.option.Option.unwrap_or" ~can_fail:false;
+    (* file: "Aeneas/Std/CoreMisc.lean", line: 64 *)
+    mk_fun "core::option::{core::option::Option<@T>}::unwrap_or_default"
+      "core.option.Option.unwrap_or_default";
     (* file: "Aeneas/Std/Core/Convert.lean", line: 113 *)
     mk_fun
       "core::result::{core::ops::try_trait::FromResidual<core::result::Result<@T, \
@@ -1324,6 +1366,8 @@ let lean_builtin_funs =
     mk_fun
       "core::slice::iter::{core::slice::iter::ChunksExact<'a, @T>}::remainder"
       "core.slice.iter.ChunksExact.getRemainder";
+    (* file: "Aeneas/Std/CoreMisc.lean", line: 85 *)
+    mk_fun "core::slice::raw::from_ref" "core.slice.raw.from_ref";
     (* file: "Aeneas/Std/SliceIter.lean", line: 231 *)
     mk_fun "core::slice::{[@T]}::chunks_exact" "core.slice.Slice.chunks_exact";
     (* file: "Aeneas/Std/SliceIter.lean", line: 38 *)
@@ -1354,6 +1398,8 @@ let lean_builtin_funs =
     mk_fun "core::slice::{[@T]}::split_at" "core.slice.Slice.split_at";
     (* file: "Aeneas/Std/Slice.lean", line: 731 *)
     mk_fun "core::slice::{[@T]}::split_at_mut" "core.slice.Slice.split_at_mut";
+    (* file: "Aeneas/Std/CoreMisc.lean", line: 89 *)
+    mk_fun "core::slice::{[@T]}::split_first" "core.slice.Slice.split_first";
     (* file: "Aeneas/Std/Slice.lean", line: 791 *)
     mk_fun "core::slice::{[@T]}::swap" "core.slice.Slice.swap";
     (* file: "Aeneas/Std/StringIter.lean", line: 18 *)
@@ -1368,6 +1414,9 @@ let lean_builtin_funs =
       "core.str.iter.IteratorChars.next";
     (* file: "Aeneas/Std/StringIter.lean", line: 31 *)
     mk_fun "core::str::{str}::chars" "core.str.Str.chars";
+    (* file: "Aeneas/Std/CoreMisc.lean", line: 52 *)
+    mk_fun "core::tuple::{core::cmp::PartialEq<(@U, @T), (@U, @T)>}::eq"
+      "Pair.Insts.CoreCmpPartialEqPair.eq";
     (* file: "Aeneas/Std/Std/Io.lean", line: 7 *)
     mk_fun "std::io::stdio::_print" "std.io.stdio._print";
   ]
