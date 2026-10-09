@@ -10,6 +10,7 @@ import StringOps
 import StdSmallOps
 import RefOps
 import IterAdaptersStd
+import IterStdOverrides
 
 /-! # Differential checks: the extracted Lean computes what Rust computes
 
@@ -287,6 +288,59 @@ open iter_adapters_std
 #guard (hint u32s[1#u32, 2#u32, 3#u32]).reducesTo (3#usize, some 3#usize)
 #guard (filter_hint u32s[1#u32, 2#u32, 3#u32]).reducesTo (0#usize, some 3#usize)
 #guard (chain_hint u32s[1#u32, 2#u32] u32s[3#u32]).reducesTo (3#usize, some 3#usize)
+end
+
+-- tests/src/iter-std-overrides.rs
+/-- `[1, 2, 3]` -/
+def arr123 : Aeneas.Std.Array Std.U32 3#usize := Aeneas.Std.Array.from [1#u32, 2#u32, 3#u32] (by simp)
+/-- `vec![1, 2, 3]` -/
+def vec123 : alloc.vec.Vec Std.U32 := alloc.vec.Vec.from [1#u32, 2#u32, 3#u32] (by scalar_tac)
+/-- `a..b` -/
+def rng (a b : Std.Usize) : core.ops.range.Range Std.Usize := { start := a, «end» := b }
+/-- `a..=b` -/
+def rngi (a b : Std.Usize) : core.ops.range.RangeInclusive Std.Usize :=
+  { start := a, «end» := b, exhausted := false }
+/-- A `Result<Vec<u32>, u32>` with the `Vec` as a list, to compare -/
+def okList (r : Result (core.result.Result (alloc.vec.Vec Std.U32) Std.U32)) :
+    Result (core.result.Result (List Std.U32) Std.U32) := do
+  let x ← r
+  match x with
+  | core.result.Result.Ok v => .ok (core.result.Result.Ok v.val)
+  | core.result.Result.Err e => .ok (core.result.Result.Err e)
+
+section
+open iter_std_overrides
+#guard (array_sum arr123).reducesTo 6#u32
+#guard (array_len arr123).reducesTo 3#usize
+#guard (array_hint arr123).reducesTo (2#usize, some 2#usize)
+#guard (vec_sum vec123).reducesTo 6#u32
+#guard (vec_len vec123).reducesTo 3#usize
+#guard (ref_vec_sum vec123).reducesTo 6#u32
+#guard (indexed u32s[5#u32, 6#u32, 7#u32]).reducesTo 20#usize
+#guard (indexed_len u32s[5#u32, 6#u32, 7#u32]).reducesTo 3#usize
+#guard (dot u32s[1#u32, 2#u32, 3#u32] u32s[4#u32, 5#u32]).reducesTo 14#u32
+#guard (zip_hint u32s[1#u32, 2#u32, 3#u32] u32s[4#u32, 5#u32]).reducesTo (2#usize, some 2#usize)
+#guard (flat_len u32s[2#u32, 0#u32, 3#u32]).reducesTo 5#usize
+#guard (range_len 3#usize 7#usize).reducesTo 4#usize
+#guard (range_len 7#usize 3#usize).reducesTo 0#usize
+#guard (range_max 3#usize 7#usize).reducesTo (some 6#usize)
+#guard (range_max 3#usize 3#usize).reducesTo none
+#guard (incl_len 3#usize 7#usize).reducesTo 5#usize
+#guard (incl_len 7#usize 3#usize).reducesTo 0#usize
+#guard (incl_sum 1#usize 4#usize).reducesTo 10#usize
+#guard (incl_max 3#usize 7#usize).reducesTo (some 7#usize)
+#guard (incl_max 7#usize 3#usize).reducesTo none
+#guard (range_twice (rng 2#usize 5#usize)).reducesTo 6#usize
+#guard (incl_twice (rngi 2#usize 5#usize)).reducesTo 8#usize
+#guard (chunk_count u32s[1#u32, 2#u32, 3#u32, 4#u32, 5#u32] 2#usize).reducesTo 3#usize
+#guard (chunk_count u32s[] 2#usize).reducesTo 0#usize
+#guard (chunk_hint u32s[1#u32, 2#u32, 3#u32, 4#u32, 5#u32] 2#usize).reducesTo (3#usize, some 3#usize)
+#guard (last_chunk u32s[1#u32, 2#u32, 3#u32, 4#u32, 5#u32] 2#usize).reducesTo 1#usize
+#guard failsWith (chunk_count u32s[1#u32] 0#usize) .panic
+#guard (do let (n, _) ← mut_len u32s[1#u32, 2#u32]; .ok n).reducesTo 2#usize
+#guard (do let (h, _) ← mut_hint u32s[1#u32, 2#u32]; .ok h).reducesTo (2#usize, some 2#usize)
+#guard (okList (halve_checked u32s[2#u32, 4#u32])).reducesTo (core.result.Result.Ok [1#u32, 2#u32])
+#guard (okList (halve_checked u32s[2#u32, 3#u32, 5#u32])).reducesTo (core.result.Result.Err 3#u32)
 end
 
 end Differential

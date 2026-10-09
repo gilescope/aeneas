@@ -18,6 +18,9 @@ let lean_builtin_types =
       ~kind:(KStruct [ ("size", Some "size"); ("align", Some "align") ]);
     (* file: "Aeneas/Std/Array/ArraySlice.lean", line: 126 *)
     mk_type "core::array::TryFromSliceError" "core.array.TryFromSliceError";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 22 *)
+    mk_type "core::array::iter::IntoIter" "core.array.iter.IntoIter"
+      ~kind:(KStruct [ ("items", Some "items") ]);
     (* file: "Aeneas/Std/Core/Cmp.lean", line: 62 *)
     mk_type "core::cmp::Ordering" "Ordering"
       ~kind:
@@ -207,6 +210,9 @@ let lean_builtin_types =
     (* file: "Aeneas/Std/Core/Result.lean", line: 7 *)
     mk_type "core::result::Result" "core.result.Result"
       ~kind:(KEnum [ ("Ok", Some "Ok"); ("Err", Some "Err") ]);
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 251 *)
+    mk_type "core::slice::iter::Chunks" "core.slice.iter.Chunks"
+      ~kind:(KStruct [ ("v", Some "v"); ("chunk_size", Some "chunk_size") ]);
     (* file: "Aeneas/Std/SliceIter.lean", line: 169 *)
     mk_type "core::slice::iter::ChunksExact" "core.slice.iter.ChunksExact";
     (* file: "Aeneas/Std/SliceIter.lean", line: 20 *)
@@ -278,6 +284,18 @@ let lean_builtin_funs =
       "alloc.string.String.Insts.CoreCmpPartialOrdString.partial_cmp";
     (* file: "Aeneas/Std/Vec.lean", line: 395 *)
     mk_fun "alloc::vec::from_elem" "alloc.vec.from_elem";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 79 *)
+    mk_fun
+      "alloc::vec::into_iter::{core::iter::traits::iterator::Iterator<alloc::vec::into_iter::IntoIter<@T, \
+       @A>, @T>}::count"
+      "alloc.vec.into_iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.count"
+      ~keep_params:(Some [ true; false ]);
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 86 *)
+    mk_fun
+      "alloc::vec::into_iter::{core::iter::traits::iterator::Iterator<alloc::vec::into_iter::IntoIter<@T, \
+       @A>, @T>}::fold"
+      "alloc.vec.into_iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.fold"
+      ~keep_params:(Some [ true; false; true; true ]);
     (* file: "Aeneas/Std/VecIter.lean", line: 93 *)
     mk_fun
       "alloc::vec::into_iter::{core::iter::traits::iterator::Iterator<alloc::vec::into_iter::IntoIter<@T, \
@@ -361,6 +379,13 @@ let lean_builtin_funs =
       "alloc::vec::{core::iter::traits::collect::FromIterator<alloc::vec::Vec<@T>, \
        @T>}::from_iter"
       "alloc.vec.FromIteratorVec.from_iter";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 96 *)
+    mk_fun
+      "alloc::vec::{core::iter::traits::collect::IntoIterator<&'a \
+       alloc::vec::Vec<@T>, &'a @T, core::slice::iter::Iter<'a, \
+       @T>>}::into_iter"
+      "SharedAVec.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter"
+      ~keep_params:(Some [ true; false ]);
     (* file: "Aeneas/Std/VecIter.lean", line: 46 *)
     mk_fun
       "alloc::vec::{core::iter::traits::collect::IntoIterator<alloc::vec::Vec<@T>, \
@@ -400,6 +425,31 @@ let lean_builtin_funs =
     mk_fun
       "core::array::equality::{core::cmp::PartialEq<[@T; @N], [@U; @N]>}::ne"
       "core.array.equality.PartialEqArray.ne";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 26 *)
+    mk_fun
+      "core::array::iter::{core::iter::traits::collect::IntoIterator<[@T; @N], \
+       @T, core::array::iter::IntoIter<@T, @N>>}::into_iter"
+      "Array.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 62 *)
+    mk_fun
+      "core::array::iter::{core::iter::traits::iterator::Iterator<core::array::iter::IntoIter<@T, \
+       @N>, @T>}::count"
+      "core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.count";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 69 *)
+    mk_fun
+      "core::array::iter::{core::iter::traits::iterator::Iterator<core::array::iter::IntoIter<@T, \
+       @N>, @T>}::fold"
+      "core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.fold";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 32 *)
+    mk_fun
+      "core::array::iter::{core::iter::traits::iterator::Iterator<core::array::iter::IntoIter<@T, \
+       @N>, @T>}::next"
+      "core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 41 *)
+    mk_fun
+      "core::array::iter::{core::iter::traits::iterator::Iterator<core::array::iter::IntoIter<@T, \
+       @N>, @T>}::size_hint"
+      "core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.size_hint";
     (* file: "Aeneas/Std/Array/Array.lean", line: 165 *)
     mk_fun "core::array::repeat" "Array.repeat"
       ~keep_trait_clauses:(Some [ false ]) ~can_fail:false ~lift:false;
@@ -704,6 +754,16 @@ let lean_builtin_funs =
       "core::iter::adapters::chain::{core::iter::traits::iterator::Iterator<core::iter::adapters::chain::Chain<@A, \
        @B>, @Clause0_Item>}::size_hint"
       "core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.size_hint";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 113 *)
+    mk_fun
+      "core::iter::adapters::enumerate::{core::iter::traits::iterator::Iterator<core::iter::adapters::enumerate::Enumerate<@I>, \
+       (usize, @Clause0_Item)>}::count"
+      "core.iter.adapters.enumerate.Enumerate.Insts.CoreIterTraitsIteratorIteratorPairUsizeClause0_Item.count";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 121 *)
+    mk_fun
+      "core::iter::adapters::enumerate::{core::iter::traits::iterator::Iterator<core::iter::adapters::enumerate::Enumerate<@I>, \
+       (usize, @Clause0_Item)>}::fold"
+      "core.iter.adapters.enumerate.Enumerate.Insts.CoreIterTraitsIteratorIteratorPairUsizeClause0_Item.fold";
     (* file: "Aeneas/Std/Core/Iter.lean", line: 566 *)
     mk_fun
       "core::iter::adapters::enumerate::{core::iter::traits::iterator::Iterator<core::iter::adapters::enumerate::Enumerate<@I>, \
@@ -749,6 +809,11 @@ let lean_builtin_funs =
       "core::iter::adapters::filter_map::{core::iter::traits::iterator::Iterator<core::iter::adapters::filter_map::FilterMap<@I, \
        @F>, @B>}::size_hint"
       "core.iter.adapters.filter_map.FilterMap.Insts.CoreIterTraitsIteratorIterator.size_hint";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 166 *)
+    mk_fun
+      "core::iter::adapters::flatten::{core::iter::traits::iterator::Iterator<core::iter::adapters::flatten::FlatMap<@I, \
+       @U, @F, @Clause1_Item, @Clause1_IntoIter>, @Clause1_Item>}::count"
+      "core.iter.adapters.flatten.FlatMap.Insts.CoreIterTraitsIteratorIterator.count";
     (* file: "Aeneas/Std/Core/IterAdapters.lean", line: 527 *)
     mk_fun
       "core::iter::adapters::flatten::{core::iter::traits::iterator::Iterator<core::iter::adapters::flatten::FlatMap<@I, \
@@ -809,11 +874,21 @@ let lean_builtin_funs =
       "core::iter::adapters::take_while::{core::iter::traits::iterator::Iterator<core::iter::adapters::take_while::TakeWhile<@I, \
        @P>, @Clause0_Item>}::next"
       "core.iter.adapters.take_while.TakeWhile.Insts.CoreIterTraitsIteratorIterator.next";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 156 *)
+    mk_fun
+      "core::iter::adapters::zip::{core::iter::traits::iterator::Iterator<core::iter::adapters::zip::Zip<@A, \
+       @B>, (@Clause0_Item, @Clause1_Item)>}::fold"
+      "core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.fold";
     (* file: "Aeneas/Std/Core/Iter.lean", line: 700 *)
     mk_fun
       "core::iter::adapters::zip::{core::iter::traits::iterator::Iterator<core::iter::adapters::zip::Zip<@A, \
        @B>, (@Clause0_Item, @Clause1_Item)>}::next"
       "core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.next";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 131 *)
+    mk_fun
+      "core::iter::adapters::zip::{core::iter::traits::iterator::Iterator<core::iter::adapters::zip::Zip<@A, \
+       @B>, (@Clause0_Item, @Clause1_Item)>}::size_hint"
+      "core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.size_hint";
     (* file: "Aeneas/Std/Core/Iter.lean", line: 552 *)
     mk_fun
       "core::iter::range::{core::iter::range::Step<i128>}::backward_checked"
@@ -1034,6 +1109,16 @@ let lean_builtin_funs =
       "core::iter::range::{core::iter::traits::double_ended::DoubleEndedIterator<core::ops::range::RangeInclusive<@A>, \
        @A>}::next_back"
       "core.ops.range.RangeInclusive.Insts.CoreIterTraitsDoubleEndedIterator.next_back";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 181 *)
+    mk_fun
+      "core::iter::range::{core::iter::traits::iterator::Iterator<core::ops::range::Range<@A>, \
+       @A>}::count"
+      "core.ops.range.Range.Insts.CoreIterTraitsIteratorIterator.count";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 193 *)
+    mk_fun
+      "core::iter::range::{core::iter::traits::iterator::Iterator<core::ops::range::Range<@A>, \
+       @A>}::max"
+      "core.ops.range.Range.Insts.CoreIterTraitsIteratorIterator.max";
     (* file: "Aeneas/Std/Core/Iter.lean", line: 654 *)
     mk_fun
       "core::iter::range::{core::iter::traits::iterator::Iterator<core::ops::range::Range<@A>, \
@@ -1044,6 +1129,21 @@ let lean_builtin_funs =
       "core::iter::range::{core::iter::traits::iterator::Iterator<core::ops::range::Range<@A>, \
        @A>}::size_hint"
       "core.iter.range.IteratorRange.size_hint";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 207 *)
+    mk_fun
+      "core::iter::range::{core::iter::traits::iterator::Iterator<core::ops::range::RangeInclusive<@A>, \
+       @A>}::count"
+      "core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator.count";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 227 *)
+    mk_fun
+      "core::iter::range::{core::iter::traits::iterator::Iterator<core::ops::range::RangeInclusive<@A>, \
+       @A>}::fold"
+      "core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator.fold";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 219 *)
+    mk_fun
+      "core::iter::range::{core::iter::traits::iterator::Iterator<core::ops::range::RangeInclusive<@A>, \
+       @A>}::max"
+      "core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator.max";
     (* file: "Aeneas/Std/Core/Iter.lean", line: 747 *)
     mk_fun
       "core::iter::range::{core::iter::traits::iterator::Iterator<core::ops::range::RangeInclusive<@A>, \
@@ -1421,6 +1521,64 @@ let lean_builtin_funs =
     mk_fun
       "core::ops::arith::{core::ops::arith::Add<usize, &'0 usize, usize>}::add"
       "Usize.Insts.CoreOpsArithAddShared0UsizeUsize.add";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 894 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::AddAssign<i128, &'0 \
+       i128>}::add_assign"
+      "I128.Insts.CoreOpsArithAddAssignShared0I128.add_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 885 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::AddAssign<i16, &'0 \
+       i16>}::add_assign"
+      "I16.Insts.CoreOpsArithAddAssignShared0I16.add_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 888 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::AddAssign<i32, &'0 \
+       i32>}::add_assign"
+      "I32.Insts.CoreOpsArithAddAssignShared0I32.add_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 891 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::AddAssign<i64, &'0 \
+       i64>}::add_assign"
+      "I64.Insts.CoreOpsArithAddAssignShared0I64.add_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 882 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::AddAssign<i8, &'0 i8>}::add_assign"
+      "I8.Insts.CoreOpsArithAddAssignShared0I8.add_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 897 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::AddAssign<isize, &'0 \
+       isize>}::add_assign"
+      "Isize.Insts.CoreOpsArithAddAssignShared0Isize.add_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 876 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::AddAssign<u128, &'0 \
+       u128>}::add_assign"
+      "U128.Insts.CoreOpsArithAddAssignShared0U128.add_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 867 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::AddAssign<u16, &'0 \
+       u16>}::add_assign"
+      "U16.Insts.CoreOpsArithAddAssignShared0U16.add_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 870 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::AddAssign<u32, &'0 \
+       u32>}::add_assign"
+      "U32.Insts.CoreOpsArithAddAssignShared0U32.add_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 873 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::AddAssign<u64, &'0 \
+       u64>}::add_assign"
+      "U64.Insts.CoreOpsArithAddAssignShared0U64.add_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 864 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::AddAssign<u8, &'0 u8>}::add_assign"
+      "U8.Insts.CoreOpsArithAddAssignShared0U8.add_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 879 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::AddAssign<usize, &'0 \
+       usize>}::add_assign"
+      "Usize.Insts.CoreOpsArithAddAssignShared0Usize.add_assign";
     (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 412 *)
     mk_fun
       "core::ops::arith::{core::ops::arith::Div<&'0 i128, i128, i128>}::div"
@@ -1549,6 +1707,64 @@ let lean_builtin_funs =
     mk_fun
       "core::ops::arith::{core::ops::arith::Div<usize, &'0 usize, usize>}::div"
       "Usize.Insts.CoreOpsArithDivShared0UsizeUsize.div";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1002 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::DivAssign<i128, &'0 \
+       i128>}::div_assign"
+      "I128.Insts.CoreOpsArithDivAssignShared0I128.div_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 993 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::DivAssign<i16, &'0 \
+       i16>}::div_assign"
+      "I16.Insts.CoreOpsArithDivAssignShared0I16.div_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 996 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::DivAssign<i32, &'0 \
+       i32>}::div_assign"
+      "I32.Insts.CoreOpsArithDivAssignShared0I32.div_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 999 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::DivAssign<i64, &'0 \
+       i64>}::div_assign"
+      "I64.Insts.CoreOpsArithDivAssignShared0I64.div_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 990 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::DivAssign<i8, &'0 i8>}::div_assign"
+      "I8.Insts.CoreOpsArithDivAssignShared0I8.div_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1005 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::DivAssign<isize, &'0 \
+       isize>}::div_assign"
+      "Isize.Insts.CoreOpsArithDivAssignShared0Isize.div_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 984 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::DivAssign<u128, &'0 \
+       u128>}::div_assign"
+      "U128.Insts.CoreOpsArithDivAssignShared0U128.div_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 975 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::DivAssign<u16, &'0 \
+       u16>}::div_assign"
+      "U16.Insts.CoreOpsArithDivAssignShared0U16.div_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 978 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::DivAssign<u32, &'0 \
+       u32>}::div_assign"
+      "U32.Insts.CoreOpsArithDivAssignShared0U32.div_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 981 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::DivAssign<u64, &'0 \
+       u64>}::div_assign"
+      "U64.Insts.CoreOpsArithDivAssignShared0U64.div_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 972 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::DivAssign<u8, &'0 u8>}::div_assign"
+      "U8.Insts.CoreOpsArithDivAssignShared0U8.div_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 987 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::DivAssign<usize, &'0 \
+       usize>}::div_assign"
+      "Usize.Insts.CoreOpsArithDivAssignShared0Usize.div_assign";
     (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 304 *)
     mk_fun
       "core::ops::arith::{core::ops::arith::Mul<&'0 i128, i128, i128>}::mul"
@@ -1677,6 +1893,64 @@ let lean_builtin_funs =
     mk_fun
       "core::ops::arith::{core::ops::arith::Mul<usize, &'0 usize, usize>}::mul"
       "Usize.Insts.CoreOpsArithMulShared0UsizeUsize.mul";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 966 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::MulAssign<i128, &'0 \
+       i128>}::mul_assign"
+      "I128.Insts.CoreOpsArithMulAssignShared0I128.mul_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 957 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::MulAssign<i16, &'0 \
+       i16>}::mul_assign"
+      "I16.Insts.CoreOpsArithMulAssignShared0I16.mul_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 960 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::MulAssign<i32, &'0 \
+       i32>}::mul_assign"
+      "I32.Insts.CoreOpsArithMulAssignShared0I32.mul_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 963 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::MulAssign<i64, &'0 \
+       i64>}::mul_assign"
+      "I64.Insts.CoreOpsArithMulAssignShared0I64.mul_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 954 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::MulAssign<i8, &'0 i8>}::mul_assign"
+      "I8.Insts.CoreOpsArithMulAssignShared0I8.mul_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 969 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::MulAssign<isize, &'0 \
+       isize>}::mul_assign"
+      "Isize.Insts.CoreOpsArithMulAssignShared0Isize.mul_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 948 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::MulAssign<u128, &'0 \
+       u128>}::mul_assign"
+      "U128.Insts.CoreOpsArithMulAssignShared0U128.mul_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 939 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::MulAssign<u16, &'0 \
+       u16>}::mul_assign"
+      "U16.Insts.CoreOpsArithMulAssignShared0U16.mul_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 942 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::MulAssign<u32, &'0 \
+       u32>}::mul_assign"
+      "U32.Insts.CoreOpsArithMulAssignShared0U32.mul_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 945 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::MulAssign<u64, &'0 \
+       u64>}::mul_assign"
+      "U64.Insts.CoreOpsArithMulAssignShared0U64.mul_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 936 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::MulAssign<u8, &'0 u8>}::mul_assign"
+      "U8.Insts.CoreOpsArithMulAssignShared0U8.mul_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 951 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::MulAssign<usize, &'0 \
+       usize>}::mul_assign"
+      "Usize.Insts.CoreOpsArithMulAssignShared0Usize.mul_assign";
     (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 520 *)
     mk_fun
       "core::ops::arith::{core::ops::arith::Rem<&'0 i128, i128, i128>}::rem"
@@ -1805,6 +2079,64 @@ let lean_builtin_funs =
     mk_fun
       "core::ops::arith::{core::ops::arith::Rem<usize, &'0 usize, usize>}::rem"
       "Usize.Insts.CoreOpsArithRemShared0UsizeUsize.rem";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1038 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::RemAssign<i128, &'0 \
+       i128>}::rem_assign"
+      "I128.Insts.CoreOpsArithRemAssignShared0I128.rem_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1029 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::RemAssign<i16, &'0 \
+       i16>}::rem_assign"
+      "I16.Insts.CoreOpsArithRemAssignShared0I16.rem_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1032 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::RemAssign<i32, &'0 \
+       i32>}::rem_assign"
+      "I32.Insts.CoreOpsArithRemAssignShared0I32.rem_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1035 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::RemAssign<i64, &'0 \
+       i64>}::rem_assign"
+      "I64.Insts.CoreOpsArithRemAssignShared0I64.rem_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1026 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::RemAssign<i8, &'0 i8>}::rem_assign"
+      "I8.Insts.CoreOpsArithRemAssignShared0I8.rem_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1041 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::RemAssign<isize, &'0 \
+       isize>}::rem_assign"
+      "Isize.Insts.CoreOpsArithRemAssignShared0Isize.rem_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1020 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::RemAssign<u128, &'0 \
+       u128>}::rem_assign"
+      "U128.Insts.CoreOpsArithRemAssignShared0U128.rem_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1011 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::RemAssign<u16, &'0 \
+       u16>}::rem_assign"
+      "U16.Insts.CoreOpsArithRemAssignShared0U16.rem_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1014 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::RemAssign<u32, &'0 \
+       u32>}::rem_assign"
+      "U32.Insts.CoreOpsArithRemAssignShared0U32.rem_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1017 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::RemAssign<u64, &'0 \
+       u64>}::rem_assign"
+      "U64.Insts.CoreOpsArithRemAssignShared0U64.rem_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1008 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::RemAssign<u8, &'0 u8>}::rem_assign"
+      "U8.Insts.CoreOpsArithRemAssignShared0U8.rem_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1023 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::RemAssign<usize, &'0 \
+       usize>}::rem_assign"
+      "Usize.Insts.CoreOpsArithRemAssignShared0Usize.rem_assign";
     (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 196 *)
     mk_fun
       "core::ops::arith::{core::ops::arith::Sub<&'0 i128, i128, i128>}::sub"
@@ -1933,6 +2265,64 @@ let lean_builtin_funs =
     mk_fun
       "core::ops::arith::{core::ops::arith::Sub<usize, &'0 usize, usize>}::sub"
       "Usize.Insts.CoreOpsArithSubShared0UsizeUsize.sub";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 930 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::SubAssign<i128, &'0 \
+       i128>}::sub_assign"
+      "I128.Insts.CoreOpsArithSubAssignShared0I128.sub_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 921 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::SubAssign<i16, &'0 \
+       i16>}::sub_assign"
+      "I16.Insts.CoreOpsArithSubAssignShared0I16.sub_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 924 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::SubAssign<i32, &'0 \
+       i32>}::sub_assign"
+      "I32.Insts.CoreOpsArithSubAssignShared0I32.sub_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 927 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::SubAssign<i64, &'0 \
+       i64>}::sub_assign"
+      "I64.Insts.CoreOpsArithSubAssignShared0I64.sub_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 918 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::SubAssign<i8, &'0 i8>}::sub_assign"
+      "I8.Insts.CoreOpsArithSubAssignShared0I8.sub_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 933 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::SubAssign<isize, &'0 \
+       isize>}::sub_assign"
+      "Isize.Insts.CoreOpsArithSubAssignShared0Isize.sub_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 912 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::SubAssign<u128, &'0 \
+       u128>}::sub_assign"
+      "U128.Insts.CoreOpsArithSubAssignShared0U128.sub_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 903 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::SubAssign<u16, &'0 \
+       u16>}::sub_assign"
+      "U16.Insts.CoreOpsArithSubAssignShared0U16.sub_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 906 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::SubAssign<u32, &'0 \
+       u32>}::sub_assign"
+      "U32.Insts.CoreOpsArithSubAssignShared0U32.sub_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 909 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::SubAssign<u64, &'0 \
+       u64>}::sub_assign"
+      "U64.Insts.CoreOpsArithSubAssignShared0U64.sub_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 900 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::SubAssign<u8, &'0 u8>}::sub_assign"
+      "U8.Insts.CoreOpsArithSubAssignShared0U8.sub_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 915 *)
+    mk_fun
+      "core::ops::arith::{core::ops::arith::SubAssign<usize, &'0 \
+       usize>}::sub_assign"
+      "Usize.Insts.CoreOpsArithSubAssignShared0Usize.sub_assign";
     (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 628 *)
     mk_fun
       "core::ops::bit::{core::ops::bit::BitAnd<&'0 i128, i128, i128>}::bitand"
@@ -2069,6 +2459,66 @@ let lean_builtin_funs =
       "core::ops::bit::{core::ops::bit::BitAnd<usize, &'0 usize, \
        usize>}::bitand"
       "Usize.Insts.CoreOpsBitBitAndShared0UsizeUsize.bitand";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1074 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitAndAssign<i128, &'0 \
+       i128>}::bitand_assign"
+      "I128.Insts.CoreOpsBitBitAndAssignShared0I128.bitand_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1065 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitAndAssign<i16, &'0 \
+       i16>}::bitand_assign"
+      "I16.Insts.CoreOpsBitBitAndAssignShared0I16.bitand_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1068 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitAndAssign<i32, &'0 \
+       i32>}::bitand_assign"
+      "I32.Insts.CoreOpsBitBitAndAssignShared0I32.bitand_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1071 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitAndAssign<i64, &'0 \
+       i64>}::bitand_assign"
+      "I64.Insts.CoreOpsBitBitAndAssignShared0I64.bitand_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1062 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitAndAssign<i8, &'0 \
+       i8>}::bitand_assign"
+      "I8.Insts.CoreOpsBitBitAndAssignShared0I8.bitand_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1077 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitAndAssign<isize, &'0 \
+       isize>}::bitand_assign"
+      "Isize.Insts.CoreOpsBitBitAndAssignShared0Isize.bitand_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1056 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitAndAssign<u128, &'0 \
+       u128>}::bitand_assign"
+      "U128.Insts.CoreOpsBitBitAndAssignShared0U128.bitand_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1047 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitAndAssign<u16, &'0 \
+       u16>}::bitand_assign"
+      "U16.Insts.CoreOpsBitBitAndAssignShared0U16.bitand_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1050 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitAndAssign<u32, &'0 \
+       u32>}::bitand_assign"
+      "U32.Insts.CoreOpsBitBitAndAssignShared0U32.bitand_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1053 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitAndAssign<u64, &'0 \
+       u64>}::bitand_assign"
+      "U64.Insts.CoreOpsBitBitAndAssignShared0U64.bitand_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1044 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitAndAssign<u8, &'0 \
+       u8>}::bitand_assign"
+      "U8.Insts.CoreOpsBitBitAndAssignShared0U8.bitand_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1059 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitAndAssign<usize, &'0 \
+       usize>}::bitand_assign"
+      "Usize.Insts.CoreOpsBitBitAndAssignShared0Usize.bitand_assign";
     (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 736 *)
     mk_fun
       "core::ops::bit::{core::ops::bit::BitOr<&'0 i128, i128, i128>}::bitor"
@@ -2197,6 +2647,64 @@ let lean_builtin_funs =
     mk_fun
       "core::ops::bit::{core::ops::bit::BitOr<usize, &'0 usize, usize>}::bitor"
       "Usize.Insts.CoreOpsBitBitOrShared0UsizeUsize.bitor";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1110 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitOrAssign<i128, &'0 \
+       i128>}::bitor_assign"
+      "I128.Insts.CoreOpsBitBitOrAssignShared0I128.bitor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1101 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitOrAssign<i16, &'0 \
+       i16>}::bitor_assign"
+      "I16.Insts.CoreOpsBitBitOrAssignShared0I16.bitor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1104 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitOrAssign<i32, &'0 \
+       i32>}::bitor_assign"
+      "I32.Insts.CoreOpsBitBitOrAssignShared0I32.bitor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1107 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitOrAssign<i64, &'0 \
+       i64>}::bitor_assign"
+      "I64.Insts.CoreOpsBitBitOrAssignShared0I64.bitor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1098 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitOrAssign<i8, &'0 i8>}::bitor_assign"
+      "I8.Insts.CoreOpsBitBitOrAssignShared0I8.bitor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1113 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitOrAssign<isize, &'0 \
+       isize>}::bitor_assign"
+      "Isize.Insts.CoreOpsBitBitOrAssignShared0Isize.bitor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1092 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitOrAssign<u128, &'0 \
+       u128>}::bitor_assign"
+      "U128.Insts.CoreOpsBitBitOrAssignShared0U128.bitor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1083 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitOrAssign<u16, &'0 \
+       u16>}::bitor_assign"
+      "U16.Insts.CoreOpsBitBitOrAssignShared0U16.bitor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1086 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitOrAssign<u32, &'0 \
+       u32>}::bitor_assign"
+      "U32.Insts.CoreOpsBitBitOrAssignShared0U32.bitor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1089 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitOrAssign<u64, &'0 \
+       u64>}::bitor_assign"
+      "U64.Insts.CoreOpsBitBitOrAssignShared0U64.bitor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1080 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitOrAssign<u8, &'0 u8>}::bitor_assign"
+      "U8.Insts.CoreOpsBitBitOrAssignShared0U8.bitor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1095 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitOrAssign<usize, &'0 \
+       usize>}::bitor_assign"
+      "Usize.Insts.CoreOpsBitBitOrAssignShared0Usize.bitor_assign";
     (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 844 *)
     mk_fun
       "core::ops::bit::{core::ops::bit::BitXor<&'0 i128, i128, i128>}::bitxor"
@@ -2333,8 +2841,76 @@ let lean_builtin_funs =
       "core::ops::bit::{core::ops::bit::BitXor<usize, &'0 usize, \
        usize>}::bitxor"
       "Usize.Insts.CoreOpsBitBitXorShared0UsizeUsize.bitxor";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1146 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitXorAssign<i128, &'0 \
+       i128>}::bitxor_assign"
+      "I128.Insts.CoreOpsBitBitXorAssignShared0I128.bitxor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1137 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitXorAssign<i16, &'0 \
+       i16>}::bitxor_assign"
+      "I16.Insts.CoreOpsBitBitXorAssignShared0I16.bitxor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1140 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitXorAssign<i32, &'0 \
+       i32>}::bitxor_assign"
+      "I32.Insts.CoreOpsBitBitXorAssignShared0I32.bitxor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1143 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitXorAssign<i64, &'0 \
+       i64>}::bitxor_assign"
+      "I64.Insts.CoreOpsBitBitXorAssignShared0I64.bitxor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1134 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitXorAssign<i8, &'0 \
+       i8>}::bitxor_assign"
+      "I8.Insts.CoreOpsBitBitXorAssignShared0I8.bitxor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1149 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitXorAssign<isize, &'0 \
+       isize>}::bitxor_assign"
+      "Isize.Insts.CoreOpsBitBitXorAssignShared0Isize.bitxor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1128 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitXorAssign<u128, &'0 \
+       u128>}::bitxor_assign"
+      "U128.Insts.CoreOpsBitBitXorAssignShared0U128.bitxor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1119 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitXorAssign<u16, &'0 \
+       u16>}::bitxor_assign"
+      "U16.Insts.CoreOpsBitBitXorAssignShared0U16.bitxor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1122 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitXorAssign<u32, &'0 \
+       u32>}::bitxor_assign"
+      "U32.Insts.CoreOpsBitBitXorAssignShared0U32.bitxor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1125 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitXorAssign<u64, &'0 \
+       u64>}::bitxor_assign"
+      "U64.Insts.CoreOpsBitBitXorAssignShared0U64.bitxor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1116 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitXorAssign<u8, &'0 \
+       u8>}::bitxor_assign"
+      "U8.Insts.CoreOpsBitBitXorAssignShared0U8.bitxor_assign";
+    (* file: "Aeneas/Std/Scalar/Ops/RefOps.lean", line: 1131 *)
+    mk_fun
+      "core::ops::bit::{core::ops::bit::BitXorAssign<usize, &'0 \
+       usize>}::bitxor_assign"
+      "Usize.Insts.CoreOpsBitBitXorAssignShared0Usize.bitxor_assign";
     (* file: "Aeneas/Std/Core/Ops.lean", line: 53 *)
     mk_fun "core::ops::drop::Drop::drop" "core.ops.drop.Drop.drop.default";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 236 *)
+    mk_fun
+      "core::ops::range::{core::clone::Clone<core::ops::range::Range<@Idx>>}::clone"
+      "core.ops.range.Range.Insts.CoreCloneClone.clone";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 242 *)
+    mk_fun
+      "core::ops::range::{core::clone::Clone<core::ops::range::RangeInclusive<@Idx>>}::clone"
+      "core.ops.range.RangeInclusive.Insts.CoreCloneClone.clone";
     (* file: "Aeneas/Std/Core/Iter.lean", line: 722 *)
     mk_fun
       "core::ops::range::{core::ops::range::RangeInclusive<@Idx>}::is_empty"
@@ -2342,6 +2918,10 @@ let lean_builtin_funs =
     (* file: "Aeneas/Std/Core/Iter.lean", line: 717 *)
     mk_fun "core::ops::range::{core::ops::range::RangeInclusive<@Idx>}::new"
       "core.ops.range.RangeInclusive.new";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 393 *)
+    mk_fun
+      "core::option::{core::cmp::Eq<core::option::Option<@T>>}::assert_fields_are_eq"
+      "core.option.Option.Insts.CoreCmpEq.assert_fields_are_eq";
     (* file: "Aeneas/Std/CoreMisc.lean", line: 43 *)
     mk_fun "core::option::{core::cmp::Ord<core::option::Option<@T>>}::cmp"
       "core.option.Option.Insts.CoreCmpOrd.cmp";
@@ -2388,6 +2968,11 @@ let lean_builtin_funs =
     (* file: "Aeneas/Std/CoreMisc.lean", line: 64 *)
     mk_fun "core::option::{core::option::Option<@T>}::unwrap_or_default"
       "core.option.Option.unwrap_or_default";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 367 *)
+    mk_fun
+      "core::result::{core::iter::traits::collect::FromIterator<core::result::Result<@V, \
+       @E>, core::result::Result<@T, @E>>}::from_iter"
+      "core.result.Result.Insts.CoreIterTraitsCollectFromIteratorResult.from_iter";
     (* file: "Aeneas/Std/Core/Convert.lean", line: 113 *)
     mk_fun
       "core::result::{core::ops::try_trait::FromResidual<core::result::Result<@T, \
@@ -2587,6 +3172,21 @@ let lean_builtin_funs =
       "core::slice::iter::{core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, \
        @T>, &'_ @T>}::next_back"
       "core.slice.iter.IteratorSliceIter.next_back";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 289 *)
+    mk_fun
+      "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Chunks<'a, \
+       @T>, &'a [@T]>}::count"
+      "core.slice.iter.Chunks.Insts.CoreIterTraitsIteratorIteratorSharedASlice.count";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 263 *)
+    mk_fun
+      "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Chunks<'a, \
+       @T>, &'a [@T]>}::next"
+      "core.slice.iter.Chunks.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 275 *)
+    mk_fun
+      "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Chunks<'a, \
+       @T>, &'a [@T]>}::size_hint"
+      "core.slice.iter.Chunks.Insts.CoreIterTraitsIteratorIteratorSharedASlice.size_hint";
     (* file: "Aeneas/Std/SliceIter.lean", line: 180 *)
     mk_fun
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::ChunksExact<'a, \
@@ -2622,17 +3222,29 @@ let lean_builtin_funs =
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, \
        @T>, &'a @T>}::size_hint"
       "core.slice.iter.IteratorSliceIter.size_hint";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 308 *)
+    mk_fun
+      "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, \
+       @T>, &'a mut @T>}::count"
+      "core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.count";
     (* file: "Aeneas/Std/SliceIter.lean", line: 43 *)
     mk_fun
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, \
        @T>, &'a mut @T>}::next"
       "core.slice.iter.IteratorIterMut.next";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 300 *)
+    mk_fun
+      "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, \
+       @T>, &'a mut @T>}::size_hint"
+      "core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.size_hint";
     (* file: "Aeneas/Std/SliceIter.lean", line: 174 *)
     mk_fun
       "core::slice::iter::{core::slice::iter::ChunksExact<'a, @T>}::remainder"
       "core.slice.iter.ChunksExact.getRemainder";
     (* file: "Aeneas/Std/CoreMisc.lean", line: 85 *)
     mk_fun "core::slice::raw::from_ref" "core.slice.raw.from_ref";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 257 *)
+    mk_fun "core::slice::{[@T]}::chunks" "core.slice.Slice.chunks";
     (* file: "Aeneas/Std/SliceIter.lean", line: 250 *)
     mk_fun "core::slice::{[@T]}::chunks_exact" "core.slice.Slice.chunks_exact";
     (* file: "Aeneas/Std/SliceIter.lean", line: 38 *)
@@ -3031,6 +3643,11 @@ let lean_builtin_trait_impls =
     mk_trait_impl
       "core::iter::traits::collect::FromIterator<alloc::vec::Vec<@T>, @T>"
       "core.iter.traits.collect.FromIteratorVec";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 383 *)
+    mk_trait_impl
+      "core::iter::traits::collect::FromIterator<core::result::Result<@V, @E>, \
+       core::result::Result<@T, @E>>"
+      "core.result.Result.Insts.CoreIterTraitsCollectFromIteratorResult";
     (* file: "Aeneas/Std/SliceIter.lean", line: 139 *)
     mk_trait_impl
       "core::iter::traits::collect::IntoIterator<&'a [@T; @N], &'a @T, \
@@ -3041,9 +3658,20 @@ let lean_builtin_trait_impls =
       "core::iter::traits::collect::IntoIterator<&'a [@T], &'a @T, \
        core::slice::iter::Iter<'a, @T>>"
       "SharedSlice.Insts.CoreIterTraitsCollectIntoIteratorSharedIter";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 103 *)
+    mk_trait_impl
+      "core::iter::traits::collect::IntoIterator<&'a alloc::vec::Vec<@T>, &'a \
+       @T, core::slice::iter::Iter<'a, @T>>"
+      "SharedAVec.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter"
+      ~keep_params:(Some [ true; false ]);
     (* file: "Aeneas/Std/Core/Iter.lean", line: 226 *)
     mk_trait_impl "core::iter::traits::collect::IntoIterator<@I, @Item, @I>"
       "core.iter.traits.collect.IntoIterator.Blanket";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 55 *)
+    mk_trait_impl
+      "core::iter::traits::collect::IntoIterator<[@T; @N], @T, \
+       core::array::iter::IntoIter<@T, @N>>"
+      "Array.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter";
     (* file: "Aeneas/Std/VecIter.lean", line: 51 *)
     mk_trait_impl
       "core::iter::traits::collect::IntoIterator<alloc::vec::Vec<@T>, @T, \
@@ -3061,6 +3689,11 @@ let lean_builtin_trait_impls =
        @A>, @T>"
       "core.iter.traits.iterator.IteratorVecIntoIter"
       ~keep_params:(Some [ true; false ]);
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 48 *)
+    mk_trait_impl
+      "core::iter::traits::iterator::Iterator<core::array::iter::IntoIter<@T, \
+       @N>, @T>"
+      "core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator";
     (* file: "Aeneas/Std/Core/IterAdapters.lean", line: 397 *)
     mk_trait_impl
       "core::iter::traits::iterator::Iterator<core::iter::adapters::chain::Chain<@A, \
@@ -3101,6 +3734,11 @@ let lean_builtin_trait_impls =
       "core::iter::traits::iterator::Iterator<core::iter::adapters::take::Take<@I>, \
        @Clause0_Item>"
       "core.iter.traits.iterator.IteratorTake";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 147 *)
+    mk_trait_impl
+      "core::iter::traits::iterator::Iterator<core::iter::adapters::zip::Zip<@A, \
+       @B>, (@Clause0_Item, @Clause1_Item)>"
+      "core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair";
     (* file: "Aeneas/Std/Core/IterAdapters.lean", line: 600 *)
     mk_trait_impl
       "core::iter::traits::iterator::Iterator<core::iter::sources::empty::Empty<@T>, \
@@ -3120,6 +3758,11 @@ let lean_builtin_trait_impls =
       "core::iter::traits::iterator::Iterator<core::ops::range::RangeInclusive<@A>, \
        @A>"
       "core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator";
+    (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 282 *)
+    mk_trait_impl
+      "core::iter::traits::iterator::Iterator<core::slice::iter::Chunks<'a, \
+       @T>, &'a [@T]>"
+      "core.slice.iter.Chunks.Insts.CoreIterTraitsIteratorIteratorSharedASlice";
     (* file: "Aeneas/Std/SliceIter.lean", line: 197 *)
     mk_trait_impl
       "core::iter::traits::iterator::Iterator<core::slice::iter::ChunksExact<'a, \

@@ -83,6 +83,20 @@ for mod, tr, m, expr in OPS:
             )
             out.append(f"def {name} (x y : {L}) : Result {L} := {expr}")
             out.append("")
+# `x op= &y`: core forwards it to `x op= y` (`forward_ref_op_assign!`)
+out.append(
+    "/-! `x op= &y`, likewise forwarded to `x op= y` (`forward_ref_op_assign!`). -/"
+)
+out.append("")
+for mod, tr, m, expr in OPS:
+    for t in TYPES:
+        L = lean_ty(t)
+        name = f"{L}.Insts.CoreOps{mod.capitalize()}{tr}AssignShared0{L}.{m}_assign"
+        out.append(
+            f'@[expose, rust_fun "core::ops::{mod}::{{core::ops::{mod}::{tr}Assign<{t}, &\'0 {t}>}}::{m}_assign"]'
+        )
+        out.append(f"def {name} (x y : {L}) : Result {L} := {expr}")
+        out.append("")
 out.append("end Aeneas.Std")
 with open("backends/lean/Aeneas/Std/Scalar/Ops/RefOps.lean", "w") as f:
     f.write("\n".join(out) + "\n")

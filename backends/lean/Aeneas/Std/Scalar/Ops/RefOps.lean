@@ -859,4 +859,294 @@ def Isize.Insts.CoreOpsBitBitXorShared0IsizeIsize.bitxor (x y : Isize) : Result 
 @[expose, rust_fun "core::ops::bit::{core::ops::bit::BitXor<&'1 isize, &'0 isize, isize>}::bitxor"]
 def Shared1Isize.Insts.CoreOpsBitBitXorShared0IsizeIsize.bitxor (x y : Isize) : Result Isize := ok (x ^^^ y)
 
+/-! `x op= &y`, likewise forwarded to `x op= y` (`forward_ref_op_assign!`). -/
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::AddAssign<u8, &'0 u8>}::add_assign"]
+def U8.Insts.CoreOpsArithAddAssignShared0U8.add_assign (x y : U8) : Result U8 := x + y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::AddAssign<u16, &'0 u16>}::add_assign"]
+def U16.Insts.CoreOpsArithAddAssignShared0U16.add_assign (x y : U16) : Result U16 := x + y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::AddAssign<u32, &'0 u32>}::add_assign"]
+def U32.Insts.CoreOpsArithAddAssignShared0U32.add_assign (x y : U32) : Result U32 := x + y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::AddAssign<u64, &'0 u64>}::add_assign"]
+def U64.Insts.CoreOpsArithAddAssignShared0U64.add_assign (x y : U64) : Result U64 := x + y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::AddAssign<u128, &'0 u128>}::add_assign"]
+def U128.Insts.CoreOpsArithAddAssignShared0U128.add_assign (x y : U128) : Result U128 := x + y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::AddAssign<usize, &'0 usize>}::add_assign"]
+def Usize.Insts.CoreOpsArithAddAssignShared0Usize.add_assign (x y : Usize) : Result Usize := x + y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::AddAssign<i8, &'0 i8>}::add_assign"]
+def I8.Insts.CoreOpsArithAddAssignShared0I8.add_assign (x y : I8) : Result I8 := x + y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::AddAssign<i16, &'0 i16>}::add_assign"]
+def I16.Insts.CoreOpsArithAddAssignShared0I16.add_assign (x y : I16) : Result I16 := x + y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::AddAssign<i32, &'0 i32>}::add_assign"]
+def I32.Insts.CoreOpsArithAddAssignShared0I32.add_assign (x y : I32) : Result I32 := x + y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::AddAssign<i64, &'0 i64>}::add_assign"]
+def I64.Insts.CoreOpsArithAddAssignShared0I64.add_assign (x y : I64) : Result I64 := x + y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::AddAssign<i128, &'0 i128>}::add_assign"]
+def I128.Insts.CoreOpsArithAddAssignShared0I128.add_assign (x y : I128) : Result I128 := x + y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::AddAssign<isize, &'0 isize>}::add_assign"]
+def Isize.Insts.CoreOpsArithAddAssignShared0Isize.add_assign (x y : Isize) : Result Isize := x + y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::SubAssign<u8, &'0 u8>}::sub_assign"]
+def U8.Insts.CoreOpsArithSubAssignShared0U8.sub_assign (x y : U8) : Result U8 := x - y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::SubAssign<u16, &'0 u16>}::sub_assign"]
+def U16.Insts.CoreOpsArithSubAssignShared0U16.sub_assign (x y : U16) : Result U16 := x - y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::SubAssign<u32, &'0 u32>}::sub_assign"]
+def U32.Insts.CoreOpsArithSubAssignShared0U32.sub_assign (x y : U32) : Result U32 := x - y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::SubAssign<u64, &'0 u64>}::sub_assign"]
+def U64.Insts.CoreOpsArithSubAssignShared0U64.sub_assign (x y : U64) : Result U64 := x - y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::SubAssign<u128, &'0 u128>}::sub_assign"]
+def U128.Insts.CoreOpsArithSubAssignShared0U128.sub_assign (x y : U128) : Result U128 := x - y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::SubAssign<usize, &'0 usize>}::sub_assign"]
+def Usize.Insts.CoreOpsArithSubAssignShared0Usize.sub_assign (x y : Usize) : Result Usize := x - y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::SubAssign<i8, &'0 i8>}::sub_assign"]
+def I8.Insts.CoreOpsArithSubAssignShared0I8.sub_assign (x y : I8) : Result I8 := x - y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::SubAssign<i16, &'0 i16>}::sub_assign"]
+def I16.Insts.CoreOpsArithSubAssignShared0I16.sub_assign (x y : I16) : Result I16 := x - y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::SubAssign<i32, &'0 i32>}::sub_assign"]
+def I32.Insts.CoreOpsArithSubAssignShared0I32.sub_assign (x y : I32) : Result I32 := x - y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::SubAssign<i64, &'0 i64>}::sub_assign"]
+def I64.Insts.CoreOpsArithSubAssignShared0I64.sub_assign (x y : I64) : Result I64 := x - y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::SubAssign<i128, &'0 i128>}::sub_assign"]
+def I128.Insts.CoreOpsArithSubAssignShared0I128.sub_assign (x y : I128) : Result I128 := x - y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::SubAssign<isize, &'0 isize>}::sub_assign"]
+def Isize.Insts.CoreOpsArithSubAssignShared0Isize.sub_assign (x y : Isize) : Result Isize := x - y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::MulAssign<u8, &'0 u8>}::mul_assign"]
+def U8.Insts.CoreOpsArithMulAssignShared0U8.mul_assign (x y : U8) : Result U8 := x * y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::MulAssign<u16, &'0 u16>}::mul_assign"]
+def U16.Insts.CoreOpsArithMulAssignShared0U16.mul_assign (x y : U16) : Result U16 := x * y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::MulAssign<u32, &'0 u32>}::mul_assign"]
+def U32.Insts.CoreOpsArithMulAssignShared0U32.mul_assign (x y : U32) : Result U32 := x * y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::MulAssign<u64, &'0 u64>}::mul_assign"]
+def U64.Insts.CoreOpsArithMulAssignShared0U64.mul_assign (x y : U64) : Result U64 := x * y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::MulAssign<u128, &'0 u128>}::mul_assign"]
+def U128.Insts.CoreOpsArithMulAssignShared0U128.mul_assign (x y : U128) : Result U128 := x * y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::MulAssign<usize, &'0 usize>}::mul_assign"]
+def Usize.Insts.CoreOpsArithMulAssignShared0Usize.mul_assign (x y : Usize) : Result Usize := x * y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::MulAssign<i8, &'0 i8>}::mul_assign"]
+def I8.Insts.CoreOpsArithMulAssignShared0I8.mul_assign (x y : I8) : Result I8 := x * y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::MulAssign<i16, &'0 i16>}::mul_assign"]
+def I16.Insts.CoreOpsArithMulAssignShared0I16.mul_assign (x y : I16) : Result I16 := x * y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::MulAssign<i32, &'0 i32>}::mul_assign"]
+def I32.Insts.CoreOpsArithMulAssignShared0I32.mul_assign (x y : I32) : Result I32 := x * y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::MulAssign<i64, &'0 i64>}::mul_assign"]
+def I64.Insts.CoreOpsArithMulAssignShared0I64.mul_assign (x y : I64) : Result I64 := x * y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::MulAssign<i128, &'0 i128>}::mul_assign"]
+def I128.Insts.CoreOpsArithMulAssignShared0I128.mul_assign (x y : I128) : Result I128 := x * y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::MulAssign<isize, &'0 isize>}::mul_assign"]
+def Isize.Insts.CoreOpsArithMulAssignShared0Isize.mul_assign (x y : Isize) : Result Isize := x * y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::DivAssign<u8, &'0 u8>}::div_assign"]
+def U8.Insts.CoreOpsArithDivAssignShared0U8.div_assign (x y : U8) : Result U8 := x / y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::DivAssign<u16, &'0 u16>}::div_assign"]
+def U16.Insts.CoreOpsArithDivAssignShared0U16.div_assign (x y : U16) : Result U16 := x / y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::DivAssign<u32, &'0 u32>}::div_assign"]
+def U32.Insts.CoreOpsArithDivAssignShared0U32.div_assign (x y : U32) : Result U32 := x / y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::DivAssign<u64, &'0 u64>}::div_assign"]
+def U64.Insts.CoreOpsArithDivAssignShared0U64.div_assign (x y : U64) : Result U64 := x / y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::DivAssign<u128, &'0 u128>}::div_assign"]
+def U128.Insts.CoreOpsArithDivAssignShared0U128.div_assign (x y : U128) : Result U128 := x / y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::DivAssign<usize, &'0 usize>}::div_assign"]
+def Usize.Insts.CoreOpsArithDivAssignShared0Usize.div_assign (x y : Usize) : Result Usize := x / y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::DivAssign<i8, &'0 i8>}::div_assign"]
+def I8.Insts.CoreOpsArithDivAssignShared0I8.div_assign (x y : I8) : Result I8 := x / y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::DivAssign<i16, &'0 i16>}::div_assign"]
+def I16.Insts.CoreOpsArithDivAssignShared0I16.div_assign (x y : I16) : Result I16 := x / y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::DivAssign<i32, &'0 i32>}::div_assign"]
+def I32.Insts.CoreOpsArithDivAssignShared0I32.div_assign (x y : I32) : Result I32 := x / y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::DivAssign<i64, &'0 i64>}::div_assign"]
+def I64.Insts.CoreOpsArithDivAssignShared0I64.div_assign (x y : I64) : Result I64 := x / y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::DivAssign<i128, &'0 i128>}::div_assign"]
+def I128.Insts.CoreOpsArithDivAssignShared0I128.div_assign (x y : I128) : Result I128 := x / y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::DivAssign<isize, &'0 isize>}::div_assign"]
+def Isize.Insts.CoreOpsArithDivAssignShared0Isize.div_assign (x y : Isize) : Result Isize := x / y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::RemAssign<u8, &'0 u8>}::rem_assign"]
+def U8.Insts.CoreOpsArithRemAssignShared0U8.rem_assign (x y : U8) : Result U8 := x % y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::RemAssign<u16, &'0 u16>}::rem_assign"]
+def U16.Insts.CoreOpsArithRemAssignShared0U16.rem_assign (x y : U16) : Result U16 := x % y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::RemAssign<u32, &'0 u32>}::rem_assign"]
+def U32.Insts.CoreOpsArithRemAssignShared0U32.rem_assign (x y : U32) : Result U32 := x % y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::RemAssign<u64, &'0 u64>}::rem_assign"]
+def U64.Insts.CoreOpsArithRemAssignShared0U64.rem_assign (x y : U64) : Result U64 := x % y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::RemAssign<u128, &'0 u128>}::rem_assign"]
+def U128.Insts.CoreOpsArithRemAssignShared0U128.rem_assign (x y : U128) : Result U128 := x % y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::RemAssign<usize, &'0 usize>}::rem_assign"]
+def Usize.Insts.CoreOpsArithRemAssignShared0Usize.rem_assign (x y : Usize) : Result Usize := x % y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::RemAssign<i8, &'0 i8>}::rem_assign"]
+def I8.Insts.CoreOpsArithRemAssignShared0I8.rem_assign (x y : I8) : Result I8 := x % y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::RemAssign<i16, &'0 i16>}::rem_assign"]
+def I16.Insts.CoreOpsArithRemAssignShared0I16.rem_assign (x y : I16) : Result I16 := x % y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::RemAssign<i32, &'0 i32>}::rem_assign"]
+def I32.Insts.CoreOpsArithRemAssignShared0I32.rem_assign (x y : I32) : Result I32 := x % y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::RemAssign<i64, &'0 i64>}::rem_assign"]
+def I64.Insts.CoreOpsArithRemAssignShared0I64.rem_assign (x y : I64) : Result I64 := x % y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::RemAssign<i128, &'0 i128>}::rem_assign"]
+def I128.Insts.CoreOpsArithRemAssignShared0I128.rem_assign (x y : I128) : Result I128 := x % y
+
+@[expose, rust_fun "core::ops::arith::{core::ops::arith::RemAssign<isize, &'0 isize>}::rem_assign"]
+def Isize.Insts.CoreOpsArithRemAssignShared0Isize.rem_assign (x y : Isize) : Result Isize := x % y
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitAndAssign<u8, &'0 u8>}::bitand_assign"]
+def U8.Insts.CoreOpsBitBitAndAssignShared0U8.bitand_assign (x y : U8) : Result U8 := ok (x &&& y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitAndAssign<u16, &'0 u16>}::bitand_assign"]
+def U16.Insts.CoreOpsBitBitAndAssignShared0U16.bitand_assign (x y : U16) : Result U16 := ok (x &&& y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitAndAssign<u32, &'0 u32>}::bitand_assign"]
+def U32.Insts.CoreOpsBitBitAndAssignShared0U32.bitand_assign (x y : U32) : Result U32 := ok (x &&& y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitAndAssign<u64, &'0 u64>}::bitand_assign"]
+def U64.Insts.CoreOpsBitBitAndAssignShared0U64.bitand_assign (x y : U64) : Result U64 := ok (x &&& y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitAndAssign<u128, &'0 u128>}::bitand_assign"]
+def U128.Insts.CoreOpsBitBitAndAssignShared0U128.bitand_assign (x y : U128) : Result U128 := ok (x &&& y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitAndAssign<usize, &'0 usize>}::bitand_assign"]
+def Usize.Insts.CoreOpsBitBitAndAssignShared0Usize.bitand_assign (x y : Usize) : Result Usize := ok (x &&& y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitAndAssign<i8, &'0 i8>}::bitand_assign"]
+def I8.Insts.CoreOpsBitBitAndAssignShared0I8.bitand_assign (x y : I8) : Result I8 := ok (x &&& y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitAndAssign<i16, &'0 i16>}::bitand_assign"]
+def I16.Insts.CoreOpsBitBitAndAssignShared0I16.bitand_assign (x y : I16) : Result I16 := ok (x &&& y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitAndAssign<i32, &'0 i32>}::bitand_assign"]
+def I32.Insts.CoreOpsBitBitAndAssignShared0I32.bitand_assign (x y : I32) : Result I32 := ok (x &&& y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitAndAssign<i64, &'0 i64>}::bitand_assign"]
+def I64.Insts.CoreOpsBitBitAndAssignShared0I64.bitand_assign (x y : I64) : Result I64 := ok (x &&& y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitAndAssign<i128, &'0 i128>}::bitand_assign"]
+def I128.Insts.CoreOpsBitBitAndAssignShared0I128.bitand_assign (x y : I128) : Result I128 := ok (x &&& y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitAndAssign<isize, &'0 isize>}::bitand_assign"]
+def Isize.Insts.CoreOpsBitBitAndAssignShared0Isize.bitand_assign (x y : Isize) : Result Isize := ok (x &&& y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitOrAssign<u8, &'0 u8>}::bitor_assign"]
+def U8.Insts.CoreOpsBitBitOrAssignShared0U8.bitor_assign (x y : U8) : Result U8 := ok (x ||| y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitOrAssign<u16, &'0 u16>}::bitor_assign"]
+def U16.Insts.CoreOpsBitBitOrAssignShared0U16.bitor_assign (x y : U16) : Result U16 := ok (x ||| y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitOrAssign<u32, &'0 u32>}::bitor_assign"]
+def U32.Insts.CoreOpsBitBitOrAssignShared0U32.bitor_assign (x y : U32) : Result U32 := ok (x ||| y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitOrAssign<u64, &'0 u64>}::bitor_assign"]
+def U64.Insts.CoreOpsBitBitOrAssignShared0U64.bitor_assign (x y : U64) : Result U64 := ok (x ||| y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitOrAssign<u128, &'0 u128>}::bitor_assign"]
+def U128.Insts.CoreOpsBitBitOrAssignShared0U128.bitor_assign (x y : U128) : Result U128 := ok (x ||| y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitOrAssign<usize, &'0 usize>}::bitor_assign"]
+def Usize.Insts.CoreOpsBitBitOrAssignShared0Usize.bitor_assign (x y : Usize) : Result Usize := ok (x ||| y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitOrAssign<i8, &'0 i8>}::bitor_assign"]
+def I8.Insts.CoreOpsBitBitOrAssignShared0I8.bitor_assign (x y : I8) : Result I8 := ok (x ||| y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitOrAssign<i16, &'0 i16>}::bitor_assign"]
+def I16.Insts.CoreOpsBitBitOrAssignShared0I16.bitor_assign (x y : I16) : Result I16 := ok (x ||| y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitOrAssign<i32, &'0 i32>}::bitor_assign"]
+def I32.Insts.CoreOpsBitBitOrAssignShared0I32.bitor_assign (x y : I32) : Result I32 := ok (x ||| y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitOrAssign<i64, &'0 i64>}::bitor_assign"]
+def I64.Insts.CoreOpsBitBitOrAssignShared0I64.bitor_assign (x y : I64) : Result I64 := ok (x ||| y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitOrAssign<i128, &'0 i128>}::bitor_assign"]
+def I128.Insts.CoreOpsBitBitOrAssignShared0I128.bitor_assign (x y : I128) : Result I128 := ok (x ||| y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitOrAssign<isize, &'0 isize>}::bitor_assign"]
+def Isize.Insts.CoreOpsBitBitOrAssignShared0Isize.bitor_assign (x y : Isize) : Result Isize := ok (x ||| y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitXorAssign<u8, &'0 u8>}::bitxor_assign"]
+def U8.Insts.CoreOpsBitBitXorAssignShared0U8.bitxor_assign (x y : U8) : Result U8 := ok (x ^^^ y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitXorAssign<u16, &'0 u16>}::bitxor_assign"]
+def U16.Insts.CoreOpsBitBitXorAssignShared0U16.bitxor_assign (x y : U16) : Result U16 := ok (x ^^^ y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitXorAssign<u32, &'0 u32>}::bitxor_assign"]
+def U32.Insts.CoreOpsBitBitXorAssignShared0U32.bitxor_assign (x y : U32) : Result U32 := ok (x ^^^ y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitXorAssign<u64, &'0 u64>}::bitxor_assign"]
+def U64.Insts.CoreOpsBitBitXorAssignShared0U64.bitxor_assign (x y : U64) : Result U64 := ok (x ^^^ y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitXorAssign<u128, &'0 u128>}::bitxor_assign"]
+def U128.Insts.CoreOpsBitBitXorAssignShared0U128.bitxor_assign (x y : U128) : Result U128 := ok (x ^^^ y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitXorAssign<usize, &'0 usize>}::bitxor_assign"]
+def Usize.Insts.CoreOpsBitBitXorAssignShared0Usize.bitxor_assign (x y : Usize) : Result Usize := ok (x ^^^ y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitXorAssign<i8, &'0 i8>}::bitxor_assign"]
+def I8.Insts.CoreOpsBitBitXorAssignShared0I8.bitxor_assign (x y : I8) : Result I8 := ok (x ^^^ y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitXorAssign<i16, &'0 i16>}::bitxor_assign"]
+def I16.Insts.CoreOpsBitBitXorAssignShared0I16.bitxor_assign (x y : I16) : Result I16 := ok (x ^^^ y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitXorAssign<i32, &'0 i32>}::bitxor_assign"]
+def I32.Insts.CoreOpsBitBitXorAssignShared0I32.bitxor_assign (x y : I32) : Result I32 := ok (x ^^^ y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitXorAssign<i64, &'0 i64>}::bitxor_assign"]
+def I64.Insts.CoreOpsBitBitXorAssignShared0I64.bitxor_assign (x y : I64) : Result I64 := ok (x ^^^ y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitXorAssign<i128, &'0 i128>}::bitxor_assign"]
+def I128.Insts.CoreOpsBitBitXorAssignShared0I128.bitxor_assign (x y : I128) : Result I128 := ok (x ^^^ y)
+
+@[expose, rust_fun "core::ops::bit::{core::ops::bit::BitXorAssign<isize, &'0 isize>}::bitxor_assign"]
+def Isize.Insts.CoreOpsBitBitXorAssignShared0Isize.bitxor_assign (x y : Isize) : Result Isize := ok (x ^^^ y)
+
 end Aeneas.Std

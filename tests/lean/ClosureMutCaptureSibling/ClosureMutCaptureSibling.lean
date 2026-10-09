@@ -29,39 +29,6 @@ namespace closure_mut_capture_sibling
 @[rust_type "core::mem::maybe_uninit::MaybeUninit"]
 axiom core.mem.maybe_uninit.MaybeUninit (T : Type) : Type
 
-/-- [core::result::{impl core::iter::traits::collect::FromIterator<core::result::Result<T, E>> for core::result::Result<V, E>}::from_iter]:
-    Source: '/rustc/library/core/src/result.rs', lines 2158:4-2158:79
-    Name pattern: [core::result::{core::iter::traits::collect::FromIterator<core::result::Result<@V, @E>, core::result::Result<@T, @E>>}::from_iter]
-    Visibility: public -/
-@[rust_fun
-  "core::result::{core::iter::traits::collect::FromIterator<core::result::Result<@V, @E>, core::result::Result<@T, @E>>}::from_iter"]
-axiom
-  core.result.Result.Insts.CoreIterTraitsCollectFromIteratorResult.from_iter
-  {T : Type} {E : Type} {V : Type} {I : Type} {Clause1_IntoIter : Type}
-  (itertraitscollectFromIteratorInst : core.iter.traits.collect.FromIterator V
-  T) (itertraitscollectIntoIteratorIResultClause1_IntoIterInst :
-  core.iter.traits.collect.IntoIterator I (core.result.Result T E)
-  Clause1_IntoIter) :
-  I → Result (core.result.Result V E)
-
-/-- Trait implementation: [core::result::{impl core::iter::traits::collect::FromIterator<core::result::Result<T, E>> for core::result::Result<V, E>}]
-    Source: '/rustc/library/core/src/result.rs', lines 2114:0-2114:74
-    Name pattern: [core::iter::traits::collect::FromIterator<core::result::Result<@V, @E>, core::result::Result<@T, @E>>] -/
-@[reducible, rust_trait_impl
-  "core::iter::traits::collect::FromIterator<core::result::Result<@V, @E>, core::result::Result<@T, @E>>"]
-def core.result.Result.Insts.CoreIterTraitsCollectFromIteratorResult {T : Type}
-  (E : Type) {V : Type} (itertraitscollectFromIteratorInst :
-  core.iter.traits.collect.FromIterator V T) :
-  core.iter.traits.collect.FromIterator (core.result.Result V E)
-  (core.result.Result T E) := {
-  from_iter := fun {I : Type} {Clause0_IntoIter : Type}
-    (itertraitscollectIntoIteratorPResultPInst :
-    core.iter.traits.collect.IntoIterator I (core.result.Result T E)
-    Clause0_IntoIter) =>
-    core.result.Result.Insts.CoreIterTraitsCollectFromIteratorResult.from_iter
-    itertraitscollectFromIteratorInst itertraitscollectIntoIteratorPResultPInst
-}
-
 /-- Trait declaration: [closure_mut_capture_sibling::Read]
     Source: 'tests/src/closure-mut-capture-sibling.rs', lines 8:0-10:1
     Visibility: public -/

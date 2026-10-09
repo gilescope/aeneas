@@ -47,20 +47,6 @@ def core.borrow.Borrow.Blanket (T : Type) : core.borrow.Borrow T T := {
   borrow := core.borrow.Borrow.Blanket.borrow
 }
 
-/-- [core::iter::adapters::enumerate::{impl core::iter::traits::iterator::Iterator<(usize, Clause0_Item)> for core::iter::adapters::enumerate::Enumerate<I>}::fold]:
-    Source: '/rustc/library/core/src/iter/adapters/enumerate.rs', lines 129:4-131:44
-    Name pattern: [core::iter::adapters::enumerate::{core::iter::traits::iterator::Iterator<core::iter::adapters::enumerate::Enumerate<@I>, (usize, @Clause0_Item)>}::fold]
-    Visibility: public -/
-@[rust_fun
-  "core::iter::adapters::enumerate::{core::iter::traits::iterator::Iterator<core::iter::adapters::enumerate::Enumerate<@I>, (usize, @Clause0_Item)>}::fold"]
-axiom
-  core.iter.adapters.enumerate.Enumerate.Insts.CoreIterTraitsIteratorIteratorPairUsizeClause0_Item.fold
-  {I : Type} {Acc : Type} {Fold : Type} {Clause0_Item : Type}
-  (traitsiteratorIteratorInst : core.iter.traits.iterator.Iterator I
-  Clause0_Item) (opsfunctionFnMutFoldPairAccPairUsizeClause0_ItemAccInst :
-  core.ops.function.FnMut Fold (Acc × (Std.Usize × Clause0_Item)) Acc) :
-  core.iter.adapters.enumerate.Enumerate I → Acc → Fold → Result Acc
-
 /-- Trait declaration: [core::ops::arith::Add]
     Source: '/rustc/library/core/src/ops/arith.rs', lines 76:0-76:31
     Name pattern: [core::ops::arith::Add]
@@ -108,17 +94,6 @@ axiom alloc.collections.btree.map.BTreeMap.get
   core.alloc.AllocatorClone A) (coreborrowBorrowInst : core.borrow.Borrow K Q)
   (corecmpOrdInst : core.cmp.Ord K) (corecmpOrdInst1 : core.cmp.Ord Q) :
   alloc.collections.btree.map.BTreeMap K V A → Q → Result (Option V)
-
-/-- [alloc::vec::into_iter::{impl core::iter::traits::iterator::Iterator<T> for alloc::vec::into_iter::IntoIter<T, A>}::fold]:
-    Source: '/rustc/library/alloc/src/vec/into_iter.rs', lines 367:4-369:37
-    Name pattern: [alloc::vec::into_iter::{core::iter::traits::iterator::Iterator<alloc::vec::into_iter::IntoIter<@T, @A>, @T>}::fold]
-    Visibility: public -/
-@[rust_fun
-  "alloc::vec::into_iter::{core::iter::traits::iterator::Iterator<alloc::vec::into_iter::IntoIter<@T, @A>, @T>}::fold"]
-axiom alloc.vec.into_iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.fold
-  {T : Type} {A : Type} {B : Type} {F : Type} (coreopsfunctionFnMutFPairBInst :
-  core.ops.function.FnMut F (B × T) B) :
-  alloc.vec.into_iter.IntoIter T → B → F → Result B
 
 /-- [closure_mut_capture_nested::helpers::{closure}]
     Source: 'tests/src/closure-mut-capture-nested.rs', lines 17:19-17:85 -/
