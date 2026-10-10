@@ -31,3 +31,10 @@ pub fn count<A: Affine>(c: &Commitment<A>) -> usize {
         Commitment::Linear(ps, _) => ps.len(),
     }
 }
+
+/// The closure's state type keeps the clause too, so its `GivesBack` instance must apply the
+/// explicit parameters only.
+pub fn count_first<A: Affine>(cs: &[Commitment<A>], n: &mut usize) {
+    let mut add = |c| *n += count(c);
+    add(&cs[0]);
+}

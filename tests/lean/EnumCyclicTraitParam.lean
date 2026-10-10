@@ -81,4 +81,54 @@ def count
   | Commitment.Simple _ => ok 1#usize
   | Commitment.Linear ps _ => ok (alloc.vec.Vec.len ps)
 
+/-- [enum_cyclic_trait_param::count_first::{closure}]
+    Source: 'tests/src/enum-cyclic-trait-param.rs', lines 38:18-38:36 -/
+@[reducible]
+def count_first.closure {A : Type} {Clause0_Proj : Type}
+  {Clause0_Clause0_Clause0_Scalar : Type} {Clause0_Clause0_Clause0_Clause0_Repr
+  : Type} (AffineInst : Affine A Clause0_Proj Clause0_Clause0_Clause0_Scalar
+  Clause0_Clause0_Clause0_Clause0_Repr) :=
+  Std.Usize
+
+instance {A : Type} {Clause0_Proj : Type} {Clause0_Clause0_Clause0_Scalar :
+  Type} {Clause0_Clause0_Clause0_Clause0_Repr : Type} {AffineInst : Affine A
+  Clause0_Proj Clause0_Clause0_Clause0_Scalar
+  Clause0_Clause0_Clause0_Clause0_Repr} : Aeneas.Std.GivesBack
+  (count_first.closure AffineInst) := ⟨⟩
+
+/-- [enum_cyclic_trait_param::count_first::{impl core::ops::function::FnMut<(&'_1 enum_cyclic_trait_param::Commitment<A, Clause0_Proj, Clause0_Clause0_Clause0_Scalar, Clause0_Clause0_Clause0_Clause0_Repr>[TraitClause0],), ()> for enum_cyclic_trait_param::count_first::{closure}<'_0, A, Clause0_Proj, Clause0_Clause0_Clause0_Scalar, Clause0_Clause0_Clause0_Clause0_Repr>[TraitClause0]}::call_mut]:
+    Source: 'tests/src/enum-cyclic-trait-param.rs', lines 38:18-38:36 -/
+def
+  count_first.closure.Insts.CoreOpsFunctionFnMutTupleShared1CommitmentTuple.call_mut
+  {A : Type} {Clause0_Proj : Type} {Clause0_Clause0_Clause0_Scalar : Type}
+  {Clause0_Clause0_Clause0_Clause0_Repr : Type} (AffineInst : Affine A
+  Clause0_Proj Clause0_Clause0_Clause0_Scalar
+  Clause0_Clause0_Clause0_Clause0_Repr) (c : count_first.closure AffineInst)
+  (tupled_args : Commitment AffineInst) :
+  Result ((count_first.closure AffineInst) × (count_first.closure AffineInst
+    → count_first.closure AffineInst))
+  := do
+  let i ← count AffineInst tupled_args
+  let i1 ← c + i
+  let back := fun c1 => c1
+  ok (i1, back)
+
+/-- [enum_cyclic_trait_param::count_first]:
+    Source: 'tests/src/enum-cyclic-trait-param.rs', lines 37:0-40:1
+    Visibility: public -/
+def count_first
+  {A : Type} {Clause0_Proj : Type} {Clause0_Clause0_Clause0_Scalar : Type}
+  {Clause0_Clause0_Clause0_Clause0_Repr : Type} (AffineInst : Affine A
+  Clause0_Proj Clause0_Clause0_Clause0_Scalar
+  Clause0_Clause0_Clause0_Clause0_Repr) (cs : Slice (Commitment AffineInst))
+  (n : Std.Usize) :
+  Result Std.Usize
+  := do
+  let c ← Slice.index_usize cs 0#usize
+  let (add, call_mut_back) ←
+    count_first.closure.Insts.CoreOpsFunctionFnMutTupleShared1CommitmentTuple.call_mut
+      AffineInst n c
+  let n1 := call_mut_back add
+  ok n1
+
 end enum_cyclic_trait_param

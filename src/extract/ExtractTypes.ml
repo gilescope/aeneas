@@ -912,6 +912,20 @@ let extract_type_decl_register_names (ctx : extraction_ctx) (def : type_decl) :
   ctx
 
 (** Print the variants *)
+(** The arguments to apply a type declaration to, in its own scope, in Lean:
+    its explicit type and const generic parameters, then its trait clauses.
+    The implicit parameters are inferred from the clauses. *)
+let type_decl_explicit_args (decl : type_decl) (type_params : string list)
+    (cg_params : string list) (trait_clauses : string list) : string list =
+  let explicit l e =
+    List.filter_map
+      (fun (e, x) -> if e = Explicit then Some x else None)
+      (List.combine e l)
+  in
+  explicit type_params decl.explicit_info.explicit_types
+  @ explicit cg_params decl.explicit_info.explicit_const_generics
+  @ trait_clauses
+
 let extract_type_decl_variant (span : Meta.span) (ctx : extraction_ctx)
     (fmt : F.formatter) (type_decl_group : TypeDeclId.Set.t)
     (type_name : string) (type_params : string list) (cg_params : string list)
@@ -1657,14 +1671,7 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
             implicit ones are inferred from the clauses. *)
          let type_params, cg_params =
            if backend () = Lean then
-             let explicit l e =
-               List.filter_map
-                 (fun (e, x) -> if e = Explicit then Some x else None)
-                 (List.combine e l)
-             in
-             ( explicit type_params def.explicit_info.explicit_types,
-               explicit cg_params def.explicit_info.explicit_const_generics
-               @ trait_clauses )
+             ([], type_decl_explicit_args def type_params cg_params trait_clauses)
            else (type_params, cg_params)
          in
          extract_type_decl_enum_body ctx_body fmt type_decl_group def def_name
@@ -2213,7 +2220,9 @@ let extract_type_decl_gives_back (ctx : extraction_ctx) (fmt : F.formatter)
     F.pp_print_space fmt ();
     F.pp_print_string fmt ": Aeneas.Std.GivesBack";
     F.pp_print_space fmt ();
-    let args = type_params @ cg_params in
+    let args =
+      type_decl_explicit_args decl type_params cg_params trait_clauses
+    in
     if args = [] then F.pp_print_string fmt def_name
     else F.pp_print_string fmt ("(" ^ String.concat " " (def_name :: args) ^ ")");
     F.pp_print_string fmt " := ⟨⟩";
