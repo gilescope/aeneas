@@ -74,7 +74,7 @@ structure Columns where
 /-- [ctor_closure_adapter::{ctor_closure_adapter::Columns}::is_simple]:
     Source: 'tests/src/ctor-closure-adapter.rs', lines 20:4-22:5 -/
 def Columns.is_simple (self : Columns) (i : Std.Usize) : Result Bool := do
-  let i1 := alloc.vec.Vec.len self.simple
+  let i1 := alloc.vec.Vec.len (Columns.simple self)
   ok (i1 > i)
 
 /-- [ctor_closure_adapter::{ctor_closure_adapter::Columns}::first_fixed::{closure}]
@@ -131,7 +131,7 @@ def Columns.first_fixed (self : Columns) : Result (Option Label) := do
     core.iter.traits.iterator.Iterator.filter.default
       (core.iter.traits.iterator.IteratorRange core.iter.range.StepUsize)
       Columns.first_fixed.closure.Insts.CoreOpsFunctionFnMutTupleShared1UsizeBool
-      { start := 0#usize, «end» := self.n } self
+      { start := 0#usize, «end» := (Columns.n self) } self
   let m ←
     core.iter.traits.iterator.Iterator.map.default
       (core.iter.adapters.filter.Filter.Insts.CoreIterTraitsIteratorIterator

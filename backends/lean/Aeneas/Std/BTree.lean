@@ -237,8 +237,8 @@ def alloc.collections.btree.map.IntoIter.Insts.CoreIterTraitsIteratorIteratorPai
 
 @[reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<alloc::collections::btree::map::IntoIter<@K, @V, @A>, (@K, @V)>"]
-def alloc.collections.btree.map.IntoIter.Insts.CoreIterTraitsIteratorIteratorPair {K V A : Type}
-  (AllocInst : core.alloc.AllocatorClone A) :
+def alloc.collections.btree.map.IntoIter.Insts.CoreIterTraitsIteratorIteratorPair (K V : Type)
+  {A : Type} (AllocInst : core.alloc.AllocatorClone A) :
   core.iter.traits.iterator.Iterator (alloc.collections.btree.map.IntoIter K V A) (K × V) where
   next := alloc.collections.btree.map.IntoIter.Insts.CoreIterTraitsIteratorIteratorPair.next AllocInst
   size_hint :=
@@ -250,7 +250,7 @@ def alloc.collections.btree.map.BTreeMap.Insts.CoreIterTraitsCollectIntoIterator
   {K V A : Type} (AllocInst : core.alloc.AllocatorClone A) :
   core.iter.traits.collect.IntoIterator (alloc.collections.btree.map.BTreeMap K V A) (K × V)
     (alloc.collections.btree.map.IntoIter K V A) where
-  iteratorInst := alloc.collections.btree.map.IntoIter.Insts.CoreIterTraitsIteratorIteratorPair AllocInst
+  iteratorInst := alloc.collections.btree.map.IntoIter.Insts.CoreIterTraitsIteratorIteratorPair K V AllocInst
   into_iter :=
     alloc.collections.btree.map.BTreeMap.Insts.CoreIterTraitsCollectIntoIteratorPairIntoIter.into_iter
       AllocInst
@@ -371,8 +371,8 @@ def alloc.collections.btree.set.IntoIter.Insts.CoreIterTraitsIteratorIterator.si
 
 @[reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<alloc::collections::btree::set::IntoIter<@T, @A>, @T>"]
-def alloc.collections.btree.set.IntoIter.Insts.CoreIterTraitsIteratorIterator {T A : Type}
-  (AllocInst : core.alloc.AllocatorClone A) :
+def alloc.collections.btree.set.IntoIter.Insts.CoreIterTraitsIteratorIterator (T : Type)
+  {A : Type} (AllocInst : core.alloc.AllocatorClone A) :
   core.iter.traits.iterator.Iterator (alloc.collections.btree.set.IntoIter T A) T where
   next := alloc.collections.btree.set.IntoIter.Insts.CoreIterTraitsIteratorIterator.next AllocInst
   size_hint := alloc.collections.btree.set.IntoIter.Insts.CoreIterTraitsIteratorIterator.size_hint AllocInst
@@ -383,7 +383,7 @@ def alloc.collections.btree.set.BTreeSet.Insts.CoreIterTraitsCollectIntoIterator
   (AllocInst : core.alloc.AllocatorClone A) :
   core.iter.traits.collect.IntoIterator (alloc.collections.btree.set.BTreeSet T A) T
     (alloc.collections.btree.set.IntoIter T A) where
-  iteratorInst := alloc.collections.btree.set.IntoIter.Insts.CoreIterTraitsIteratorIterator AllocInst
+  iteratorInst := alloc.collections.btree.set.IntoIter.Insts.CoreIterTraitsIteratorIterator T AllocInst
   into_iter :=
     alloc.collections.btree.set.BTreeSet.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
       AllocInst

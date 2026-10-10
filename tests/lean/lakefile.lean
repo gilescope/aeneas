@@ -23,6 +23,7 @@ package «tests» {}
 @[default_target] lean_lib BorrowAssignNested
 @[default_target] lean_lib Bst
 @[default_target] lean_lib Btree
+@[default_target] lean_lib BtreeIntoIterFold
 @[default_target] lean_lib Builtin
 @[default_target] lean_lib BuiltinAuto
 @[default_target] lean_lib CastSigned
@@ -54,6 +55,7 @@ package «tests» {}
 @[default_target] lean_lib DynamicSize
 @[default_target] lean_lib ExcludedTraitMethod
 @[default_target] lean_lib FromTo
+@[default_target] lean_lib GenericIterZip
 @[default_target] lean_lib GenericUnitOutput
 @[default_target] lean_lib Hashmap
 @[default_target] lean_lib HigherRankedTraitBounds
@@ -114,6 +116,7 @@ package «tests» {}
 @[default_target] lean_lib NestedBorrows
 @[default_target] lean_lib NestedSharedBorrows
 @[default_target] lean_lib NestedSharedIter
+@[default_target] lean_lib NewtypeGetterSameName
 @[default_target] lean_lib NoNestedBorrows
 @[default_target] lean_lib OpaqueMutRegion
 @[default_target] lean_lib Options
@@ -143,3 +146,4 @@ package «tests» {}
 @[default_target] lean_lib Tutorial
 @[default_target] lean_lib Vec
 @[default_target] lean_lib VecIter
+@[default_target] lean_lib ZipIterMut

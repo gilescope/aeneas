@@ -726,9 +726,7 @@ impl_def core.iter.traits.iterator.IteratorRange {A : Type}
     Some((x, y))
     ```
     `?` short-circuits: if A yields `none`, B is *not* advanced. -/
-@[rust_fun
-  "core::iter::adapters::zip::{core::iter::traits::iterator::Iterator<core::iter::adapters::zip::Zip<@A, @B>, (@Clause0_Item, @Clause1_Item)>}::next"]
-def core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.next
+def core.iter.adapters.zip.Zip.nextPlain
   {A B Item_A Item_B : Type}
   (IA : core.iter.traits.iterator.Iterator A Item_A)
   (IB : core.iter.traits.iterator.Iterator B Item_B)
@@ -742,6 +740,25 @@ def core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.next
       match ob with
       | none => ok (none, ⟨a', b'⟩)
       | some b => ok (some (a, b), ⟨a', b'⟩)
+
+/-- The output of `Zip::next`: with a `B` yielding `&mut` items (`IterMut`), also the backward
+function writing the item back. -/
+class ZipNextShape (A B Item_A Item_B : Type) where
+  Out : Type
+  next : core.iter.traits.iterator.Iterator A Item_A →
+    core.iter.traits.iterator.Iterator B Item_B → core.iter.adapters.zip.Zip A B → Result Out
+
+instance (priority := low) {A B Item_A Item_B : Type} : ZipNextShape A B Item_A Item_B :=
+  ⟨_, core.iter.adapters.zip.Zip.nextPlain⟩
+
+@[rust_fun
+  "core::iter::adapters::zip::{core::iter::traits::iterator::Iterator<core::iter::adapters::zip::Zip<@A, @B>, (@Clause0_Item, @Clause1_Item)>}::next"]
+def core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.next
+  {A B Item_A Item_B : Type} [S : ZipNextShape A B Item_A Item_B]
+  (IA : core.iter.traits.iterator.Iterator A Item_A)
+  (IB : core.iter.traits.iterator.Iterator B Item_B)
+  (z : core.iter.adapters.zip.Zip A B) : Result S.Out :=
+  S.next IA IB z
 
 @[rust_fun "core::ops::range::{core::ops::range::RangeInclusive<@Idx>}::new"]
 def core.ops.range.RangeInclusive.new {Idx : Type}
@@ -804,13 +821,26 @@ def core.iter.traits.iterator.Iterator.zip.default
     let b ← into_iter other
     ok ⟨self, b⟩
 
+/-- The output of `zip(self, other)`: the `Zip`, and `other` given back from its final state
+when it holds a `&mut` (e.g. `iter_mut()`, its own `IntoIterator`). -/
+class ZipShape (Self U IntoIter : Type) where
+  Out : Type
+  ofZip : core.iter.adapters.zip.Zip Self IntoIter → Out
+
+instance (priority := low) {Self U IntoIter : Type} : ZipShape Self U IntoIter := ⟨_, id⟩
+
+instance {Self U : Type} [GivesBack U] : ZipShape Self U U :=
+  ⟨core.iter.adapters.zip.Zip Self U × (core.iter.adapters.zip.Zip Self U → U),
+    fun z => (z, (·.snd))⟩
+
 @[trait_default, rust_fun "core::iter::traits::iterator::Iterator::zip"]
 def core.iter.traits.iterator.Iterator.zip.trait_default
-  {Self U Item0 Item1 IntoIter : Type}
+  {Self U Item0 Item1 IntoIter : Type} [S : ZipShape Self U IntoIter]
   (_IteratorInst : core.iter.traits.iterator.Iterator Self Item0)
   (IntoIterInst : core.iter.traits.collect.IntoIterator U Item1 IntoIter) :
-  Self → U → Result (core.iter.adapters.zip.Zip Self IntoIter) :=
-  core.iter.traits.iterator.Iterator.zip.default IntoIterInst.into_iter
+  Self → U → Result S.Out := fun self other => do
+  let z ← core.iter.traits.iterator.Iterator.zip.default IntoIterInst.into_iter self other
+  ok (S.ofZip z)
 
 /-- `Iterator::rev` default body: `Rev { iter: self }`. -/
 def core.iter.traits.iterator.Iterator.rev.default
@@ -953,8 +983,9 @@ theorem core.iter.traits.iterator.Iterator.zip.trait_default.spec
     core.iter.traits.iterator.Iterator.zip.trait_default inst IntoIterInst self other
     ⦃ z => ∃ other', IntoIterInst.into_iter other = ok other' ∧ z.fst = self ∧ z.snd = other' ⦄ := by
   unfold core.iter.traits.iterator.Iterator.zip.trait_default
-  exact core.iter.traits.iterator.Iterator.zip.default.spec
-    IntoIterInst.into_iter self other h_into
+    core.iter.traits.iterator.Iterator.zip.default
+  obtain ⟨ other', h_into ⟩ := h_into
+  simp [h_into, WP.spec_ok, ZipShape.ofZip]
 
 /-- `Iterator::next` on `TakeWhile<I, P>`: yields until the predicate first fails,
     then latches `flag` and yields nothing further. -/

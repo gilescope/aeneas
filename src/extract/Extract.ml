@@ -708,6 +708,27 @@ let extract_texpr_errors (fmt : F.formatter) =
 
 (** - [inside_do]: [true] if we are inside a do block. In Lean, controls whether
       we can print let-bindings or if we need to insert a [do] first. *)
+(** The default body of a provided method of a builtin trait whose model has no
+    field for it (e.g. [Iterator::zip], which a field could not type: its
+    [IntoIterator] bound holds an [Iterator]). std's overrides of provided
+    methods compute what the default does, so a call through an instance is a
+    call to the default's model on the instance. *)
+let builtin_method_default (trait_decl : trait_decl)
+    (method_id : trait_method_id) : FunDeclId.id option =
+  match trait_decl.builtin_info with
+  | None -> None
+  | Some info -> (
+      match
+        List.find_opt
+          (fun (m : trait_method) -> m.method_id = method_id)
+          trait_decl.methods
+      with
+      | Some m when not (List.mem_assoc m.item_name info.methods) ->
+          Option.map
+            (fun (d : fun_decl_ref) -> d.fun_id)
+            m.default.binder_value
+      | _ -> None)
+
 let rec extract_texpr (span : Meta.span) (ctx : extraction_ctx)
     (fmt : F.formatter) ~(inside : bool) ~(inside_do : bool) (e : texpr) : unit
     =
@@ -979,16 +1000,27 @@ and extract_function_call (span : Meta.span) (ctx : extraction_ctx)
           in
 
           [%sanity_check] trait_decl.item_meta.span (lp_id = None);
-          extract_trait_ref trait_decl.item_meta.span ctx fmt
-            TypeDeclId.Set.empty ~inside:true trait_ref;
-          let fun_name =
-            ctx_get_trait_method span trait_ref.trait_decl_ref.trait_decl_id
-              method_name ctx
-          in
-          let add_brackets (s : string) =
-            if backend () = Coq then "(" ^ s ^ ")" else s
-          in
-          F.pp_print_string fmt ("." ^ add_brackets fun_name)
+          begin match builtin_method_default trait_decl method_name with
+          | Some default_id ->
+              (* The model of the trait has no field for this provided method:
+                 call the model of its default body on the instance *)
+              F.pp_print_string fmt
+                (ctx_get_function span (FromLlbc (FunId default_id, None)) ctx);
+              F.pp_print_space fmt ();
+              extract_trait_ref trait_decl.item_meta.span ctx fmt
+                TypeDeclId.Set.empty ~inside:true trait_ref
+          | None ->
+              extract_trait_ref trait_decl.item_meta.span ctx fmt
+                TypeDeclId.Set.empty ~inside:true trait_ref;
+              let fun_name =
+                ctx_get_trait_method span
+                  trait_ref.trait_decl_ref.trait_decl_id method_name ctx
+              in
+              let add_brackets (s : string) =
+                if backend () = Coq then "(" ^ s ^ ")" else s
+              in
+              F.pp_print_string fmt ("." ^ add_brackets fun_name)
+          end
       | _ ->
           let fun_name = ctx_get_function span fun_id ctx in
           F.pp_print_string fmt fun_name);
@@ -1205,6 +1237,38 @@ and extract_field_projector (span : Meta.span) (ctx : extraction_ctx)
                 else "#" ^ string_of_int field_id
           else ctx_get_field ~qualified:true span proj.adt_id proj.field_id ctx
         in
+        (* In Lean, [x.f] resolves [f] in the namespace of [x]'s type: when that
+           is an alias of the structure (a newtype over it), a function of the
+           alias named like the field would be picked instead. Qualify. *)
+        (* Whether a one-field tuple struct of the crate wraps the structure:
+           extracted as an alias of it, its values are printed as the
+           structure's, though Lean types them by the alias *)
+        let has_alias (id : type_id) =
+          TypeDeclId.Map.exists
+            (fun _ (d : type_decl) ->
+              PureUtils.type_decl_from_type_id_is_tuple_struct
+                ctx.trans_ctx.type_ctx.type_infos (TAdtId d.def_id)
+              &&
+              match d.kind with
+              | Struct [ { field_ty = TAdt (fid, _); _ } ] -> fid = id
+              | _ -> false)
+            ctx.trans_types
+        in
+        let qualified =
+          backend () = Lean
+          && (match proj.adt_id with TAdtId _ -> true | _ -> false)
+          && has_alias proj.adt_id
+        in
+        if qualified then (
+          if inside then F.pp_print_string fmt "(";
+          F.pp_open_hovbox fmt ctx.indent_incr;
+          F.pp_print_string fmt
+            (ctx_get_type (Some span) proj.adt_id ctx ^ "." ^ field_name);
+          F.pp_print_space fmt ();
+          extract_texpr span ctx fmt ~inside:true ~inside_do arg;
+          F.pp_close_box fmt ();
+          if inside then F.pp_print_string fmt ")")
+        else (
         (* Open a box *)
         F.pp_open_hovbox fmt ctx.indent_incr;
         (* Extract the expression *)
@@ -1217,7 +1281,7 @@ and extract_field_projector (span : Meta.span) (ctx : extraction_ctx)
         | FStar | Lean | HOL4 -> F.pp_print_string fmt field_name
         | Coq -> F.pp_print_string fmt ("(" ^ field_name ^ ")"));
         (* Close the box *)
-        F.pp_close_box fmt ()
+        F.pp_close_box fmt ())
   | arg :: args ->
       (* Call extract_App again, but in such a way that the first argument is
        * isolated *)

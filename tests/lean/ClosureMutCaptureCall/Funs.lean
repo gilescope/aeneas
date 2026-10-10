@@ -24,7 +24,7 @@ namespace closure_mut_capture_call
     Source: 'tests/src/closure-mut-capture-call.rs', lines 15:4-18:5
     Visibility: public -/
 def Counter.read (self : Counter) : Result (Std.U32 × Counter) := do
-  let i ← lift (core.num.U32.wrapping_add self.n 1#u32)
+  let i ← lift (core.num.U32.wrapping_add (Counter.n self) 1#u32)
   ok (i, { n := i })
 
 /-- [closure_mut_capture_call::reads::{impl core::ops::function::FnMut<(u32,), u32> for closure_mut_capture_call::reads::{closure}<'_0>}::call_mut]:

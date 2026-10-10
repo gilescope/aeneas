@@ -150,7 +150,7 @@ def core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair
   {A B ItemA ItemB : Type}
   (IA : core.iter.traits.iterator.Iterator A ItemA) (IB : core.iter.traits.iterator.Iterator B ItemB) :
   core.iter.traits.iterator.Iterator (core.iter.adapters.zip.Zip A B) (ItemA × ItemB) where
-  next := core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.next IA IB
+  next := core.iter.adapters.zip.Zip.nextPlain IA IB
   size_hint := core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.size_hint IA IB
 
 @[rust_fun

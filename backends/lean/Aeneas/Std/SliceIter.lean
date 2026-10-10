@@ -31,6 +31,8 @@ structure core.slice.iter.IterMut (T : Type) where
   slice : Slice T
   i : Nat := 0
 
+instance {T : Type} : GivesBack (core.slice.iter.IterMut T) := ⟨⟩
+
 @[rust_fun "core::slice::{[@T]}::iter"]
 def core.slice.Slice.iter {T : Type} (s : Slice T) : Result (core.slice.iter.Iter T) :=
   ok ⟨ s, 0 ⟩
@@ -57,6 +59,25 @@ def core.slice.iter.IteratorIterMut.next
       | some x => { it' with slice := it'.slice.setAtNat i x }
     ok (some x, it, back)
   else ok (none, it, fun it _ => it)
+
+/-- `Zip::next` with `iter_mut()` as `B`: `IterMut::next` (the instance `B`'s Aeneas generates
+cannot give the item back, so it is not used), whose backward function writes the item. -/
+instance {A T Item_A : Type} : ZipNextShape A (core.slice.iter.IterMut T) Item_A T where
+  Out := Option (Item_A × T) × core.iter.adapters.zip.Zip A (core.slice.iter.IterMut T) ×
+    (core.iter.adapters.zip.Zip A (core.slice.iter.IterMut T) → Option (Item_A × T) →
+      core.iter.adapters.zip.Zip A (core.slice.iter.IterMut T))
+  next IA _ z := do
+    let (oa, a') ← IA.next z.fst
+    match oa with
+    | none => ok (none, ⟨a', z.snd⟩, fun z _ => z)
+    | some a => do
+      let (ob, b', back) ← core.slice.iter.IteratorIterMut.next z.snd
+      match ob with
+      | none => ok (none, ⟨a', b'⟩, fun z _ => z)
+      | some b => ok (some (a, b), ⟨a', b'⟩, fun z o =>
+          match o with
+          | none => z
+          | some (_, t) => ⟨z.fst, back z.snd (some t)⟩)
 
 @[rust_fun "core::slice::{[@T]}::iter_mut"]
 def core.slice.Slice.iter_mut {T : Type} (slice : Slice T) :

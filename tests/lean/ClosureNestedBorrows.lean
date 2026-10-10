@@ -49,7 +49,7 @@ def
   Result (Std.U32 × F × Clause1_Commitment)
   := do
   let (i, e) := c
-  ok (i, tupled_args, e.commitment)
+  ok (i, tupled_args, Evaluated.commitment e)
 
 /-- [closure_nested_borrows::{closure_nested_borrows::Evaluated<F, C, Clause1_Commitment>}::first::{closure}]
     Source: 'tests/src/closure-nested-borrows.rs', lines 19:12-19:95 -/
@@ -82,7 +82,7 @@ def Evaluated.first
   := do
   let p ←
     alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice (Std.U32 ×
-      (alloc.vec.Vec F))) self.evals 0#usize
+      (alloc.vec.Vec F))) (Evaluated.evals self) 0#usize
   let inner ←
     Evaluated.first.closure.Insts.CoreOpsFunctionFnTupleShared1PairU32Vecclosure.call
       coremarkerCopyInst PcsInst self p
@@ -110,7 +110,7 @@ def Evaluated.query
   := do
   let (label, _) ←
     alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice (Std.U32 ×
-      (alloc.vec.Vec F))) self.evals 0#usize
+      (alloc.vec.Vec F))) (Evaluated.evals self) 0#usize
   ok (label, self)
 
 end closure_nested_borrows
