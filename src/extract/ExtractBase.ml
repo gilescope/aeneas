@@ -1949,11 +1949,26 @@ let ctx_compute_trait_parent_clause_name (ctx : extraction_ctx)
      we generate a name along the lines of "fooU32Inst".
   *)
   (* We need to lookup the LLBC definitions, to have the original instantiation *)
-  let clause =
+  let name_of clause_id =
     let current_def_name = trait_decl.item_meta.name in
     let params = trait_decl.llbc_generics in
     ctx_compute_trait_clause_name ctx current_def_name params
-      trait_decl.llbc_parent_clauses clause.clause_id
+      trait_decl.llbc_parent_clauses clause_id
+  in
+  (* The name only shows the trait and its arguments, which [Self] and an
+     associated type ([trait T: Clone { type U: Clone; }]) share: number the
+     repeats, in declaration order *)
+  let clause =
+    let name = name_of clause.clause_id in
+    let rec earlier n = function
+      | [] -> n
+      | (c : Types.trait_param) :: rest ->
+          if c.clause_id = clause.clause_id then n
+          else earlier (if name_of c.clause_id = name then n + 1 else n) rest
+    in
+    match earlier 0 trait_decl.llbc_parent_clauses with
+    | 0 -> name
+    | n -> name ^ string_of_int n
   in
   let clause =
     if !Config.record_fields_short_names then clause
