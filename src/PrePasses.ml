@@ -3599,6 +3599,175 @@ let fix_closure_output_outlives (crate : crate) (f : fun_decl) : fun_decl =
     parameters of a trait are recognised by Charon's naming, [Self_<path>].
 
     TODO: remove once Charon identifies them. *)
+(** Break cycles of traits through the bounds of their associated types.
+
+    Traits naming each other through their associated types' bounds
+    ([CurveAffine]'s [type CurveExt: CurveExt<AffineExt = Self>], [CurveExt]'s
+    [type AffineExt: CurveAffine<CurveExt = Self>]) would be mutually recursive
+    structures, which Lean does not have. We drop the bound of an associated
+    type which leads back to its own trait: it only gives access to the other
+    trait's items through the associated type, and a use of it shows as a
+    missing clause (an error), never as a wrong model. *)
+let break_trait_assoc_cycles (crate : crate) : crate =
+  let of_params (ps : trait_param list) =
+    List.map (fun (p : trait_param) -> p.trait.binder_value.id) ps
+  in
+  let targets (id : TraitDeclId.id) : TraitDeclId.id list =
+    match TraitDeclId.Map.find_opt id crate.trait_decls with
+    | None -> []
+    | Some d ->
+        of_params d.implied_clauses
+        @ List.concat_map
+            (fun (_, (t : trait_assoc_ty binder)) ->
+              of_params t.binder_value.implied_clauses)
+            (AssocTypeId.Map.bindings d.types)
+  in
+  (* Whether [a] reaches [b] *)
+  let reaches (a : TraitDeclId.id) (b : TraitDeclId.id) : bool =
+    let seen = ref TraitDeclId.Set.empty in
+    let rec go = function
+      | [] -> false
+      | x :: rest ->
+          if x = b then true
+          else if TraitDeclId.Set.mem x !seen then go rest
+          else (
+            seen := TraitDeclId.Set.add x !seen;
+            go (targets x @ rest))
+    in
+    go [ a ]
+  in
+  let cyclic (d : trait_decl) (p : trait_param) =
+    reaches p.trait.binder_value.id d.def_id
+  in
+  (* A bound of an associated type: Charon gives those it does not expand as
+     implied clauses of the trait on a projection ([Self::CurveExt: CurveExt]) *)
+  let on_assoc_type (p : trait_param) =
+    match p.trait.binder_value.generics.types with
+    | TTraitType _ :: _ -> true
+    | _ -> false
+  in
+  let trait_decls =
+    TraitDeclId.Map.map
+      (fun (d : trait_decl) ->
+        let implied_clauses =
+          List.filter
+            (fun p -> not (on_assoc_type p && cyclic d p))
+            d.implied_clauses
+        in
+        let types =
+          AssocTypeId.Map.map
+            (fun (t : trait_assoc_ty binder) ->
+              let implied_clauses =
+                List.filter
+                  (fun p -> not (cyclic d p))
+                  t.binder_value.implied_clauses
+              in
+              { t with binder_value = { t.binder_value with implied_clauses } })
+            d.types
+        in
+        { d with implied_clauses; types })
+      crate.trait_decls
+  in
+  { crate with trait_decls }
+
+(** Rewrite the associated types which a where clause equates with a type.
+
+    Charon turns associated types into type parameters, except for traits it
+    cannot expand (mutually recursive through their associated types, like
+    [CurveAffine] and [CurveExt]); their associated types stay projections
+    ([TraitClause3::ScalarExt]), and the equalities bounding them stay
+    constraints ([E::G1Affine: CurveAffine<ScalarExt = E::Fr>]), which Aeneas
+    does not support. Within each item we replace a projection by the type
+    its item's constraints equate it with. A trait's own constraints are on
+    [Self]'s implied clauses ([Self::ImpliedClause1::Scalar = Self_ScalarA]):
+    a projection through that implied clause of a reference to the trait is
+    replaced by the right-hand side, instantiated with the reference. The
+    equalities are the where clauses', so this only names the same type
+    differently; a projection which no constraint matches is left, and a
+    missed rewrite shows as a type error, not a wrong model. *)
+let apply_assoc_type_constraints (crate : crate) : crate =
+  let constraints (g : generic_params) : trait_type_constraint list =
+    List.map
+      (fun (c : trait_type_constraint region_binder) -> c.binder_value)
+      g.trait_type_constraints
+  in
+  let rewriter (local : trait_type_constraint list) =
+    object (self)
+      inherit [_] map_crate as super
+
+      method! visit_ty env ty =
+        match ty with
+        | TTraitType (tr, id, args) -> (
+            let tr = self#visit_trait_ref env tr in
+            let args = self#visit_generic_args env args in
+            let same (c : trait_type_constraint) =
+              c.type_id = id && c.trait_ref.kind = tr.kind
+            in
+            match List.find_opt same local with
+            | Some c -> self#visit_ty env c.ty
+            | None -> (
+                match tr.kind with
+                | ParentClause (base, clause_id) -> (
+                    let base_decl = base.trait_decl_ref.binder_value in
+                    let on_self (c : trait_type_constraint) =
+                      c.type_id = id
+                      &&
+                      match c.trait_ref.kind with
+                      | ParentClause ({ kind = Self; _ }, cid) -> cid = clause_id
+                      | _ -> false
+                    in
+                    match
+                      TraitDeclId.Map.find_opt base_decl.id crate.trait_decls
+                    with
+                    | Some d -> (
+                        match List.find_opt on_self (constraints d.generics) with
+                        | Some c -> (
+                            try
+                              let subst =
+                                [%add_loc] Substitute.make_subst_from_generics
+                                  None d.generics base_decl.generics base.kind
+                              in
+                              self#visit_ty env
+                                (Substitute.ty_substitute subst c.ty)
+                            with Invalid_argument _ -> TTraitType (tr, id, args))
+                        | None -> TTraitType (tr, id, args))
+                    | None -> TTraitType (tr, id, args))
+                | _ -> TTraitType (tr, id, args)))
+        | _ -> super#visit_ty env ty
+
+      method! visit_generic_params env g =
+        super#visit_generic_params env { g with trait_type_constraints = [] }
+    end
+  in
+  {
+    crate with
+    type_decls =
+      TypeDeclId.Map.map
+        (fun (d : type_decl) ->
+          (rewriter (constraints d.generics))#visit_type_decl () d)
+        crate.type_decls;
+    fun_decls =
+      FunDeclId.Map.map
+        (fun (f : fun_decl) ->
+          (rewriter (constraints f.generics))#visit_fun_decl () f)
+        crate.fun_decls;
+    global_decls =
+      GlobalDeclId.Map.map
+        (fun (g : global_decl) ->
+          (rewriter (constraints g.generics))#visit_global_decl () g)
+        crate.global_decls;
+    trait_decls =
+      TraitDeclId.Map.map
+        (fun (d : trait_decl) ->
+          (rewriter (constraints d.generics))#visit_trait_decl () d)
+        crate.trait_decls;
+    trait_impls =
+      TraitImplId.Map.map
+        (fun (i : trait_impl) ->
+          (rewriter (constraints i.generics))#visit_trait_impl () i)
+        crate.trait_impls;
+  }
+
 (** The map identifying the type parameters of [generics] which stand for the
     same associated type (see {!unify_diamond_assoc_types}), if there are any *)
 let diamond_assoc_types_map (crate : crate) (generics : generic_params) :
@@ -4034,6 +4203,8 @@ let apply_passes (crate : crate) : crate =
   let crate = anon_consts_to_calls crate in
   let crate = normalize_fn_def_types crate in
   let crate = declare_option crate in
+  let crate = apply_assoc_type_constraints crate in
+  let crate = break_trait_assoc_cycles crate in
   let crate = unify_diamond_assoc_types_in_impls crate in
   (* Passes that apply to individual function bodies *)
   let function_passes =
