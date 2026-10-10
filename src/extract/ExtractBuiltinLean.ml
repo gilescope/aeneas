@@ -1350,6 +1350,9 @@ let lean_builtin_funs =
     (* file: "Aeneas/Std/Core/IterAdapters.lean", line: 68 *)
     mk_fun "core::iter::traits::iterator::Iterator::max_by"
       "core.iter.traits.iterator.Iterator.max_by.default";
+    (* file: "Aeneas/Std/Core/IterAdapters.lean", line: 610 *)
+    mk_fun "core::iter::traits::iterator::Iterator::position"
+      "core.iter.traits.iterator.Iterator.position.default";
     (* file: "Aeneas/Std/Core/Iter.lean", line: 851 *)
     mk_fun "core::iter::traits::iterator::Iterator::rev"
       "core.iter.traits.iterator.Iterator.rev.trait_default";
@@ -3323,12 +3326,12 @@ let lean_builtin_funs =
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::ChunksExact<'a, \
        @T>, &'a [@T]>}::size_hint"
       "core.slice.iter.IteratorChunksExact.size_hint";
-    (* file: "Aeneas/Std/Core/IterAdapters.lean", line: 624 *)
+    (* file: "Aeneas/Std/Core/IterAdapters.lean", line: 651 *)
     mk_fun
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, \
        @T>, &'a @T>}::any"
       "core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.any";
-    (* file: "Aeneas/Std/Core/IterAdapters.lean", line: 618 *)
+    (* file: "Aeneas/Std/Core/IterAdapters.lean", line: 645 *)
     mk_fun
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, \
        @T>, &'a @T>}::count"
@@ -3338,7 +3341,7 @@ let lean_builtin_funs =
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, \
        @T>, &'a @T>}::find"
       "core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.find";
-    (* file: "Aeneas/Std/Core/IterAdapters.lean", line: 610 *)
+    (* file: "Aeneas/Std/Core/IterAdapters.lean", line: 629 *)
     mk_fun
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, \
        @T>, &'a @T>}::fold"
@@ -3348,6 +3351,11 @@ let lean_builtin_funs =
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, \
        @T>, &'a @T>}::next"
       "core.slice.iter.IteratorSliceIter.next";
+    (* file: "Aeneas/Std/Core/IterAdapters.lean", line: 637 *)
+    mk_fun
+      "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, \
+       @T>, &'a @T>}::position"
+      "core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.position";
     (* file: "Aeneas/Std/SliceIter.lean", line: 157 *)
     mk_fun
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, \

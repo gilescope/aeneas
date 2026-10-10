@@ -605,6 +605,25 @@ def core.iter.sources.empty.Empty.Insts.CoreIterTraitsIteratorIterator (T : Type
   next := core.iter.sources.empty.Empty.Insts.CoreIterTraitsIteratorIterator.next
   size_hint := core.iter.sources.empty.Empty.Insts.CoreIterTraitsIteratorIterator.size_hint
 
+/-- `position`: the index of the first item the predicate accepts (the count overflowing
+fails, as with `#[rustc_inherit_overflow_checks]`) -/
+@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::position"]
+def core.iter.traits.iterator.Iterator.position.default
+  {Self P Item : Type}
+  (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
+  (FnMutInst : core.ops.function.FnMut P Item Bool)
+  (self : Self) (p : P) : Result ((Option Usize) × Self) :=
+  loop (fun ((it, p, i) : Self × P × Nat) => do
+    let (o, it) ← IteratorInst.next it
+    match o with
+    | none => ok (.done (none, it))
+    | some x =>
+      let (b, p) ← FnMutInst.call_mut p x
+      if b then
+        let i ← UScalar.tryMk .Usize i
+        ok (.done (some i, it))
+      else ok (.cont (it, p, i + 1))) (self, p, 0)
+
 /-! ## Slice iterators: core's overrides, which agree with the provided methods -/
 
 @[rust_fun
@@ -614,6 +633,14 @@ def core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.fold
   (it : core.slice.iter.Iter T) (init : B) (f : F) : Result S.Out :=
   core.iter.traits.iterator.Iterator.fold.default (S := S)
     (core.iter.traits.iterator.IteratorSliceIter T) FnMutInst it init f
+
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::position"]
+def core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.position {T P : Type}
+  (FnMutInst : core.ops.function.FnMut P T Bool) (it : core.slice.iter.Iter T) (p : P) :
+  Result ((Option Usize) × core.slice.iter.Iter T) :=
+  core.iter.traits.iterator.Iterator.position.default
+    (core.iter.traits.iterator.IteratorSliceIter T) FnMutInst it p
 
 @[rust_fun
   "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::count"]

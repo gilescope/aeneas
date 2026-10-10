@@ -612,6 +612,14 @@ module MakeMatcher (M : PrimMatcher) : Matcher = struct
             let proj_ty = M.match_rtys ctx0 ctx1 proj0.proj_ty proj1.proj_ty in
             M.match_aproj_loans match_rec ctx0 ctx1 v0.ty pm0 ploans0 v1.ty pm1
               ploans1 ty proj_ty
+        (* Ended projectors which have nothing left inside are inert: e.g. the
+           loans of the iterator a [&mut self] method gave back, once the
+           iterator is dead *)
+        | ( AEndedProjLoans { consumed = []; borrows = []; _ },
+            AEndedProjLoans { consumed = []; borrows = []; _ } )
+        | ( AEndedProjBorrows { loans = []; _ },
+            AEndedProjBorrows { loans = []; _ } )
+        | AEmpty, AEmpty -> v0
         | _ -> [%craise_recover] M.recover M.span "Unreachable"
       end
     | _ ->
