@@ -1652,6 +1652,21 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
            extract_type_decl_struct_body ctx_body fmt type_decl_group kind def
              type_params cg_params fields
      | Enum variants ->
+         (* In Lean the constructors' result type is the inductive applied to
+            its explicit parameters only, trait clauses included: the
+            implicit ones are inferred from the clauses. *)
+         let type_params, cg_params =
+           if backend () = Lean then
+             let explicit l e =
+               List.filter_map
+                 (fun (e, x) -> if e = Explicit then Some x else None)
+                 (List.combine e l)
+             in
+             ( explicit type_params def.explicit_info.explicit_types,
+               explicit cg_params def.explicit_info.explicit_const_generics
+               @ trait_clauses )
+           else (type_params, cg_params)
+         in
          extract_type_decl_enum_body ctx_body fmt type_decl_group def def_name
            type_params cg_params variants
      | Opaque -> [%craise] span "Unreachable");
