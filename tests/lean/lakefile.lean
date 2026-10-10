@@ -103,6 +103,7 @@ package «tests» {}
 @[default_target] lean_lib ListBorrows
 @[default_target] lean_lib LoopGenericIntoIter
 @[default_target] lean_lib LoopIterMutNestedIndex
+@[default_target] lean_lib LoopPushSharedRefsFromMap
 @[default_target] lean_lib Loops
 @[default_target] lean_lib LoopsAdts
 @[default_target] lean_lib LoopSharedBorrowProj

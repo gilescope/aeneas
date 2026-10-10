@@ -2045,14 +2045,17 @@ let destructure_abs (span : Meta.span) (abs_kind : abs_kind) ~(can_end : bool)
             let value = ALoan (AMutLoan (pm, bid, ignored)) in
             push { value; ty }
         | AIgnoredMutLoan (opt_bid, child_av) ->
-            (* We don't support nested borrows for now *)
+            (* We don't support nested mutable borrows for now. Nested shared
+               borrows are shared data, in their own regions (as for
+               [AEndedSharedLoan] below), and if the child holds any value of
+               this abstraction, [push_fail] fails *)
             [%cassert] span
-              (not
-                 (ty_has_borrows (Some span) ctx.type_ctx.type_infos child_av.ty))
+              (not (ty_has_mut_borrows ctx.type_ctx.type_infos child_av.ty))
               "Nested borrows are not supported yet";
             [%sanity_check] span (opt_bid = None);
-            (* Simply explore the child *)
-            list_avalues 0 push_fail child_av
+            (* Explore the child, keeping the (frozen) shared borrows it may
+               contain, as for [AIgnoredSharedLoan] *)
+            list_avalues allow_borrows push child_av
         | AEndedSharedLoan (sv, child_av) ->
             (* Shared borrows nested in the shared value are shared data: they
                belong to their own regions, and if the child holds any value of
@@ -2074,13 +2077,14 @@ let destructure_abs (span : Meta.span) (abs_kind : abs_kind) ~(can_end : bool)
             { child = child_av; given_back = _; given_back_meta = _ }
         | AEndedIgnoredMutLoan
             { child = child_av; given_back = _; given_back_meta = _ } ->
-            (* We don't support nested borrows for now *)
+            (* We don't support nested mutable borrows for now (see
+               [AIgnoredMutLoan]) *)
             [%cassert] span
-              (not
-                 (ty_has_borrows (Some span) ctx.type_ctx.type_infos child_av.ty))
+              (not (ty_has_mut_borrows ctx.type_ctx.type_infos child_av.ty))
               "Nested borrows are not supported yet";
-            (* Simply explore the child *)
-            list_avalues 0 push_fail child_av
+            (* Explore the child, keeping the (frozen) shared borrows it may
+               contain, as for [AIgnoredSharedLoan] *)
+            list_avalues allow_borrows push child_av
         | AIgnoredSharedLoan child_av ->
             (* The shared loan is ignored (it belongs to another abstraction),
                but its content may itself contain borrows or loans: this happens
@@ -2360,10 +2364,12 @@ let abs_mut_borrows_loans_in_fixed span (ctx : eval_ctx)
       inherit [_] iter_eval_ctx as super
 
       method! visit_borrow_content _ _ =
-        (* We can get there through shared loans: let's just ignore it for now
-           (this function should be used to explore abstractions which don't
-           have remaining loans - see its use below) *)
-        [%internal_error] span
+        (* A concrete borrow inside the shared value of a shared loan (e.g. the
+           shared references a map of shared references holds): it is frozen
+           while the loan lives, and ending the abstraction gives the value
+           back without ending it, so it cannot end a loan in a fixed
+           abstraction *)
+        ()
 
       method! visit_aborrow_content env lc =
         super#visit_aborrow_content env lc;
