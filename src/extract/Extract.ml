@@ -3891,9 +3891,6 @@ let extract_trait_impl_literal (ctx : extraction_ctx) (fmt : F.formatter)
   let methods =
     List.filter_map
       (fun (method_id, name, (fn : fun_decl_ref binder)) ->
-        [%cassert] span
-          (fn.binder_generics = empty_generic_params)
-          "Inlining trait impls with generic methods is not supported";
         let trans =
           [%unwrap_with_span] span
             (ctx_lookup_fun_decl_info ctx fn.binder_value.fun_id)
@@ -3903,6 +3900,23 @@ let extract_trait_impl_literal (ctx : extraction_ctx) (fmt : F.formatter)
           (* In parentheses: a line break before an argument would otherwise
              end the field *)
           F.pp_print_string fmt "(";
+          (* A generic method is a function of its own generics, as in
+             {!extract_trait_impl_method_items_aux} *)
+          let ctx =
+            if fn.binder_generics = empty_generic_params then ctx
+            else
+              let ctx, tys, cgs, tcs =
+                ctx_add_generic_params span trans.f.item_meta.name Method
+                  fn.binder_llbc_generics fn.binder_generics ctx
+              in
+              extract_generic_params span ctx fmt TypeDeclId.Set.empty
+                ~use_fun:true Method fn.binder_generics
+                (Some fn.binder_explicit_info) tys cgs tcs;
+              F.pp_print_space fmt ();
+              F.pp_print_string fmt "=>";
+              F.pp_print_space fmt ();
+              ctx
+          in
           F.pp_print_string fmt
             (ctx_get_local_function span fn.binder_value.fun_id None ctx);
           extract_generic_args span ctx fmt TypeDeclId.Set.empty

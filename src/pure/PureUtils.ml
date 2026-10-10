@@ -290,11 +290,17 @@ class ['self] subst_visitor =
       | Bound _ -> TVar var
       | Free id -> subst.ty_subst id
 
+    (* Bound variables belong to an inner binder (e.g. a generic method's own
+       parameters, in an impl being instantiated): leave them *)
     method! visit_CgVar subst var =
-      subst.cg_subst (Substitute.expect_free_var None var)
+      match var with
+      | Bound _ -> CgVar var
+      | Free id -> subst.cg_subst id
 
     method! visit_Clause subst var =
-      subst.tr_subst (Substitute.expect_free_var None var)
+      match var with
+      | Bound _ -> Clause var
+      | Free id -> subst.tr_subst id
 
     method! visit_Self subst = subst.tr_self
   end

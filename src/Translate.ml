@@ -1195,13 +1195,23 @@ let extract_definitions (fmt : Format.formatter) (config : gen_config)
               () body.body)
           d.body)
       decls;
+    (* With their loops and loop bodies: the impl reaches the loop through
+       the callee's arguments *)
     let callees =
-      List.map
+      List.concat_map
         (fun fid ->
-          let d =
-            (Option.get (ExtractBase.ctx_lookup_fun_decl_info ctx fid)).f
+          let t = Option.get (ExtractBase.ctx_lookup_fun_decl_info ctx fid) in
+          let span = t.f.item_meta.span in
+          let name lp = ExtractBase.ctx_get_local_function span fid lp ctx in
+          let loops =
+            List.concat
+              (List.mapi
+                 (fun i _ ->
+                   let id = Pure.LoopId.of_int i in
+                   [ name (Some (id, false)); name (Some (id, true)) ])
+                 t.loops)
           in
-          ExtractBase.ctx_get_local_function d.item_meta.span fid None ctx)
+          name None :: loops)
         (FunDeclId.Set.elements !callees)
     in
     let ctx = { ctx with inline_trait_impls; mono_unfold = Some callees } in
