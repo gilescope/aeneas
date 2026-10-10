@@ -819,6 +819,57 @@ def core.convert.num.ptr_try_from_impls.TryFromU32Usize.try_from (i : Usize) :
   Result (core.result.Result U32 core.num.error.TryFromIntError) :=
   core.num.tryFromUScalar .U32 i
 
+/-- `TryFrom` narrowing between fixed-width unsigned types: `Err` when the value doesn't fit -/
+@[expose, rust_fun "core::convert::num::{core::convert::TryFrom<u8, u16, core::num::error::TryFromIntError>}::try_from"]
+def core.convert.num.TryFromU8U16.try_from (i : U16) :
+  Result (core.result.Result U8 core.num.error.TryFromIntError) :=
+  core.num.tryFromUScalar .U8 i
+
+@[expose, rust_fun "core::convert::num::{core::convert::TryFrom<u8, u32, core::num::error::TryFromIntError>}::try_from"]
+def core.convert.num.TryFromU8U32.try_from (i : U32) :
+  Result (core.result.Result U8 core.num.error.TryFromIntError) :=
+  core.num.tryFromUScalar .U8 i
+
+@[expose, rust_fun "core::convert::num::{core::convert::TryFrom<u8, u64, core::num::error::TryFromIntError>}::try_from"]
+def core.convert.num.TryFromU8U64.try_from (i : U64) :
+  Result (core.result.Result U8 core.num.error.TryFromIntError) :=
+  core.num.tryFromUScalar .U8 i
+
+@[expose, rust_fun "core::convert::num::{core::convert::TryFrom<u8, u128, core::num::error::TryFromIntError>}::try_from"]
+def core.convert.num.TryFromU8U128.try_from (i : U128) :
+  Result (core.result.Result U8 core.num.error.TryFromIntError) :=
+  core.num.tryFromUScalar .U8 i
+
+@[expose, rust_fun "core::convert::num::{core::convert::TryFrom<u16, u32, core::num::error::TryFromIntError>}::try_from"]
+def core.convert.num.TryFromU16U32.try_from (i : U32) :
+  Result (core.result.Result U16 core.num.error.TryFromIntError) :=
+  core.num.tryFromUScalar .U16 i
+
+@[expose, rust_fun "core::convert::num::{core::convert::TryFrom<u16, u64, core::num::error::TryFromIntError>}::try_from"]
+def core.convert.num.TryFromU16U64.try_from (i : U64) :
+  Result (core.result.Result U16 core.num.error.TryFromIntError) :=
+  core.num.tryFromUScalar .U16 i
+
+@[expose, rust_fun "core::convert::num::{core::convert::TryFrom<u16, u128, core::num::error::TryFromIntError>}::try_from"]
+def core.convert.num.TryFromU16U128.try_from (i : U128) :
+  Result (core.result.Result U16 core.num.error.TryFromIntError) :=
+  core.num.tryFromUScalar .U16 i
+
+@[expose, rust_fun "core::convert::num::{core::convert::TryFrom<u32, u64, core::num::error::TryFromIntError>}::try_from"]
+def core.convert.num.TryFromU32U64.try_from (i : U64) :
+  Result (core.result.Result U32 core.num.error.TryFromIntError) :=
+  core.num.tryFromUScalar .U32 i
+
+@[expose, rust_fun "core::convert::num::{core::convert::TryFrom<u32, u128, core::num::error::TryFromIntError>}::try_from"]
+def core.convert.num.TryFromU32U128.try_from (i : U128) :
+  Result (core.result.Result U32 core.num.error.TryFromIntError) :=
+  core.num.tryFromUScalar .U32 i
+
+@[expose, rust_fun "core::convert::num::{core::convert::TryFrom<u64, u128, core::num::error::TryFromIntError>}::try_from"]
+def core.convert.num.TryFromU64U128.try_from (i : U128) :
+  Result (core.result.Result U64 core.num.error.TryFromIntError) :=
+  core.num.tryFromUScalar .U64 i
+
 -- TODO: define for all scalar pairs
 @[step]
 theorem core.convert.num.ptr_try_from_impls.TryFromU32Usize.try_from.step_spec

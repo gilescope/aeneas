@@ -17,20 +17,7 @@ set_option maxHeartbeats 1000000
 /- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
 set_option maxRecDepth 2048
 
-/- You can remove the following line by using the CLI option `-all-computable`: -/
-noncomputable section
-
 namespace static_str
-
-/-- [core::fmt::{impl core::fmt::Debug for str}::fmt]:
-    Source: '/rustc/library/core/src/fmt/mod.rs', lines 2917:4-2917:50
-    Name pattern: [core::fmt::{core::fmt::Debug<str>}::fmt]
-    Visibility: public -/
-@[rust_fun "core::fmt::{core::fmt::Debug<str>}::fmt"]
-axiom Str.Insts.CoreFmtDebug.fmt
-  :
-  Str → core.fmt.Formatter → Result ((core.result.Result Unit
-    core.fmt.Error) × core.fmt.Formatter)
 
 /-- Trait implementation: [core::fmt::{impl core::fmt::Debug for str}]
     Source: '/rustc/library/core/src/fmt/mod.rs', lines 2916:0-2916:18

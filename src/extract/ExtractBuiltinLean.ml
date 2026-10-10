@@ -390,6 +390,9 @@ let lean_builtin_funs =
       ~can_fail:false ~lift:false;
     (* file: "Aeneas/Std/Vec.lean", line: 376 *)
     mk_fun "alloc::slice::{[@T]}::to_vec" "alloc.slice.Slice.to_vec";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 29 *)
+    mk_fun "alloc::string::{alloc::string::ToString<@T>}::to_string"
+      "alloc.string.ToString.Blanket.to_string";
     (* file: "Aeneas/Std/AllocString.lean", line: 16 *)
     mk_fun "alloc::string::{core::clone::Clone<alloc::string::String>}::clone"
       "alloc.string.String.Insts.CoreCloneClone.clone";
@@ -406,6 +409,17 @@ let lean_builtin_funs =
       "alloc::string::{core::cmp::PartialOrd<alloc::string::String, \
        alloc::string::String>}::partial_cmp"
       "alloc.string.String.Insts.CoreCmpPartialOrdString.partial_cmp";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 19 *)
+    mk_fun
+      "alloc::string::{core::convert::From<alloc::string::String, &'0 \
+       str>}::from"
+      "alloc.string.String.Insts.CoreConvertFromShared0Str.from";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 58 *)
+    mk_fun "alloc::string::{core::fmt::Debug<alloc::string::String>}::fmt"
+      "alloc.string.String.Insts.CoreFmtDebug.fmt";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 36 *)
+    mk_fun "alloc::string::{core::hash::Hash<alloc::string::String>}::hash"
+      "alloc.string.String.Insts.CoreHashHash.hash";
     (* file: "Aeneas/Std/Vec.lean", line: 395 *)
     mk_fun "alloc::vec::from_elem" "alloc.vec.from_elem";
     (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 79 *)
@@ -677,6 +691,8 @@ let lean_builtin_funs =
       "core.array.Array.index_mut";
     (* file: "Aeneas/Std/Core/CoreOption.lean", line: 122 *)
     mk_fun "core::bool::{bool}::then" "core.bool.Bool.then";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 84 *)
+    mk_fun "core::bool::{bool}::then_some" "core.bool.Bool.then_some";
     (* file: "Aeneas/Std/CoreMisc.lean", line: 15 *)
     mk_fun "core::borrow::{core::borrow::Borrow<@T, @T>}::borrow"
       "core.borrow.Borrow.Blanket.borrow";
@@ -761,6 +777,56 @@ let lean_builtin_funs =
       "core::convert::num::ptr_try_from_impls::{core::convert::TryFrom<u32, \
        usize, core::num::error::TryFromIntError>}::try_from"
       "core.convert.num.ptr_try_from_impls.TryFromU32Usize.try_from";
+    (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 853 *)
+    mk_fun
+      "core::convert::num::{core::convert::TryFrom<u16, u128, \
+       core::num::error::TryFromIntError>}::try_from"
+      "core.convert.num.TryFromU16U128.try_from";
+    (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 843 *)
+    mk_fun
+      "core::convert::num::{core::convert::TryFrom<u16, u32, \
+       core::num::error::TryFromIntError>}::try_from"
+      "core.convert.num.TryFromU16U32.try_from";
+    (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 848 *)
+    mk_fun
+      "core::convert::num::{core::convert::TryFrom<u16, u64, \
+       core::num::error::TryFromIntError>}::try_from"
+      "core.convert.num.TryFromU16U64.try_from";
+    (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 863 *)
+    mk_fun
+      "core::convert::num::{core::convert::TryFrom<u32, u128, \
+       core::num::error::TryFromIntError>}::try_from"
+      "core.convert.num.TryFromU32U128.try_from";
+    (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 858 *)
+    mk_fun
+      "core::convert::num::{core::convert::TryFrom<u32, u64, \
+       core::num::error::TryFromIntError>}::try_from"
+      "core.convert.num.TryFromU32U64.try_from";
+    (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 868 *)
+    mk_fun
+      "core::convert::num::{core::convert::TryFrom<u64, u128, \
+       core::num::error::TryFromIntError>}::try_from"
+      "core.convert.num.TryFromU64U128.try_from";
+    (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 838 *)
+    mk_fun
+      "core::convert::num::{core::convert::TryFrom<u8, u128, \
+       core::num::error::TryFromIntError>}::try_from"
+      "core.convert.num.TryFromU8U128.try_from";
+    (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 823 *)
+    mk_fun
+      "core::convert::num::{core::convert::TryFrom<u8, u16, \
+       core::num::error::TryFromIntError>}::try_from"
+      "core.convert.num.TryFromU8U16.try_from";
+    (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 828 *)
+    mk_fun
+      "core::convert::num::{core::convert::TryFrom<u8, u32, \
+       core::num::error::TryFromIntError>}::try_from"
+      "core.convert.num.TryFromU8U32.try_from";
+    (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 833 *)
+    mk_fun
+      "core::convert::num::{core::convert::TryFrom<u8, u64, \
+       core::num::error::TryFromIntError>}::try_from"
+      "core.convert.num.TryFromU8U64.try_from";
     (* file: "Aeneas/Std/Core/Convert.lean", line: 31 *)
     mk_fun "core::convert::{core::convert::From<@T, @T>}::from"
       "core.convert.FromSame.from" ~can_fail:false;
@@ -869,6 +935,18 @@ let lean_builtin_funs =
     mk_fun "core::fmt::{core::fmt::Debug<()>}::fmt" "core.fmt.DebugUnit.fmt";
     (* file: "Aeneas/Std/Core/Fmt.lean", line: 104 *)
     mk_fun "core::fmt::{core::fmt::Debug<bool>}::fmt" "core.fmt.DebugBool.fmt";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 63 *)
+    mk_fun "core::fmt::{core::fmt::Debug<core::marker::PhantomData<@T>>}::fmt"
+      "core.marker.PhantomData.Insts.CoreFmtDebug.fmt";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 48 *)
+    mk_fun "core::fmt::{core::fmt::Debug<str>}::fmt"
+      "Str.Insts.CoreFmtDebug.fmt";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 76 *)
+    mk_fun "core::fmt::{core::fmt::Display<&'0 @T>}::fmt"
+      "Shared0T.Insts.CoreFmtDisplay.fmt";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 53 *)
+    mk_fun "core::fmt::{core::fmt::Display<str>}::fmt"
+      "Str.Insts.CoreFmtDisplay.fmt";
     (* file: "Aeneas/Std/Core/Fmt.lean", line: 125 *)
     mk_fun "core::fmt::{core::fmt::Formatter<'a>}::debug_struct_field1_finish"
       "core.fmt.Formatter.debug_struct_field1_finish";
@@ -1433,6 +1511,10 @@ let lean_builtin_funs =
     (* file: "Aeneas/Std/Core/Iter.lean", line: 836 *)
     mk_fun "core::iter::traits::iterator::Iterator::zip"
       "core.iter.traits.iterator.Iterator.zip.trait_default";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 88 *)
+    mk_fun
+      "core::marker::{core::clone::Clone<core::marker::PhantomData<@T>>}::clone"
+      "core.marker.PhantomData.Insts.CoreCloneClone.clone";
     (* file: "Aeneas/Std/CoreMisc.lean", line: 128 *)
     mk_fun
       "core::marker::{core::default::Default<core::marker::PhantomData<@T>>}::default"
@@ -1441,6 +1523,10 @@ let lean_builtin_funs =
     mk_fun "core::mem::replace" "core.mem.replace" ~can_fail:false ~lift:false;
     (* file: "Aeneas/Std/Core/Core.lean", line: 81 *)
     mk_fun "core::mem::swap" "core.mem.swap" ~can_fail:false ~lift:false;
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 69 *)
+    mk_fun
+      "core::num::error::{core::fmt::Debug<core::num::error::TryFromIntError>}::fmt"
+      "core.num.error.TryFromIntError.Insts.CoreFmtDebug.fmt";
     (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 696 *)
     mk_fun "core::num::{i128}::cast_unsigned" "core.num.I128.cast_unsigned";
     (* file: "Aeneas/Std/Scalar/WrappingOps/Shl.lean", line: 46 *)
@@ -1567,6 +1653,8 @@ let lean_builtin_funs =
     mk_fun "core::num::{usize}::cast_signed" "core.num.Usize.cast_signed";
     (* file: "Aeneas/Std/Scalar/Ops/DivCeil.lean", line: 54 *)
     mk_fun "core::num::{usize}::div_ceil" "core.num.Usize.div_ceil";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 94 *)
+    mk_fun "core::num::{usize}::ilog2" "core.num.Usize.ilog2";
     (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 789 *)
     mk_fun "core::num::{usize}::is_multiple_of" "core.num.Usize.is_multiple_of";
     (* file: "Aeneas/Std/Scalar/Pow.lean", line: 32 *)
