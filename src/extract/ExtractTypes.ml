@@ -911,10 +911,9 @@ let extract_type_decl_register_names (ctx : extraction_ctx) (def : type_decl) :
   (* Return *)
   ctx
 
-(** Print the variants *)
-(** The arguments to apply a type declaration to, in its own scope, in Lean:
-    its explicit type and const generic parameters, then its trait clauses.
-    The implicit parameters are inferred from the clauses. *)
+(** The arguments to apply a type declaration to, in its own scope, in Lean: its
+    explicit type and const generic parameters, then its trait clauses. The
+    implicit parameters are inferred from the clauses. *)
 let type_decl_explicit_args (decl : type_decl) (type_params : string list)
     (cg_params : string list) (trait_clauses : string list) : string list =
   let explicit l e =
@@ -926,6 +925,7 @@ let type_decl_explicit_args (decl : type_decl) (type_params : string list)
   @ explicit cg_params decl.explicit_info.explicit_const_generics
   @ trait_clauses
 
+(** Print the variants *)
 let extract_type_decl_variant (span : Meta.span) (ctx : extraction_ctx)
     (fmt : F.formatter) (type_decl_group : TypeDeclId.Set.t)
     (type_name : string) (type_params : string list) (cg_params : string list)
@@ -1671,7 +1671,9 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
             implicit ones are inferred from the clauses. *)
          let type_params, cg_params =
            if backend () = Lean then
-             ([], type_decl_explicit_args def type_params cg_params trait_clauses)
+             ( [],
+               type_decl_explicit_args def type_params cg_params trait_clauses
+             )
            else (type_params, cg_params)
          in
          extract_type_decl_enum_body ctx_body fmt type_decl_group def def_name
@@ -2182,19 +2184,14 @@ let extract_type_decl_record_field_projectors_simp_lemmas (ctx : extraction_ctx)
 
         FieldId.iteri extract_field_proj_simp_lemma fields
 
-(** Extract extra information for a type (e.g., [Arguments] instructions in
-    Coq).
-
-    Note that all the names used for extraction should already have been
-    registered. *)
 (** [instance : GivesBack T := ⟨⟩] for a type [T] holding a [&mut] in one
     region, e.g. a closure capturing a [&mut].
 
     Passed to a generic function (e.g. [Iterator::map]), such a value is given
-    back from the function's output, and the models of the generic functions
-    of the standard library pick the shape of their output with this class.
-    Types with several [&mut] regions get no instance: their call sites give
-    back one value per region, which no model has the shape for. *)
+    back from the function's output, and the models of the generic functions of
+    the standard library pick the shape of their output with this class. Types
+    with several [&mut] regions get no instance: their call sites give back one
+    value per region, which no model has the shape for. *)
 let extract_type_decl_gives_back (ctx : extraction_ctx) (fmt : F.formatter)
     (decl : type_decl) : unit =
   let mut_regions =
@@ -2215,8 +2212,7 @@ let extract_type_decl_gives_back (ctx : extraction_ctx) (fmt : F.formatter)
     F.pp_open_hovbox fmt ctx.indent_incr;
     F.pp_print_string fmt "instance";
     extract_generic_params span ctx fmt TypeDeclId.Set.empty Item
-      ~as_implicits:true decl.generics None type_params cg_params
-      trait_clauses;
+      ~as_implicits:true decl.generics None type_params cg_params trait_clauses;
     F.pp_print_space fmt ();
     F.pp_print_string fmt ": Aeneas.Std.GivesBack";
     F.pp_print_space fmt ();
@@ -2229,6 +2225,11 @@ let extract_type_decl_gives_back (ctx : extraction_ctx) (fmt : F.formatter)
     F.pp_close_box fmt ();
     F.pp_print_break fmt 0 0)
 
+(** Extract extra information for a type (e.g., [Arguments] instructions in
+    Coq).
+
+    Note that all the names used for extraction should already have been
+    registered. *)
 let extract_type_decl_extra_info (ctx : extraction_ctx) (fmt : F.formatter)
     (kind : decl_kind) (decl : type_decl) : unit =
   extract_type_decl_gives_back ctx fmt decl;
