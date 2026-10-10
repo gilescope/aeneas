@@ -10,10 +10,27 @@ module T = Types
 let extract_str (_span : Meta.span) (fmt : F.formatter) ~(inside : bool)
     (s : string) : unit =
   let chars = StringUtils.string_to_chars s in
-  (* Using the OCaml escape conventions for now.
+  let escape =
+    match backend () with
+    | Lean -> (
+        (* Lean sources are UTF-8, so the bytes of non-ASCII characters are
+           kept as they are; Lean has no decimal escapes ([\207]) *)
+        function
+        | '"' -> "\\\""
+        | '\\' -> "\\\\"
+        | '\n' -> "\\n"
+        | '\t' -> "\\t"
+        | '\r' -> "\\r"
+        | c when Char.code c < 0x20 || Char.code c = 0x7f ->
+            Printf.sprintf "\\x%02x" (Char.code c)
+        | c -> String.make 1 c)
+    | _ ->
+        (* Using the OCaml escape conventions for now.
 
-     TODO: does this really work? *)
-  let s = String.concat "" (List.map Char.escaped chars) in
+           TODO: does this really work? *)
+        Char.escaped
+  in
+  let s = String.concat "" (List.map escape chars) in
   let s = "\"" ^ s ^ "\"" in
 
   (* We need to convert the string to a str (the conversion inserts a static check
