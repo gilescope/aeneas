@@ -30,18 +30,20 @@ namespace closure_mut_capture_sibling
 axiom core.mem.maybe_uninit.MaybeUninit (T : Type) : Type
 
 /-- Trait declaration: [closure_mut_capture_sibling::Read]
-    Source: 'tests/src/closure-mut-capture-sibling.rs', lines 8:0-10:1
+    Source: 'tests/src/closure-mut-capture-sibling.rs', lines 7:0-9:1
     Visibility: public -/
 structure Read (Self : Type) where
   read : Self → Result ((core.result.Result Std.U32 Std.U32) × Self)
 
 /-- [closure_mut_capture_sibling::evals::{closure}]
-    Source: 'tests/src/closure-mut-capture-sibling.rs', lines 16:13-16:63 -/
+    Source: 'tests/src/closure-mut-capture-sibling.rs', lines 15:13-15:63 -/
 @[reducible]
 def evals.closure (T : Type) := T × alloc.vec.Vec Std.U32
 
+instance {T : Type} : Aeneas.Std.GivesBack (evals.closure T) := ⟨⟩
+
 /-- [closure_mut_capture_sibling::evals::{impl core::ops::function::FnMut<(&'_2 usize,), core::result::Result<u32, u32>> for closure_mut_capture_sibling::evals::{closure}<'_0, '_1, T>}::call_mut]:
-    Source: 'tests/src/closure-mut-capture-sibling.rs', lines 16:13-16:63 -/
+    Source: 'tests/src/closure-mut-capture-sibling.rs', lines 15:13-15:63 -/
 def
   evals.closure.Insts.CoreOpsFunctionFnMutTupleShared2UsizeResultU32U32.call_mut
   {T : Type} (ReadInst : Read T) (c : evals.closure T)
@@ -65,7 +67,7 @@ def
     ok (core.result.Result.Ok i, c, back)
 
 /-- [closure_mut_capture_sibling::evals::{impl core::ops::function::FnOnce<(&'_2 usize,), core::result::Result<u32, u32>> for closure_mut_capture_sibling::evals::{closure}<'_0, '_1, T>}::call_once]:
-    Source: 'tests/src/closure-mut-capture-sibling.rs', lines 16:13-16:63 -/
+    Source: 'tests/src/closure-mut-capture-sibling.rs', lines 15:13-15:63 -/
 def
   evals.closure.Insts.CoreOpsFunctionFnOnceTupleShared2UsizeResultU32U32.call_once
   {T : Type} (ReadInst : Read T) (c : evals.closure T) (i : Std.Usize) :
@@ -79,18 +81,16 @@ def
   ok (r, (t, v))
 
 /-- Trait implementation: [closure_mut_capture_sibling::evals::{impl core::ops::function::FnOnce<(&'_2 usize,), core::result::Result<u32, u32>> for closure_mut_capture_sibling::evals::{closure}<'_0, '_1, T>}]
-    Source: 'tests/src/closure-mut-capture-sibling.rs', lines 16:13-16:63 -/
+    Source: 'tests/src/closure-mut-capture-sibling.rs', lines 15:13-15:63 -/
 @[reducible]
 def evals.closure.Insts.CoreOpsFunctionFnOnceTupleShared2UsizeResultU32U32 {T :
   Type} (ReadInst : Read T) : core.ops.function.FnOnce (evals.closure T)
-  Std.Usize ((core.result.Result Std.U32 Std.U32) × (evals.closure T)) := {
-  call_once := fun x0 x1 =>
-    Bind.bind ((evals.closure.Insts.CoreOpsFunctionFnOnceTupleShared2UsizeResultU32U32.call_once
-    ReadInst) x0 x1) (fun (out, b0) => ok (out, b0))
+  Std.Usize (core.result.Result Std.U32 Std.U32) := {
+  call_once := fun _ _ => Result.fail Error.undef
 }
 
 /-- Trait implementation: [closure_mut_capture_sibling::evals::{impl core::ops::function::FnMut<(&'_2 usize,), core::result::Result<u32, u32>> for closure_mut_capture_sibling::evals::{closure}<'_0, '_1, T>}]
-    Source: 'tests/src/closure-mut-capture-sibling.rs', lines 16:13-16:63 -/
+    Source: 'tests/src/closure-mut-capture-sibling.rs', lines 15:13-15:63 -/
 @[reducible]
 def evals.closure.Insts.CoreOpsFunctionFnMutTupleShared2UsizeResultU32U32 {T :
   Type} (ReadInst : Read T) : core.ops.function.FnMut (evals.closure T)
@@ -98,11 +98,13 @@ def evals.closure.Insts.CoreOpsFunctionFnMutTupleShared2UsizeResultU32U32 {T :
   FnOnceInst :=
     evals.closure.Insts.CoreOpsFunctionFnOnceTupleShared2UsizeResultU32U32
     ReadInst
-  call_mut := fun _ _ => Result.fail Error.undef
+  call_mut := fun x0 x1 =>
+    Bind.bind ((evals.closure.Insts.CoreOpsFunctionFnMutTupleShared2UsizeResultU32U32.call_mut
+    ReadInst) x0 x1) (fun (out, self', e1) => ok (out, (e1 self')))
 }
 
 /-- [closure_mut_capture_sibling::evals]:
-    Source: 'tests/src/closure-mut-capture-sibling.rs', lines 12:0-19:1
+    Source: 'tests/src/closure-mut-capture-sibling.rs', lines 11:0-18:1
     Visibility: public -/
 def evals
   {T : Type} (ReadInst : Read T) (columns : Slice Std.Usize) (t : T) :

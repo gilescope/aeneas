@@ -1,9 +1,9 @@
 //@ [!lean] skip
 //@ [lean] subdir=ClosureMutCaptureNested
-//! Extraction-only (no root module: std's `Iterator::map` has no Lean model yet): a `map`
-//! closure that accumulates into a captured `&mut` while holding a reference to another closure
-//! that holds references, consumed by `collect` - logup's helper constraints. Giving the `&mut`
-//! back met a "no nested borrows" check that shared-under-shared nesting does not concern.
+//! A `map` closure that accumulates into a captured `&mut` while holding a reference to another
+//! closure that holds references, consumed by `collect` - logup's helper constraints. Giving the
+//! `&mut` back met a "no nested borrows" check that shared-under-shared nesting does not
+//! concern.
 use std::collections::BTreeMap;
 use std::ops::{Add, Mul};
 

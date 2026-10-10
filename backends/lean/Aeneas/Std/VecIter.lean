@@ -81,6 +81,24 @@ def alloc.vec.FromIteratorVec.from_iter
     if h : list.length ≤ Usize.max then .ok (.from list h)
     else .fail .panic
 
+/-- `iterToList`, also giving back the exhausted iterator -/
+def alloc.vec.FromIteratorVec.iterToListBack
+    {T : Type} {I : Type}
+    (iterInst : core.iter.traits.iterator.Iterator I T)
+    (iter : I) (acc : List T) : Result (List T × I) := do
+  let (opt, iter) ← iterInst.next iter
+  match opt with
+  | none => .ok (acc.reverse, iter)
+  | some item => alloc.vec.FromIteratorVec.iterToListBack iterInst iter (item :: acc)
+partial_fixpoint
+
+/-- `Vec::from_iter` reads to the end -/
+instance {T : Type} : FromIterBack (alloc.vec.Vec T) T where
+  fromIterBack iterInst iter := do
+    let (list, iter) ← alloc.vec.FromIteratorVec.iterToListBack iterInst iter []
+    if h : list.length ≤ Usize.max then .ok (.from list h, iter)
+    else .fail .panic
+
 @[expose, reducible, rust_trait_impl
   "core::iter::traits::collect::FromIterator<alloc::vec::Vec<@T>, @T>"]
 def core.iter.traits.collect.FromIteratorVec (T : Type) :

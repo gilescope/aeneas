@@ -2165,8 +2165,49 @@ let extract_type_decl_record_field_projectors_simp_lemmas (ctx : extraction_ctx)
 
     Note that all the names used for extraction should already have been
     registered. *)
+(** [instance : GivesBack T := ⟨⟩] for a type [T] holding a [&mut] in one
+    region, e.g. a closure capturing a [&mut].
+
+    Passed to a generic function (e.g. [Iterator::map]), such a value is given
+    back from the function's output, and the models of the generic functions
+    of the standard library pick the shape of their output with this class.
+    Types with several [&mut] regions get no instance: their call sites give
+    back one value per region, which no model has the shape for. *)
+let extract_type_decl_gives_back (ctx : extraction_ctx) (fmt : F.formatter)
+    (decl : type_decl) : unit =
+  let mut_regions =
+    match
+      TypeDeclId.Map.find_opt decl.def_id ctx.trans_ctx.type_ctx.type_infos
+    with
+    | Some info -> T.RegionId.Set.cardinal info.mut_regions
+    | None -> 0
+  in
+  if backend () = Lean && mut_regions = 1 then (
+    let span = decl.item_meta.span in
+    let ctx, type_params, cg_params, trait_clauses =
+      ctx_add_generic_params span decl.item_meta.name Item decl.llbc_generics
+        decl.generics ctx
+    in
+    let def_name = ctx_get_local_type span decl.def_id ctx in
+    F.pp_print_space fmt ();
+    F.pp_open_hovbox fmt ctx.indent_incr;
+    F.pp_print_string fmt "instance";
+    extract_generic_params span ctx fmt TypeDeclId.Set.empty Item
+      ~as_implicits:true decl.generics None type_params cg_params
+      trait_clauses;
+    F.pp_print_space fmt ();
+    F.pp_print_string fmt ": Aeneas.Std.GivesBack";
+    F.pp_print_space fmt ();
+    let args = type_params @ cg_params in
+    if args = [] then F.pp_print_string fmt def_name
+    else F.pp_print_string fmt ("(" ^ String.concat " " (def_name :: args) ^ ")");
+    F.pp_print_string fmt " := ⟨⟩";
+    F.pp_close_box fmt ();
+    F.pp_print_break fmt 0 0)
+
 let extract_type_decl_extra_info (ctx : extraction_ctx) (fmt : F.formatter)
     (kind : decl_kind) (decl : type_decl) : unit =
+  extract_type_decl_gives_back ctx fmt decl;
   match backend () with
   | FStar | HOL4 -> ()
   | Lean | Coq ->

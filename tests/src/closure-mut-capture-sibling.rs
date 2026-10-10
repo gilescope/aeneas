@@ -1,9 +1,8 @@
 //@ [!lean] skip
 //@ [lean] subdir=ClosureMutCaptureSibling
-//! Extraction-only (no root module: std's `Iterator::map` has no Lean model yet): a `map`
-//! closure capturing a `&mut` next to a shared borrow of a local which is dropped after the
-//! `collect` - the PLONK verifier's instance evaluations. The closure's regions are siblings:
-//! ending the shared one gives back nothing which lives in the `&mut` one.
+//! A `map` closure capturing a `&mut` next to a shared borrow of a local which is dropped after
+//! the `collect` - the PLONK verifier's instance evaluations. The closure's regions are
+//! siblings: ending the shared one gives back nothing which lives in the `&mut` one.
 
 pub trait Read {
     fn read(&mut self) -> Result<u32, u32>;

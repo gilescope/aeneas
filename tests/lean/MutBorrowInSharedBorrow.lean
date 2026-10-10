@@ -34,6 +34,8 @@ axiom core.slice.Slice.first {T : Type} : Slice T → Result (Option T)
 structure MutFieldAccessViaShared where
   data : Std.U32
 
+instance : Aeneas.Std.GivesBack MutFieldAccessViaShared := ⟨⟩
+
 /-- [mut_borrow_in_shared_borrow::{mut_borrow_in_shared_borrow::MutFieldAccessViaShared<'a>}::get]:
     Source: 'tests/src/mut-borrow-in-shared-borrow.rs', lines 22:4-24:5 -/
 def MutFieldAccessViaShared.get
@@ -57,6 +59,8 @@ def use_mut_field_access_via_shared_param
     Source: 'tests/src/mut-borrow-in-shared-borrow.rs', lines 44:0-46:1 -/
 structure SliceWrapper (T : Type) where
   buf : Slice T
+
+instance {T : Type} : Aeneas.Std.GivesBack (SliceWrapper T) := ⟨⟩
 
 /-- [mut_borrow_in_shared_borrow::{mut_borrow_in_shared_borrow::SliceWrapper<'a, T>}::len]:
     Source: 'tests/src/mut-borrow-in-shared-borrow.rs', lines 49:4-51:5 -/
@@ -90,6 +94,8 @@ def use_slice_wrapper_param
 structure MixedBorrows (T : Type) where
   shared : Slice T
   mutable : Slice T
+
+instance {T : Type} : Aeneas.Std.GivesBack (MixedBorrows T) := ⟨⟩
 
 /-- [mut_borrow_in_shared_borrow::{mut_borrow_in_shared_borrow::MixedBorrows<'a, T>}::shared_len]:
     Source: 'tests/src/mut-borrow-in-shared-borrow.rs', lines 81:4-83:5 -/

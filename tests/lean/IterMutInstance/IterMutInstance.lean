@@ -40,6 +40,9 @@ impl_def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT (T :
 @[rust_type "core::slice::iter::ChunksMut" (mutRegions := #[0])]
 axiom core.slice.iter.ChunksMut (T : Type) : Type
 
+instance {T : Type} : Aeneas.Std.GivesBack
+  (core.slice.iter.ChunksMut T) := ⟨⟩
+
 /-- [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a mut [T]> for core::slice::iter::ChunksMut<'a, T>}::count]:
     Source: '/rustc/library/core/src/slice/iter.rs', lines 1702:4-1702:27
     Name pattern: [core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::ChunksMut<'a, @T>, &'a mut [@T]>}::count]

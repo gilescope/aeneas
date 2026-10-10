@@ -49,6 +49,8 @@ def helpers.closure_1 (F : Type) :=
   alloc.collections.btree.map.BTreeMap Std.Usize F Global × F ×
   helpers.closure F
 
+instance {F : Type} : Aeneas.Std.GivesBack (helpers.closure_1 F) := ⟨⟩
+
 /-- [closure_mut_capture_nested::helpers::{closure}::{closure}]
     Source: 'tests/src/closure-mut-capture-nested.rs', lines 17:59-17:84 -/
 @[reducible]
@@ -187,12 +189,8 @@ def helpers.closure_1.Insts.CoreOpsFunctionFnOnceTuplePairUsizeShared4VecF {F :
   Type} (coremarkerCopyInst : core.marker.Copy F) (coredefaultDefaultInst :
   core.default.Default F) (coreopsarithAddInst : core.ops.arith.Add F F F)
   (coreopsarithMulInst : core.ops.arith.Mul F F F) : core.ops.function.FnOnce
-  (helpers.closure_1 F) (Std.Usize × (alloc.vec.Vec F)) (F ×
-  (helpers.closure_1 F)) := {
-  call_once := fun x0 x1 =>
-    Bind.bind ((helpers.closure_1.Insts.CoreOpsFunctionFnOnceTuplePairUsizeShared4VecF.call_once
-    coremarkerCopyInst coredefaultDefaultInst coreopsarithAddInst
-    coreopsarithMulInst) x0 x1) (fun (out, b0) => ok (out, b0))
+  (helpers.closure_1 F) (Std.Usize × (alloc.vec.Vec F)) F := {
+  call_once := fun _ _ => Result.fail Error.undef
 }
 
 /-- Trait implementation: [closure_mut_capture_nested::helpers::{impl core::ops::function::FnMut<((usize, &'_4 alloc::vec::Vec<F>),), F> for closure_mut_capture_nested::helpers::{closure#1}<'_0, '_1, '_2, '_3, F>}]
@@ -207,7 +205,10 @@ def helpers.closure_1.Insts.CoreOpsFunctionFnMutTuplePairUsizeShared4VecF {F :
     helpers.closure_1.Insts.CoreOpsFunctionFnOnceTuplePairUsizeShared4VecF
     coremarkerCopyInst coredefaultDefaultInst coreopsarithAddInst
     coreopsarithMulInst
-  call_mut := fun _ _ => Result.fail Error.undef
+  call_mut := fun x0 x1 =>
+    Bind.bind ((helpers.closure_1.Insts.CoreOpsFunctionFnMutTuplePairUsizeShared4VecF.call_mut
+    coremarkerCopyInst coredefaultDefaultInst coreopsarithAddInst
+    coreopsarithMulInst) x0 x1) (fun (out, self', e1) => ok (out, (e1 self')))
 }
 
 /-- [closure_mut_capture_nested::helpers]:

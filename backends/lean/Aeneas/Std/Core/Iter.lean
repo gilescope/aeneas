@@ -232,14 +232,43 @@ def core.iter.traits.collect.IntoIterator.Blanket {I : Type} {Item : Type}
   into_iter := core.iter.traits.collect.IntoIterator.Blanket.into_iter IteratorInst
 }
 
+/-! ## Values given back by generic functions
+
+A value holding a `&mut` (e.g. a closure capturing one) which is moved into a generic function
+is given back from the function's output: Aeneas's call site expects `map(it, f)` to return
+`(Map it f, back)` and `collect(m)` to return `(v, m)`, the final `Map` from which `back` gives
+the closure back. Aeneas emits `GivesBack T` for each such type `T` (with one `&mut` region),
+and the models below pick the shape of their output from it. -/
+
+/-- `T` holds a `&mut` (in one region): generic functions it is moved into give it back. -/
+class GivesBack (T : Type u) : Prop where
+
+/-- `FromIterator::from_iter`, which also gives back the iterator in its final state: how far
+the collection read it, which a closure the iterator holds must be given back from. -/
+class FromIterBack (B : Type) (A : Type) where
+  fromIterBack : {I : Type} → core.iter.traits.iterator.Iterator I A → I → Result (B × I)
+
+/-- The output of `collect`: `B`, and the iterator in its final state when it gives back. -/
+class CollectShape (Self B Item : Type) where
+  Out : Type
+  collect : core.iter.traits.iterator.Iterator Self Item →
+    core.iter.traits.collect.FromIterator B Item → Self → Result Out
+
+instance (priority := low) {Self B Item : Type} : CollectShape Self B Item :=
+  ⟨B, fun it fromIter self =>
+    fromIter.from_iter (core.iter.traits.collect.IntoIterator.Blanket it) self⟩
+
+instance {Self B Item : Type} [GivesBack Self] [FromIterBack B Item] :
+    CollectShape Self B Item :=
+  ⟨B × Self, fun it _ self => FromIterBack.fromIterBack it self⟩
+
 @[rust_fun "core::iter::traits::iterator::Iterator::collect"]
 def core.iter.traits.iterator.Iterator.collect.default
-  {Self : Type} {B : Type} {Item : Type} (IteratorInst :
+  {Self : Type} {B : Type} {Item : Type} [S : CollectShape Self B Item] (IteratorInst :
   core.iter.traits.iterator.Iterator Self Item)
   (collectFromIteratorInst : core.iter.traits.collect.FromIterator B Item) :
-  Self → Result B :=
-  fun self => collectFromIteratorInst.from_iter
-    (core.iter.traits.collect.IntoIterator.Blanket IteratorInst) self
+  Self → Result S.Out :=
+  S.collect IteratorInst collectFromIteratorInst
 
 @[rust_trait "core::iter::traits::collect::Extend"]
 structure core.iter.traits.collect.Extend (Self : Type) (A : Type) where
@@ -1018,3 +1047,25 @@ def core.ops.range.RangeInclusive.Insts.CoreIterTraitsDoubleEndedIterator.next_b
 structure core.iter.adapters.map.Map (I : Type u) (F : Type v) where
   iter : I
   f : F
+
+instance {I F : Type} [GivesBack F] : GivesBack (core.iter.adapters.map.Map I F) := ⟨⟩
+
+/-- The output of `map(it, f)`: the `Map`, and the closure's give back from its final state. -/
+class MapShape (Self F : Type) where
+  Out : Type
+  ofMap : core.iter.adapters.map.Map Self F → Out
+
+instance (priority := low) {Self F : Type} : MapShape Self F := ⟨_, id⟩
+
+instance {Self F : Type} [GivesBack F] : MapShape Self F :=
+  ⟨core.iter.adapters.map.Map Self F × (core.iter.adapters.map.Map Self F → F),
+    fun m => (m, (·.f))⟩
+
+/-- The output of `fold(it, init, f)`: the result, and the closure in its final state. -/
+class FoldShape (B F : Type) where
+  Out : Type
+  ofFold : B → F → Out
+
+instance (priority := low) {B F : Type} : FoldShape B F := ⟨B, fun b _ => b⟩
+
+instance {B F : Type} [GivesBack F] : FoldShape B F := ⟨B × F, Prod.mk⟩

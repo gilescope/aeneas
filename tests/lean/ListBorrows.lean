@@ -37,6 +37,8 @@ inductive List where
 
 end
 
+instance : Aeneas.Std.GivesBack LCell := ⟨⟩
+
 def LCell.value (x : LCell) := match x with | LCell.mk x1 _ => x1
 
 def LCell.next (x : LCell) := match x with | LCell.mk _ x1 => x1
@@ -48,6 +50,8 @@ theorem LCell.value._simpLemma_ (value : Std.I32) (next : List) :
 @[simp]
 theorem LCell.next._simpLemma_ (value : Std.I32) (next : List) :
   (LCell.mk value next).next = next := by rfl
+
+instance : Aeneas.Std.GivesBack List := ⟨⟩
 
 /-- [list_borrows::cons]:
     Source: 'tests/src/list-borrows.rs', lines 14:0-16:1 -/

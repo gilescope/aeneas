@@ -28,6 +28,9 @@ package «tests» {}
 @[default_target] lean_lib CastSigned
 @[default_target] lean_lib ChunksExact
 @[default_target] lean_lib ClosureMutArgs
+@[default_target] lean_lib ClosureMutCaptureCall
+@[default_target] lean_lib ClosureMutCaptureNested
+@[default_target] lean_lib ClosureMutCaptureSibling
 @[default_target] lean_lib ClosureNestedBorrows
 @[default_target] lean_lib ClosureOutputBorrows
 @[default_target] lean_lib Closures

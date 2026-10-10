@@ -23,17 +23,18 @@ debug assertions (`count` and `sum` use `#[rustc_inherit_overflow_checks]`). -/
 /-- `fold`: `f` over every item, front to back -/
 @[trait_default, rust_fun "core::iter::traits::iterator::Iterator::fold"]
 def core.iter.traits.iterator.Iterator.fold.default
-  {Self B F Item : Type}
+  {Self B F Item : Type} [S : FoldShape B F]
   (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
   (FnMutInst : core.ops.function.FnMut F (B × Item) B)
-  (self : Self) (init : B) (f : F) : Result B :=
-  loop (fun ((it, acc, f) : Self × B × F) => do
+  (self : Self) (init : B) (f : F) : Result S.Out := do
+  let (acc, f) ← loop (fun ((it, acc, f) : Self × B × F) => do
     let (o, it) ← IteratorInst.next it
     match o with
-    | none => ok (.done acc)
+    | none => ok (.done (acc, f))
     | some x =>
       let (acc, f) ← FnMutInst.call_mut f (acc, x)
       ok (.cont (it, acc, f))) (self, init, f)
+  ok (S.ofFold acc f)
 
 /-- `count`: the number of items, panicking past `usize::MAX` -/
 @[trait_default, rust_fun "core::iter::traits::iterator::Iterator::count"]
@@ -188,11 +189,11 @@ def core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.fold
 
 @[trait_default, rust_fun "core::iter::traits::iterator::Iterator::map"]
 def core.iter.traits.iterator.Iterator.map.default
-  {Self B F Item : Type}
+  {Self B F Item : Type} [S : MapShape Self F]
   (_IteratorInst : core.iter.traits.iterator.Iterator Self Item)
   (_FnMutInst : core.ops.function.FnMut F Item B)
-  (self : Self) (f : F) : Result (core.iter.adapters.map.Map Self F) :=
-  ok { iter := self, f }
+  (self : Self) (f : F) : Result S.Out :=
+  ok (S.ofMap { iter := self, f })
 
 /-! ## `Filter` -/
 
@@ -609,9 +610,9 @@ def core.iter.sources.empty.Empty.Insts.CoreIterTraitsIteratorIterator (T : Type
 @[rust_fun
   "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::fold"]
 def core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.fold
-  {T B F : Type} (FnMutInst : core.ops.function.FnMut F (B × T) B)
-  (it : core.slice.iter.Iter T) (init : B) (f : F) : Result B :=
-  core.iter.traits.iterator.Iterator.fold.default
+  {T B F : Type} [S : FoldShape B F] (FnMutInst : core.ops.function.FnMut F (B × T) B)
+  (it : core.slice.iter.Iter T) (init : B) (f : F) : Result S.Out :=
+  core.iter.traits.iterator.Iterator.fold.default (S := S)
     (core.iter.traits.iterator.IteratorSliceIter T) FnMutInst it init f
 
 @[rust_fun

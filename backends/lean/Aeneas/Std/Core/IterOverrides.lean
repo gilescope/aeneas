@@ -389,6 +389,19 @@ def core.result.Result.Insts.CoreIterTraitsCollectFromIteratorResult {T : Type} 
     core.result.Result.Insts.CoreIterTraitsCollectFromIteratorResult.from_iter
       FromIteratorInst IntoIteratorInst
 
+/-- `iter::try_process`: `V`'s collection of the `Ok` items, read through the shunt, which stops
+at the first `Err` and keeps it. Unlike `from_iter` above, the error is the shunt's own, as in
+core: the iterator given back is where the collection stopped. -/
+instance {T E V : Type} [FromIterBack V T] :
+    FromIterBack (core.result.Result V E) (core.result.Result T E) where
+  fromIterBack iterInst iter := do
+    let shunt : core.iter.adapters.GenericShunt _ E := { iter, residual := none }
+    let (v, shunt) ← FromIterBack.fromIterBack
+      (core.iter.adapters.GenericShunt.iteratorInst iterInst) shunt
+    match shunt.residual with
+    | some e => ok (.Err e, shunt.iter)
+    | none => ok (.Ok v, shunt.iter)
+
 /-- `Option`'s derived `Eq`: a compile-time check, no runtime effect -/
 @[rust_fun "core::option::{core::cmp::Eq<core::option::Option<@T>>}::assert_fields_are_eq"]
 def core.option.Option.Insts.CoreCmpEq.assert_fields_are_eq {T : Type}
