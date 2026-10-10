@@ -3599,102 +3599,146 @@ let fix_closure_output_outlives (crate : crate) (f : fun_decl) : fun_decl =
     parameters of a trait are recognised by Charon's naming, [Self_<path>].
 
     TODO: remove once Charon identifies them. *)
+(** The map identifying the type parameters of [generics] which stand for the
+    same associated type (see {!unify_diamond_assoc_types}), if there are any *)
+let diamond_assoc_types_map (crate : crate) (generics : generic_params) :
+    (TypeVarId.id -> TypeVarId.id) option =
+  let is_assoc (p : type_param) =
+    String.length p.name > 5 && String.sub p.name 0 5 = "Self_"
+  in
+  (* The trait references implied by the bounds, with their declarations *)
+  let refs = ref [] in
+  let rec explore (depth : int) (tr : trait_decl_ref) =
+    if depth <= 16 then
+      match TraitDeclId.Map.find_opt tr.id crate.trait_decls with
+      | None -> ()
+      | Some d ->
+          refs := (tr, d) :: !refs;
+          let subst =
+            [%add_loc] Substitute.make_subst_from_generics None d.generics
+              tr.generics Self
+          in
+          List.iter
+            (fun (c : trait_param) ->
+              explore (depth + 1)
+                (Substitute.trait_decl_ref_substitute subst c.trait.binder_value))
+            d.implied_clauses
+  in
+  (try
+     List.iter
+       (fun (c : trait_param) -> explore 0 c.trait.binder_value)
+       generics.trait_clauses
+   with Invalid_argument _ -> refs := []);
+  (* Union-find over the item's type variables *)
+  let parent = Hashtbl.create 8 in
+  let rec find id =
+    match Hashtbl.find_opt parent id with
+    | Some p when p <> id -> find p
+    | _ -> id
+  in
+  let union a b =
+    let a = find a and b = find b in
+    if a <> b then
+      if TypeVarId.compare_id a b < 0 then Hashtbl.replace parent b a
+      else Hashtbl.replace parent a b
+  in
+  let split ((tr, d) : trait_decl_ref * trait_decl) =
+    if List.length d.generics.types <> List.length tr.generics.types then None
+    else
+      let pairs = List.combine d.generics.types tr.generics.types in
+      let key =
+        ( tr.id,
+          List.filter_map
+            (fun (p, t) -> if is_assoc p then None else Some t)
+            pairs,
+          tr.generics.const_generics )
+      in
+      Some
+        ( key,
+          List.filter_map (fun (p, t) -> if is_assoc p then Some t else None) pairs
+        )
+  in
+  let groups = Hashtbl.create 8 in
+  List.iter
+    (fun r ->
+      match split r with
+      | None -> ()
+      | Some (key, assoc) -> (
+          match Hashtbl.find_opt groups key with
+          | None -> Hashtbl.add groups key assoc
+          | Some assoc0 ->
+              List.iter2
+                (fun t0 t ->
+                  match (t0, t) with
+                  | TVar (Free a), TVar (Free b) -> union a b
+                  | _ -> ())
+                assoc0 assoc))
+    !refs;
+  if Hashtbl.length parent = 0 then None else Some find
+
+(** Replace the item-level type variables [id] by [find id] *)
+let diamond_visitor (find : TypeVarId.id -> TypeVarId.id) =
+  object
+    inherit [_] map_crate as super
+
+    method! visit_TVar env var =
+      match var with
+      | Free id -> TVar (Free (find id))
+      | _ -> super#visit_TVar env var
+  end
+
+(** Identify associated types reached through several bounds (a diamond).
+
+    Charon's [--remove-associated-types] turns each associated type into a type
+    parameter per path that reaches it, without noticing when two paths reach
+    the same predicate (a documented limitation of its
+    [expand_associated_types]): with
+    [F: WithSmallOrderMulGroup<3> + FromUniformBytes<64>], both bounds imply
+    [F: PrimeField], and [<F as PrimeField>::Repr] becomes two unrelated
+    parameters [Clause2_Clause0_Repr] and [Clause5_Clause0_Repr]. Calls then
+    fail to type-check ("The input arguments don't have the proper type").
+
+    By coherence, two references to the same trait with the same arguments other
+    than its associated types denote the same impl, so their associated types
+    are equal. For every function, we gather the trait references its bounds
+    imply (transitively through the traits' implied clauses), group them by
+    trait and non-associated arguments, and identify the function's own type
+    parameters that stand for the same associated type. Associated-type
+    parameters of a trait are recognised by Charon's naming, [Self_<path>].
+    {!unify_diamond_assoc_types_in_impls} does the same for trait impls (a
+    closure's [Fn*] impls, whose methods are functions identified here).
+
+    TODO: remove once Charon identifies them. *)
 let unify_diamond_assoc_types (crate : crate) (f : fun_decl) : fun_decl =
   (* Only the crate's own functions: a library function keeps the signature its
      Lean model was written for (e.g. [Iterator::rev]'s default, modelled with
      both [Item]s), or calls to it would pass the merged parameter explicitly. *)
   if not f.item_meta.is_local then f
   else
-    let is_assoc (p : type_param) =
-      String.length p.name > 5 && String.sub p.name 0 5 = "Self_"
-    in
-    (* The trait references implied by the bounds, with their declarations *)
-    let refs = ref [] in
-    let rec explore (depth : int) (tr : trait_decl_ref) =
-      if depth <= 16 then
-        match TraitDeclId.Map.find_opt tr.id crate.trait_decls with
-        | None -> ()
-        | Some d ->
-            refs := (tr, d) :: !refs;
-            let subst =
-              [%add_loc] Substitute.make_subst_from_generics None d.generics
-                tr.generics Self
-            in
-            List.iter
-              (fun (c : trait_param) ->
-                explore (depth + 1)
-                  (Substitute.trait_decl_ref_substitute subst
-                     c.trait.binder_value))
-              d.implied_clauses
-    in
-    (try
-       List.iter
-         (fun (c : trait_param) -> explore 0 c.trait.binder_value)
-         f.generics.trait_clauses
-     with Invalid_argument _ -> refs := []);
-    (* Union-find over the function's type variables *)
-    let parent = Hashtbl.create 8 in
-    let rec find id =
-      match Hashtbl.find_opt parent id with
-      | Some p when p <> id -> find p
-      | _ -> id
-    in
-    let union a b =
-      let a = find a and b = find b in
-      if a <> b then
-        if TypeVarId.compare_id a b < 0 then Hashtbl.replace parent b a
-        else Hashtbl.replace parent a b
-    in
-    let split ((tr, d) : trait_decl_ref * trait_decl) =
-      if List.length d.generics.types <> List.length tr.generics.types then None
-      else
-        let pairs = List.combine d.generics.types tr.generics.types in
-        let key =
-          ( tr.id,
-            List.filter_map
-              (fun (p, t) -> if is_assoc p then None else Some t)
-              pairs,
-            tr.generics.const_generics )
-        in
-        Some
-          ( key,
-            List.filter_map
-              (fun (p, t) -> if is_assoc p then Some t else None)
-              pairs )
-    in
-    let groups = Hashtbl.create 8 in
-    List.iter
-      (fun r ->
-        match split r with
-        | None -> ()
-        | Some (key, assoc) -> (
-            match Hashtbl.find_opt groups key with
-            | None -> Hashtbl.add groups key assoc
-            | Some assoc0 ->
-                List.iter2
-                  (fun t0 t ->
-                    match (t0, t) with
-                    | TVar (Free a), TVar (Free b) -> union a b
-                    | _ -> ())
-                  assoc0 assoc))
-      !refs;
-    if Hashtbl.length parent = 0 then f
-    else
-      let visitor =
-        object
-          inherit [_] map_crate as super
+    match diamond_assoc_types_map crate f.generics with
+    | None -> f
+    | Some find ->
+        let f = (diamond_visitor find)#visit_fun_decl () f in
+        [%ltrace
+          let env = Print.crate_to_fmt_env crate in
+          "Updated: " ^ Print.fun_decl_to_string env "" " " f];
+        f
 
-          method! visit_TVar env var =
-            match var with
-            | Free id -> TVar (Free (find id))
-            | _ -> super#visit_TVar env var
-        end
-      in
-      let f = visitor#visit_fun_decl () f in
-      [%ltrace
-        let env = Print.crate_to_fmt_env crate in
-        "Updated: " ^ Print.fun_decl_to_string env "" " " f];
-      f
+(** {!unify_diamond_assoc_types} for the crate's own trait impls: a closure's
+    impls would otherwise pass instances over both parameters to methods which
+    identify them. *)
+let unify_diamond_assoc_types_in_impls (crate : crate) : crate =
+  let trait_impls =
+    TraitImplId.Map.map
+      (fun (impl : trait_impl) ->
+        if not impl.item_meta.is_local then impl
+        else
+          match diamond_assoc_types_map crate impl.generics with
+          | None -> impl
+          | Some find -> (diamond_visitor find)#visit_trait_impl () impl)
+      crate.trait_impls
+  in
+  { crate with trait_impls }
 
 (** Normalise function-item types: no binder, ['static] regions.
 
@@ -3990,6 +4034,7 @@ let apply_passes (crate : crate) : crate =
   let crate = anon_consts_to_calls crate in
   let crate = normalize_fn_def_types crate in
   let crate = declare_option crate in
+  let crate = unify_diamond_assoc_types_in_impls crate in
   (* Passes that apply to individual function bodies *)
   let function_passes =
     [

@@ -27,6 +27,7 @@ package «tests» {}
 @[default_target] lean_lib BuiltinAuto
 @[default_target] lean_lib CastSigned
 @[default_target] lean_lib ChunksExact
+@[default_target] lean_lib ClosureAssocTypeDiamond
 @[default_target] lean_lib ClosureMutArgs
 @[default_target] lean_lib ClosureMutCaptureCall
 @[default_target] lean_lib ClosureMutCaptureNested
