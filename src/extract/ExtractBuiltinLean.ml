@@ -57,6 +57,8 @@ let lean_builtin_types =
     mk_type "core::fmt::Formatter" "core.fmt.Formatter";
     (* file: "Aeneas/Std/Core/Fmt.lean", line: 52 *)
     mk_type "core::fmt::rt::Argument" "core.fmt.rt.Argument";
+    (* file: "Aeneas/Std/Std/Io.lean", line: 22 *)
+    mk_type "core::io::error::Error" "core.io.error.Error";
     (* file: "Aeneas/Std/Core/IterAdapters.lean", line: 348 *)
     mk_type "core::iter::adapters::chain::Chain"
       "core.iter.adapters.chain.Chain"
@@ -371,6 +373,14 @@ let lean_builtin_funs =
       "alloc::collections::btree::set::{core::iter::traits::iterator::Iterator<alloc::collections::btree::set::IntoIter<@T, \
        @A>, @T>}::size_hint"
       "alloc.collections.btree.set.IntoIter.Insts.CoreIterTraitsIteratorIterator.size_hint";
+    (* file: "Aeneas/Std/Std/Io.lean", line: 17 *)
+    mk_fun "alloc::fmt::format" "alloc.fmt.format";
+    (* file: "Aeneas/Std/Std/Io.lean", line: 31 *)
+    mk_fun "alloc::io::error::{core::io::error::Error}::new"
+      "alloc.io.error.Error.new";
+    (* file: "Aeneas/Std/Std/Io.lean", line: 36 *)
+    mk_fun "alloc::io::error::{core::io::error::Error}::other"
+      "alloc.io.error.Error.other";
     (* file: "Aeneas/Std/Vec.lean", line: 391 *)
     mk_fun "alloc::slice::{[@T]}::into_vec" "alloc.slice.Slice.into_vec"
       ~keep_params:(Some [ true; false ])
@@ -845,6 +855,8 @@ let lean_builtin_funs =
     (* file: "Aeneas/Std/HashMap.lean", line: 107 *)
     mk_fun "core::hash::impls::{core::hash::Hash<u32>}::hash"
       "U32.Insts.CoreHashHash.hash";
+    (* file: "Aeneas/Std/Std/Io.lean", line: 11 *)
+    mk_fun "core::hint::must_use" "core.hint.must_use";
     (* file: "Aeneas/Std/Core/Discriminant.lean", line: 28 *)
     mk_fun "core::intrinsics::discriminant_value"
       "core.intrinsics.discriminant_value";

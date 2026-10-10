@@ -3599,6 +3599,102 @@ let fix_closure_output_outlives (crate : crate) (f : fun_decl) : fun_decl =
     parameters of a trait are recognised by Charon's naming, [Self_<path>].
 
     TODO: remove once Charon identifies them. *)
+(** Drop the [dyn] bounds of the standard library's functions.
+
+    [io::Error::new<E: Into<Box<dyn Error + Send + Sync>>>(kind, error)]: Aeneas
+    has no [dyn] types, so such a signature cannot be translated, whatever the
+    model of the function. These bounds only say how the function converts its
+    argument, which a model doesn't need, so we remove them from the
+    declarations of the functions without a body, and the corresponding
+    instances from every reference to them. *)
+let drop_dyn_clauses (crate : crate) : crate =
+  let mentions_dyn (p : trait_param) =
+    let visitor =
+      object
+        inherit [_] iter_crate
+        method! visit_TDynTrait _ _ = raise Utils.Found
+      end
+    in
+    try
+      visitor#visit_trait_param () p;
+      false
+    with Utils.Found -> true
+  in
+  (* For each function whose bounds we drop: the positions of the bounds kept *)
+  let kept =
+    FunDeclId.Map.filter_map
+      (fun _ (f : fun_decl) ->
+        match f.body with
+        | StructuredBody _ -> None
+        | _ ->
+            if List.exists mentions_dyn f.generics.trait_clauses then
+              Some (List.map (fun p -> not (mentions_dyn p)) f.generics.trait_clauses)
+            else None)
+      crate.fun_decls
+  in
+  if FunDeclId.Map.is_empty kept then crate
+  else
+    let filter keep l = List.filteri (fun i _ -> List.nth keep i) l in
+    let calls =
+      object
+        inherit [_] map_crate as super
+
+        method! visit_fn_ptr env (fp : fn_ptr) =
+          let fp = super#visit_fn_ptr env fp in
+          match fp.kind with
+          | Fun id -> (
+              match FunDeclId.Map.find_opt id kept with
+              | Some keep ->
+                  {
+                    fp with
+                    generics =
+                      {
+                        fp.generics with
+                        trait_refs = filter keep fp.generics.trait_refs;
+                      };
+                  }
+              | None -> fp)
+          | _ -> fp
+      end
+    in
+    let crate = calls#visit_crate () crate in
+    let fun_decls =
+      FunDeclId.Map.mapi
+        (fun id (f : fun_decl) ->
+          match FunDeclId.Map.find_opt id kept with
+          | None -> f
+          | Some keep ->
+              (* Renumber the clauses kept, and their uses in the signature *)
+              let old_ids =
+                List.map (fun (p : trait_param) -> p.clause_id) (filter keep f.generics.trait_clauses)
+              in
+              let renumber id =
+                let rec go i = function
+                  | [] -> id
+                  | x :: rest -> if x = id then TraitClauseId.of_int i else go (i + 1) rest
+                in
+                go 0 old_ids
+              in
+              let trait_clauses =
+                List.mapi
+                  (fun i (p : trait_param) -> { p with clause_id = TraitClauseId.of_int i })
+                  (filter keep f.generics.trait_clauses)
+              in
+              let visitor =
+                object
+                  inherit [_] map_crate
+                  method! visit_Clause _ var =
+                    match var with
+                    | Free id -> Clause (Free (renumber id))
+                    | v -> Clause v
+                end
+              in
+              let f = visitor#visit_fun_decl () f in
+              { f with generics = { f.generics with trait_clauses } })
+        crate.fun_decls
+    in
+    { crate with fun_decls }
+
 (** Read the length of a slice through [Len]. Slice patterns read the length of
     a slice reference's pointer metadata ([copy (s.metadata)], with
     [s : &[T]]), which Aeneas cannot evaluate; [Len] of the slice behind [s] is
@@ -4242,6 +4338,7 @@ let apply_passes (crate : crate) : crate =
   let crate = anon_consts_to_calls crate in
   let crate = normalize_fn_def_types crate in
   let crate = declare_option crate in
+  let crate = drop_dyn_clauses crate in
   let crate = apply_assoc_type_constraints crate in
   let crate = break_trait_assoc_cycles crate in
   let crate = unify_diamond_assoc_types_in_impls crate in
