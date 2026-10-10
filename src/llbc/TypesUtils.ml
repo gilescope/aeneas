@@ -427,6 +427,18 @@ let ty_erase_regions ty =
   in
   visitor#visit_ty () ty
 
+(** Erase every region inside function-item types. A function item holds no
+    borrows, and the type normalizer leaves ['static] in some of its generics
+    and erased regions in others, so comparisons ignore them. *)
+let ty_erase_fn_def_regions ty =
+  let visitor =
+    object
+      inherit [_] map_ty
+      method! visit_TFnDef _ f = ty_erase_regions (TFnDef f)
+    end
+  in
+  visitor#visit_ty () ty
+
 let generic_args_only_erased_regions (x : generic_args) : bool =
   try
     raise_if_not_erased_ty_visitor#visit_generic_args () x;

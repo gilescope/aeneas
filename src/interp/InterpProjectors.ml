@@ -131,7 +131,9 @@ let rec apply_proj_borrows (span : Meta.span) (check_symbolic_no_ended : bool)
   (* Sanity check - TODO: move this elsewhere (here we perform the check at every
    * recursive call which is a bit overkill...) *)
   let ety = Substitute.erase_regions ty in
-  [%sanity_check] span (ty_is_rty ty && ety = v.ty);
+  [%sanity_check] span
+    (ty_is_rty ty
+    && ty_erase_fn_def_regions ety = ty_erase_fn_def_regions v.ty);
   (* Project - if there are no regions from the abstraction in the type, return [_] *)
   if not (ty_has_regions_in_set regions ty) then
     { value = AIgnored (Some v); ty }
@@ -286,7 +288,9 @@ let rec apply_eproj_borrows (span : Meta.span) (check_symbolic_no_ended : bool)
   (* Sanity check - TODO: move this elsewhere (here we perform the check at every
    * recursive call which is a bit overkill...) *)
   let ety = Substitute.erase_regions ty in
-  [%sanity_check] span (ty_is_rty ty && ety = v.ty);
+  [%sanity_check] span
+    (ty_is_rty ty
+    && ty_erase_fn_def_regions ety = ty_erase_fn_def_regions v.ty);
   (* Project - if there are no regions from the abstraction in the type, return [_] *)
   if not (ty_has_regions_in_set regions ty) then
     { value = EIgnored (Some (ctx.env, v)); ty }
