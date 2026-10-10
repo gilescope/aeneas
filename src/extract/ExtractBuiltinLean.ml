@@ -3110,7 +3110,7 @@ let lean_builtin_funs =
     (* file: "Aeneas/Std/Core/Convert.lean", line: 101 *)
     mk_fun
       "core::result::{core::ops::try_trait::Try<core::result::Result<@T, @E>, \
-       @T, core::result::Result<!, @E>>}::branch"
+       @T, core::result::Result<!, @E>, core::result::Result<@T, @E>>}::branch"
       "core.result.Result.Insts.CoreOpsTry.branch";
     (* file: "Aeneas/Std/Core/Fmt.lean", line: 116 *)
     mk_fun "core::result::{core::result::Result<@T, @E>}::expect"

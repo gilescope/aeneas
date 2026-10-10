@@ -72,7 +72,7 @@ def alloc.vec.Vec.len.Insts.CoreOpsFunctionFnMutTupleShared0VecUsize (T : Type)
 }
 
 /-- [loop_after_map_fn_item::sum_after_longest]: loop body 0:
-    Source: 'tests/src/loop-after-map-fn-item.rs', lines 7:4-9:5
+    Source: 'tests/src/loop-after-map-fn-item.rs', lines 8:4-10:5
     Visibility: public -/
 @[rust_loop_body]
 def sum_after_longest_loop.body
@@ -87,7 +87,7 @@ def sum_after_longest_loop.body
               ok (cont (iter1, acc1))
 
 /-- [loop_after_map_fn_item::sum_after_longest]: loop 0:
-    Source: 'tests/src/loop-after-map-fn-item.rs', lines 7:4-9:5
+    Source: 'tests/src/loop-after-map-fn-item.rs', lines 8:4-10:5
     Visibility: public -/
 @[rust_loop]
 def sum_after_longest_loop
@@ -99,7 +99,7 @@ def sum_after_longest_loop
     (iter, acc)
 
 /-- [loop_after_map_fn_item::sum_after_longest]:
-    Source: 'tests/src/loop-after-map-fn-item.rs', lines 4:0-11:1
+    Source: 'tests/src/loop-after-map-fn-item.rs', lines 5:0-12:1
     Visibility: public -/
 def sum_after_longest
   (v : alloc.vec.Vec (alloc.vec.Vec Std.U32)) (n : Std.U32) :

@@ -99,7 +99,7 @@ theorem core.result.Result.ok?_Err {T E : Type} (e : E) :
 
 /-- `Result::branch` (`Try`): `Ok v ⇒ Continue v`, `Err e ⇒ Break (Err e)`. -/
 @[expose, rust_fun
-  "core::result::{core::ops::try_trait::Try<core::result::Result<@T, @E>, @T, core::result::Result<!, @E>>}::branch"]
+  "core::result::{core::ops::try_trait::Try<core::result::Result<@T, @E>, @T, core::result::Result<!, @E>, core::result::Result<@T, @E>>}::branch"]
 def core.result.Result.Insts.CoreOpsTry.branch
   {T E : Type} :
   core.result.Result T E →
