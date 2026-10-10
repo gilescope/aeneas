@@ -7,6 +7,7 @@ public import Aeneas.Std.CoreMisc
 public import Aeneas.Std.Core.IterAdapters
 public import Aeneas.Std.Core.IterOverrides
 public import Aeneas.Std.BTree
+public import Aeneas.Std.HashMap
 public import Aeneas.Std.Primitives
 public import Aeneas.Std.PrimitivesLemmas
 public import Aeneas.Std.RawPtr

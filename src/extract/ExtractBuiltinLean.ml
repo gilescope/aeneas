@@ -240,6 +240,13 @@ let lean_builtin_types =
     mk_type "core::sync::atomic::AtomicBool" "core.sync.atomic.AtomicBool";
     (* file: "Aeneas/Std/Core/Atomic.lean", line: 12 *)
     mk_type "core::sync::atomic::AtomicU32" "core.sync.atomic.AtomicU32";
+    (* file: "Aeneas/Std/HashMap.lean", line: 20 *)
+    mk_type "std::collections::hash::map::HashMap"
+      "std.collections.hash.map.HashMap";
+    (* file: "Aeneas/Std/HashMap.lean", line: 77 *)
+    mk_type "std::hash::random::DefaultHasher" "std.hash.random.DefaultHasher";
+    (* file: "Aeneas/Std/HashMap.lean", line: 73 *)
+    mk_type "std::hash::random::RandomState" "std.hash.random.RandomState";
   ]
 
 let lean_builtin_consts = []
@@ -835,6 +842,9 @@ let lean_builtin_funs =
     (* file: "Aeneas/Std/Core/Fmt.lean", line: 85 *)
     mk_fun "core::fmt::{core::fmt::Formatter<'a>}::write_str"
       "core.fmt.Formatter.write_str";
+    (* file: "Aeneas/Std/HashMap.lean", line: 107 *)
+    mk_fun "core::hash::impls::{core::hash::Hash<u32>}::hash"
+      "U32.Insts.CoreHashHash.hash";
     (* file: "Aeneas/Std/Core/Discriminant.lean", line: 28 *)
     mk_fun "core::intrinsics::discriminant_value"
       "core.intrinsics.discriminant_value";
@@ -3410,6 +3420,33 @@ let lean_builtin_funs =
     mk_fun
       "core::tuple::{core::cmp::PartialOrd<(@U, @T), (@U, @T)>}::partial_cmp"
       "Pair.Insts.CoreCmpPartialOrdPair.partial_cmp";
+    (* file: "Aeneas/Std/HashMap.lean", line: 56 *)
+    mk_fun
+      "std::collections::hash::map::{core::iter::traits::collect::FromIterator<std::collections::hash::map::HashMap<@K, \
+       @V, @S, alloc::alloc::Global>, (@K, @V)>}::from_iter"
+      "std.collections.hash.map.HashMapKVSGlobal.Insts.CoreIterTraitsCollectFromIteratorPair.from_iter";
+    (* file: "Aeneas/Std/HashMap.lean", line: 35 *)
+    mk_fun
+      "std::collections::hash::map::{core::ops::index::Index<std::collections::hash::map::HashMap<@K, \
+       @V, @S, @A>, &'0 @Q, @V>}::index"
+      "std.collections.hash.map.HashMap.Insts.CoreOpsIndexIndexShared0QV.index";
+    (* file: "Aeneas/Std/HashMap.lean", line: 84 *)
+    mk_fun
+      "std::hash::random::{core::default::Default<std::hash::random::RandomState>}::default"
+      "std.hash.random.RandomState.Insts.CoreDefaultDefault.default";
+    (* file: "Aeneas/Std/HashMap.lean", line: 89 *)
+    mk_fun
+      "std::hash::random::{core::hash::BuildHasher<std::hash::random::RandomState, \
+       std::hash::random::DefaultHasher>}::build_hasher"
+      "std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher.build_hasher";
+    (* file: "Aeneas/Std/HashMap.lean", line: 100 *)
+    mk_fun
+      "std::hash::random::{core::hash::Hasher<std::hash::random::DefaultHasher>}::finish"
+      "std.hash.random.DefaultHasher.Insts.CoreHashHasher.finish";
+    (* file: "Aeneas/Std/HashMap.lean", line: 95 *)
+    mk_fun
+      "std::hash::random::{core::hash::Hasher<std::hash::random::DefaultHasher>}::write"
+      "std.hash.random.DefaultHasher.Insts.CoreHashHasher.write";
     (* file: "Aeneas/Std/Std/Io.lean", line: 7 *)
     mk_fun "std::io::stdio::_print" "std.io.stdio._print";
   ]
@@ -3486,6 +3523,10 @@ let lean_builtin_trait_decls =
     (* file: "Aeneas/Std/Core/Fmt.lean", line: 74 *)
     mk_trait_decl "core::fmt::LowerHex" "core.fmt.LowerHex"
       ~methods:[ ("fmt", "fmt") ];
+    (* file: "Aeneas/Std/Core/Hash.lean", line: 17 *)
+    mk_trait_decl "core::hash::BuildHasher" "core.hash.BuildHasher"
+      ~parent_clauses:[ "HasherInst" ]
+      ~methods:[ ("build_hasher", "build_hasher") ];
     (* file: "Aeneas/Std/Core/Hash.lean", line: 13 *)
     mk_trait_decl "core::hash::Hash" "core.hash.Hash"
       ~methods:[ ("hash", "hash") ];
