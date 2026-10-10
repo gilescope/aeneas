@@ -121,6 +121,38 @@ theorem core.slice.iter.IteratorSliceIter.next_back.spec
   rw [List.getElem?_eq_getElem (by scalar_tac), Slice.getElem_Nat_eq]
   scalar_tac
 
+/-- `Iterator::find` on `slice::Iter`: the first item the predicate accepts, and the iterator
+past it -/
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::find"]
+def core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.find
+  {T P : Type} (FnMutInst : core.ops.function.FnMut P T Bool)
+  (it : core.slice.iter.Iter T) (p : P) : Result ((Option T) × core.slice.iter.Iter T) :=
+  loop (fun ((it, p) : core.slice.iter.Iter T × P) => do
+    let (o, it) ← core.slice.iter.IteratorSliceIter.next it
+    match o with
+    | none => ok (.done (none, it))
+    | some x =>
+      let (b, p) ← FnMutInst.call_mut p x
+      if b then ok (.done (some x, it)) else ok (.cont (it, p))) (it, p)
+
+/-- `Iterator::find` on `slice::IterMut`: the first item the predicate accepts, the iterator
+past it, and the backward function writing the item back -/
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>}::find"]
+def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.find
+  {T P : Type} (FnMutInst : core.ops.function.FnMut P T Bool)
+  (it : core.slice.iter.IterMut T) (p : P) :
+  Result ((Option T) × core.slice.iter.IterMut T ×
+    (core.slice.iter.IterMut T → Option T → core.slice.iter.IterMut T)) :=
+  loop (fun ((it, p) : core.slice.iter.IterMut T × P) => do
+    let (o, it', back) ← core.slice.iter.IteratorIterMut.next it
+    match o with
+    | none => ok (.done (none, it', fun it _ => it))
+    | some x =>
+      let (b, p) ← FnMutInst.call_mut p x
+      if b then ok (.done (some x, it', back)) else ok (.cont (it', p))) (it, p)
+
 /-- Exact: the elements left (`slice/iter/macros.rs`) -/
 @[rust_fun
   "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::size_hint"]

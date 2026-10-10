@@ -228,7 +228,7 @@ let lean_builtin_types =
     (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 251 *)
     mk_type "core::slice::iter::Chunks" "core.slice.iter.Chunks"
       ~kind:(KStruct [ ("v", Some "v"); ("chunk_size", Some "chunk_size") ]);
-    (* file: "Aeneas/Std/SliceIter.lean", line: 190 *)
+    (* file: "Aeneas/Std/SliceIter.lean", line: 222 *)
     mk_type "core::slice::iter::ChunksExact" "core.slice.iter.ChunksExact";
     (* file: "Aeneas/Std/SliceIter.lean", line: 20 *)
     mk_type "core::slice::iter::Iter" "core.slice.iter.Iter"
@@ -619,7 +619,7 @@ let lean_builtin_funs =
     mk_fun
       "core::array::{core::fmt::Debug<core::array::TryFromSliceError>}::fmt"
       "core.array.DebugTryFromSliceError.fmt";
-    (* file: "Aeneas/Std/SliceIter.lean", line: 154 *)
+    (* file: "Aeneas/Std/SliceIter.lean", line: 186 *)
     mk_fun
       "core::array::{core::iter::traits::collect::IntoIterator<&'a [@T; @N], \
        &'a @T, core::slice::iter::Iter<'a, @T>>}::into_iter"
@@ -3288,7 +3288,7 @@ let lean_builtin_funs =
       "core::slice::index::{core::slice::index::SliceIndex<usize, [@T], \
        @T>}::index_mut"
       "core.slice.index.Usize.index_mut";
-    (* file: "Aeneas/Std/SliceIter.lean", line: 175 *)
+    (* file: "Aeneas/Std/SliceIter.lean", line: 207 *)
     mk_fun
       "core::slice::iter::{core::iter::traits::collect::IntoIterator<&'a [@T], \
        &'a @T, core::slice::iter::Iter<'a, @T>>}::into_iter"
@@ -3313,12 +3313,12 @@ let lean_builtin_funs =
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Chunks<'a, \
        @T>, &'a [@T]>}::size_hint"
       "core.slice.iter.Chunks.Insts.CoreIterTraitsIteratorIteratorSharedASlice.size_hint";
-    (* file: "Aeneas/Std/SliceIter.lean", line: 201 *)
+    (* file: "Aeneas/Std/SliceIter.lean", line: 233 *)
     mk_fun
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::ChunksExact<'a, \
        @T>, &'a [@T]>}::next"
       "core.slice.iter.IteratorChunksExact.next";
-    (* file: "Aeneas/Std/SliceIter.lean", line: 211 *)
+    (* file: "Aeneas/Std/SliceIter.lean", line: 243 *)
     mk_fun
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::ChunksExact<'a, \
        @T>, &'a [@T]>}::size_hint"
@@ -3333,6 +3333,11 @@ let lean_builtin_funs =
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, \
        @T>, &'a @T>}::count"
       "core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.count";
+    (* file: "Aeneas/Std/SliceIter.lean", line: 126 *)
+    mk_fun
+      "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, \
+       @T>, &'a @T>}::find"
+      "core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.find";
     (* file: "Aeneas/Std/Core/IterAdapters.lean", line: 610 *)
     mk_fun
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, \
@@ -3343,7 +3348,7 @@ let lean_builtin_funs =
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, \
        @T>, &'a @T>}::next"
       "core.slice.iter.IteratorSliceIter.next";
-    (* file: "Aeneas/Std/SliceIter.lean", line: 125 *)
+    (* file: "Aeneas/Std/SliceIter.lean", line: 157 *)
     mk_fun
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, \
        @T>, &'a @T>}::size_hint"
@@ -3353,6 +3358,11 @@ let lean_builtin_funs =
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, \
        @T>, &'a mut @T>}::count"
       "core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.count";
+    (* file: "Aeneas/Std/SliceIter.lean", line: 141 *)
+    mk_fun
+      "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, \
+       @T>, &'a mut @T>}::find"
+      "core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.find";
     (* file: "Aeneas/Std/SliceIter.lean", line: 45 *)
     mk_fun
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, \
@@ -3363,7 +3373,7 @@ let lean_builtin_funs =
       "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, \
        @T>, &'a mut @T>}::size_hint"
       "core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.size_hint";
-    (* file: "Aeneas/Std/SliceIter.lean", line: 195 *)
+    (* file: "Aeneas/Std/SliceIter.lean", line: 227 *)
     mk_fun
       "core::slice::iter::{core::slice::iter::ChunksExact<'a, @T>}::remainder"
       "core.slice.iter.ChunksExact.getRemainder";
@@ -3371,7 +3381,7 @@ let lean_builtin_funs =
     mk_fun "core::slice::raw::from_ref" "core.slice.raw.from_ref";
     (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 257 *)
     mk_fun "core::slice::{[@T]}::chunks" "core.slice.Slice.chunks";
-    (* file: "Aeneas/Std/SliceIter.lean", line: 271 *)
+    (* file: "Aeneas/Std/SliceIter.lean", line: 303 *)
     mk_fun "core::slice::{[@T]}::chunks_exact" "core.slice.Slice.chunks_exact";
     (* file: "Aeneas/Std/SliceIter.lean", line: 40 *)
     mk_fun "core::slice::{[@T]}::contains" "core.slice.Slice.contains";
@@ -3833,12 +3843,12 @@ let lean_builtin_trait_impls =
       "core::iter::traits::collect::FromIterator<core::result::Result<@V, @E>, \
        core::result::Result<@T, @E>>"
       "core.result.Result.Insts.CoreIterTraitsCollectFromIteratorResult";
-    (* file: "Aeneas/Std/SliceIter.lean", line: 160 *)
+    (* file: "Aeneas/Std/SliceIter.lean", line: 192 *)
     mk_trait_impl
       "core::iter::traits::collect::IntoIterator<&'a [@T; @N], &'a @T, \
        core::slice::iter::Iter<'a, @T>>"
       "SharedArray.Insts.CoreIterTraitsCollectIntoIteratorSharedIter";
-    (* file: "Aeneas/Std/SliceIter.lean", line: 181 *)
+    (* file: "Aeneas/Std/SliceIter.lean", line: 213 *)
     mk_trait_impl
       "core::iter::traits::collect::IntoIterator<&'a [@T], &'a @T, \
        core::slice::iter::Iter<'a, @T>>"
@@ -3974,12 +3984,12 @@ let lean_builtin_trait_impls =
       "core::iter::traits::iterator::Iterator<core::slice::iter::Chunks<'a, \
        @T>, &'a [@T]>"
       "core.slice.iter.Chunks.Insts.CoreIterTraitsIteratorIteratorSharedASlice";
-    (* file: "Aeneas/Std/SliceIter.lean", line: 218 *)
+    (* file: "Aeneas/Std/SliceIter.lean", line: 250 *)
     mk_trait_impl
       "core::iter::traits::iterator::Iterator<core::slice::iter::ChunksExact<'a, \
        @T>, &'a [@T]>"
       "core.iter.traits.iterator.IteratorChunksExact";
-    (* file: "Aeneas/Std/SliceIter.lean", line: 133 *)
+    (* file: "Aeneas/Std/SliceIter.lean", line: 165 *)
     mk_trait_impl
       "core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, \
        &'a @T>"

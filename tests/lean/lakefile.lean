@@ -60,6 +60,7 @@ package «tests» {}
 @[default_target] lean_lib GenericUnitOutput
 @[default_target] lean_lib Hashmap
 @[default_target] lean_lib HashmapCollectIndex
+@[default_target] lean_lib HigherRankedImpliedBoundsBorrow
 @[default_target] lean_lib HigherRankedTraitBounds
 @[default_target] lean_lib Into
 @[default_target] lean_lib IoErrorNew
@@ -135,6 +136,7 @@ package «tests» {}
 @[default_target] lean_lib RustBorrowCheckIssues
 @[default_target] lean_lib Scalars
 @[default_target] lean_lib SiblingRegionAbstractions
+@[default_target] lean_lib SliceIterFind
 @[default_target] lean_lib SlicePattern
 @[default_target] lean_lib Slices
 @[default_target] lean_lib Static

@@ -975,13 +975,17 @@ let check_no_bound_free_implied_bounds (span : Meta.span option)
 
       method! visit_ty (outer : region list) (ty : ty) =
         match ty with
-        | TRef (r, ref_ty, _) ->
+        | TRef (r, ref_ty, kind) ->
             (* [r] itself must outlive the outer borrow regions. *)
             self#visit_region outer r;
             (* The regions of [ref_ty] must outlive [r] (the borrow's lifetime
                is shorter than the lifetimes appearing in the referent), as well
-               as the outer borrow regions: we record [r] and dive in. *)
-            self#visit_ty (r :: outer) ref_ty
+               as the outer borrow regions: we record [r] and dive in. Only for
+               a mutable borrow: a shared one gives nothing back, so its
+               lifetime constrains nothing we track (e.g. [Iterator::find]'s
+               [for<'b> FnMut(&'b &'a T)], with ['a: 'b]). *)
+            let outer = if kind = RMut then r :: outer else outer in
+            self#visit_ty outer ref_ty
         | TAdt { id; generics = adt_generics; builtin } ->
             (* The implied bounds coming from the ADT's own declaration
                (constraints between its lifetime/type parameters). *)
