@@ -741,7 +741,6 @@ and eval_statement_raw (config : config) (st : statement) : stl_cm_fun =
                  reserved borrow, we later can't translate it to pure values...) *)
               let cc =
                 match rvalue with
-                | Len _ -> [%craise] st.span "Len is not handled yet"
                 | Repeat _ ->
                     [%craise] st.span
                       "Repeat should have been removed in a micropass"
@@ -758,6 +757,7 @@ and eval_statement_raw (config : config) (st : statement) : stl_cm_fun =
                 | UnaryOp _
                 | BinaryOp _
                 | Discriminant _
+                | Len _
                 | Aggregate _
                 | RawPtr _ ->
                     let p = S.mk_mplace st.span p ctx in

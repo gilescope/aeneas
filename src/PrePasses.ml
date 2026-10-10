@@ -3599,6 +3599,35 @@ let fix_closure_output_outlives (crate : crate) (f : fun_decl) : fun_decl =
     parameters of a trait are recognised by Charon's naming, [Self_<path>].
 
     TODO: remove once Charon identifies them. *)
+(** Read the length of a slice through [Len]. Slice patterns read the length of
+    a slice reference's pointer metadata ([copy (s.metadata)], with
+    [s : &[T]]), which Aeneas cannot evaluate; [Len] of the slice behind [s] is
+    the same length, which it can. *)
+let slice_metadata_to_len (_ : crate) (f : fun_decl) : fun_decl =
+  let visitor =
+    object
+      inherit [_] map_statement as super
+
+      method! visit_rvalue env rv =
+        match rv with
+        | Use
+            ( ( Copy { kind = PlaceProjection (base, PtrMetadata); _ }
+              | Move { kind = PlaceProjection (base, PtrMetadata); _ } ),
+              _ ) -> (
+            match base.ty with
+            | TRef (_, (TSlice (elem_ty, _) as slice_ty), _) ->
+                let slice = { kind = PlaceProjection (base, Deref); ty = slice_ty } in
+                Len (slice, elem_ty, None)
+            | _ -> super#visit_rvalue env rv)
+        | _ -> super#visit_rvalue env rv
+    end
+  in
+  match f.body with
+  | StructuredBody body ->
+      let body = { body with body = visitor#visit_block () body.body } in
+      { f with body = StructuredBody body }
+  | _ -> f
+
 (** Break cycles of traits through the bounds of their associated types.
 
     Traits naming each other through their associated types' bounds
@@ -4223,6 +4252,7 @@ let apply_passes (crate : crate) : crate =
       ("fix_closure_signature_regions", fix_closure_signature_regions);
       ("fix_closure_output_outlives", fix_closure_output_outlives);
       ("unify_diamond_assoc_types", unify_diamond_assoc_types);
+      ("slice_metadata_to_len", slice_metadata_to_len);
       ("fix_anon_const_initializers", fix_anon_const_initializers);
       ("erase_body_regions", erase_body_regions);
       ("remove_unreachable", remove_unreachable);

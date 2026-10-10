@@ -1268,6 +1268,7 @@ let builtin_pure_functions () : (pure_builtin_fun_id * string) list =
         (Fail, "fail_");
         (Assert, "massert");
         (Discriminant, "read_discriminant");
+        (SliceLen, "Slice.len");
         (UpdateAtIndex Slice, "Slice.update");
         (UpdateAtIndex Array, "Array.update");
         (IndexAtIndex Slice, "Slice.index_usize");

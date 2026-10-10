@@ -1479,6 +1479,27 @@ let eval_discriminant (config : config) (span : Meta.span) (p : place)
       (v, ctx, cc_comp cf_read cf_discr)
   | _ -> [%internal_error] span
 
+(** [Len (p, elem_ty, None)]: the length of the slice at [p], which rustc
+    inserts for slice patterns. We introduce a fresh symbolic value for it. *)
+let eval_slice_len (config : config) (span : Meta.span) (p : place)
+    (elem_ty : ty) (ctx : eval_ctx) :
+    tvalue * eval_ctx * (SymbolicAst.expr -> SymbolicAst.expr) =
+  [%sanity_check] span (config.mode = SymbolicMode);
+  let access = Read in
+  let expand_prim_copy = false in
+  let _, v, ctx, cf_read =
+    access_rplace_reorganize_and_read config span expand_prim_copy access p ctx
+  in
+  let v = value_strip_shared_loans v in
+  let len_ty = TScalar (TInteger (Unsigned Usize)) in
+  let sv : symbolic_value =
+    { sv_id = ctx.fresh_symbolic_value_id (); sv_ty = len_ty }
+  in
+  let cf_len (e : SA.expr) : SA.expr =
+    SA.IntroSymbolic (ctx, None, sv, VaSliceLen (v, elem_ty), e)
+  in
+  ({ value = VSymbolic sv; ty = len_ty }, ctx, cc_comp cf_read cf_len)
+
 let eval_rvalue_not_global (config : config) (span : Meta.span)
     (rvalue : rvalue) (ctx : eval_ctx) :
     (tvalue, eval_error) result
@@ -1497,7 +1518,9 @@ let eval_rvalue_not_global (config : config) (span : Meta.span)
   | Aggregate (aggregate_kind, ops) ->
       wrap_in_result (eval_rvalue_aggregate config span aggregate_kind ops ctx)
   | Discriminant p -> wrap_in_result (eval_discriminant config span p ctx)
-  | Len _ -> [%craise] span "Unhandled Len"
+  | Len (p, elem_ty, None) ->
+      wrap_in_result (eval_slice_len config span p elem_ty ctx)
+  | Len (_, _, Some _) -> [%craise] span "Unhandled Len of an array"
   | _ ->
       [%craise] span
         ("Unsupported operation: " ^ Print.EvalCtx.rvalue_to_string ctx rvalue)

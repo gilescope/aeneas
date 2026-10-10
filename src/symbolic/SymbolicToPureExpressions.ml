@@ -1619,6 +1619,17 @@ and translate_intro_symbolic (ectx : C.eval_ctx) (p : S.mplace option)
           [%add_loc] mk_app ctx.span qualif (symbolic_value_to_texpr ctx adt_sv)
         in
         (e, false)
+    | VaSliceLen (slice, elem_ty) ->
+        let elem_ty = ctx_translate_fwd_ty ctx elem_ty in
+        let slice = tvalue_to_texpr ctx ectx slice in
+        let qualif_id = FunOrOp (Fun (Pure SliceLen)) in
+        let qualif =
+          { id = qualif_id; generics = mk_generic_args_from_types [ elem_ty ] }
+        in
+        let qualif : texpr =
+          { e = Qualif qualif; ty = mk_arrow slice.ty var.ty }
+        in
+        ([%add_loc] mk_app ctx.span qualif slice, false)
     | VaDynTrait (v, trait_ref) ->
         let v = tvalue_to_texpr ctx ectx v in
         let dyn_ty = var.ty in

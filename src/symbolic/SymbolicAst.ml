@@ -339,6 +339,9 @@ and value_aggregate =
   | VaTraitConstValue of trait_ref * assoc_const_id
       (** A trait constant value *)
   | VaDiscriminant of symbolic_value  (** A discriminant read *)
+  | VaSliceLen of tvalue * ty
+      (** The length of a slice (of the given element type), read by slice
+          patterns *)
   | VaDynTrait of tvalue * trait_ref
       (** A dynamic trait. This gets inserted when we convert a box of an
           element of a known type to a box of an element of type [dyn] through
