@@ -92,11 +92,13 @@ meta def inRange (r : Syntax.Range) (s : Syntax) : Bool :=
   s.getRange?.any fun inner => r.start ≤ inner.start && inner.stop ≤ r.stop
 
 /-- Extract the `(userName, syntax)` binder entry from `info` when it's a
-    binder `TermInfo` -/
+    binder `TermInfo` for an identifier the user wrote. The holes Lean elaborates
+    for implicit constructor arguments are binders too, named after the locals
+    they unify with, which may repeat (`Ind (inst : Cls X X)`): they are skipped. -/
 meta def binderEntry? (patRange : Syntax.Range) (info : Info) : Option (Name × Syntax) := do
   let .ofTermInfo ti := info | none
   let .fvar fid := ti.expr | none
-  if ti.isBinder && inRange patRange ti.stx then
+  if ti.isBinder && ti.stx.isIdent && inRange patRange ti.stx then
     let decl ← ti.lctx.find? fid
     (decl.userName, ti.stx)
   else

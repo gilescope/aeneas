@@ -993,4 +993,24 @@ example (b : Bool) (m : Result Nat) :
 
 end CrossUniverseTests
 
+/-! Implicit constructor parameters that the discriminant's type instantiates with the same
+local (`X` twice): the holes Lean elaborates for them are not pattern binders. -/
+namespace RepeatedImplicitTests
+
+open Aeneas Aeneas.Std Result
+
+structure Cls (A B C : Type) where
+  x : Unit
+
+inductive Ind {A B C : Type} (inst : Cls A B C) where
+  | mk : A → B → Ind inst
+  | two : C → Nat → Ind inst
+
+def clone {X Y : Type} (inst : Cls X X Y) (t : Ind inst) : Result (Ind inst) := do
+  match t with
+  | Ind.mk a b => ok (Ind.mk a b)
+  | Ind.two c n => ok (Ind.two c n)
+
+end RepeatedImplicitTests
+
 end Do
