@@ -1959,6 +1959,70 @@ let filter_marker_traits (crate : crate) : crate =
     in
     visitor#visit_crate () crate
 
+(** Drop the trait methods whose declaration names an item missing from the crate.
+
+    Charon keeps a trait's method in the trait declaration even when the method, or a trait
+    or type its signature names, was left out with [--exclude] (e.g. midnight-proofs'
+    provided [Params::downsize_from_circuit], whose bound names an excluded [Circuit]); the
+    model then fails on the dangling id. Such a method cannot be modelled, so it goes from
+    the trait declaration and from the trait's impls, as if excluded with the rest; a use of
+    it would still fail, where it is used. *)
+let filter_dangling_trait_methods (crate : crate) : crate =
+  let dangling = ref false in
+  let visitor =
+    object
+      inherit [_] iter_trait_decl
+
+      method! visit_trait_decl_id _ id =
+        if not (TraitDeclId.Map.mem id crate.trait_decls) then dangling := true
+
+      method! visit_type_decl_id _ id =
+        if not (TypeDeclId.Map.mem id crate.type_decls) then dangling := true
+
+      method! visit_fun_decl_id _ id =
+        if not (FunDeclId.Map.mem id crate.fun_decls) then dangling := true
+    end
+  in
+  let is_dangling (m : trait_method binder) : bool =
+    dangling := false;
+    visitor#visit_generic_params () m.binder_params;
+    visitor#visit_trait_method () m.binder_value;
+    !dangling
+  in
+  (* For each trait, the methods to drop *)
+  let dropped : TraitMethodId.Set.t TraitDeclId.Map.t =
+    TraitDeclId.Map.filter_map
+      (fun _ (d : trait_decl) ->
+        let ids =
+          TraitMethodId.Map.fold
+            (fun id m acc -> if is_dangling m then TraitMethodId.Set.add id acc else acc)
+            d.methods TraitMethodId.Set.empty
+        in
+        if TraitMethodId.Set.is_empty ids then None else Some ids)
+      crate.trait_decls
+  in
+  if TraitDeclId.Map.is_empty dropped then crate
+  else
+    let keep (trait_id : TraitDeclId.id) (id : TraitMethodId.id) : bool =
+      match TraitDeclId.Map.find_opt trait_id dropped with
+      | None -> true
+      | Some ids -> not (TraitMethodId.Set.mem id ids)
+    in
+    let trait_decls =
+      TraitDeclId.Map.map
+        (fun (d : trait_decl) ->
+          { d with methods = TraitMethodId.Map.filter (fun id _ -> keep d.def_id id) d.methods })
+        crate.trait_decls
+    in
+    let trait_impls =
+      TraitImplId.Map.map
+        (fun (i : trait_impl) ->
+          let trait_id = i.impl_trait.id in
+          { i with methods = TraitMethodId.Map.filter (fun id _ -> keep trait_id id) i.methods })
+        crate.trait_impls
+    in
+    { crate with trait_decls; trait_impls }
+
 (* Remove the type aliases from the type declarations and declaration groups *)
 let filter_type_aliases (crate : crate) : crate =
   let type_decl_is_alias (ty : type_decl) =
@@ -3991,6 +4055,7 @@ let apply_passes (crate : crate) : crate =
   in
   let crate = { crate with fun_decls } in
   let crate = strip_unnecessary_target_suffixes crate in
+  let crate = filter_dangling_trait_methods crate in
   let crate = filter_marker_traits crate in
   let crate = filter_type_aliases crate in
   let crate = replace_static crate in
