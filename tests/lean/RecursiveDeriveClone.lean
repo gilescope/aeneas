@@ -17,17 +17,7 @@ set_option maxHeartbeats 1000000
 /- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
 set_option maxRecDepth 2048
 
-/- You can remove the following line by using the CLI option `-all-computable`: -/
-noncomputable section
-
 namespace recursive_derive_clone
-
-/-- [core::mem::maybe_uninit::MaybeUninit]
-    Source: '/rustc/library/core/src/mem/maybe_uninit.rs', lines 355:0-355:24
-    Name pattern: [core::mem::maybe_uninit::MaybeUninit]
-    Visibility: public -/
-@[rust_type "core::mem::maybe_uninit::MaybeUninit"]
-axiom core.mem.maybe_uninit.MaybeUninit (T : Type) : Type
 
 /-- [recursive_derive_clone::Label]
     Source: 'tests/src/recursive-derive-clone.rs', lines 11:0-16:1

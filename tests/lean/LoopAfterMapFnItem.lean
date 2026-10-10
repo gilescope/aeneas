@@ -17,32 +17,7 @@ set_option maxHeartbeats 1000000
 /- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
 set_option maxRecDepth 2048
 
-/- You can remove the following line by using the CLI option `-all-computable`: -/
-noncomputable section
-
 namespace loop_after_map_fn_item
-
-/-- [alloc::vec::{alloc::vec::Vec<T>}::{impl core::ops::function::FnMut<(&'_0 alloc::vec::Vec<T>,), usize> for alloc::vec::{alloc::vec::Vec<T>}::len<'static, T, A>}::call_mut]:
-    Source: '/rustc/library/alloc/src/vec/mod.rs', lines 3135:4-3135:36
-    Name pattern: [alloc::vec::{alloc::vec::Vec<@T>}::{core::ops::function::FnMut<@, (&'0 alloc::vec::Vec<@T>), usize>}::call_mut]
-    Visibility: public -/
-@[rust_fun
-  "alloc::vec::{alloc::vec::Vec<@T>}::{core::ops::function::FnMut<@, (&'0 alloc::vec::Vec<@T>), usize>}::call_mut"]
-axiom alloc.vec.Vec.len.Insts.CoreOpsFunctionFnMutTupleShared0VecUsize.call_mut
-  {T : Type} (A : Type) :
-  (alloc.vec.Vec T → Std.Usize) → alloc.vec.Vec T → Result (Std.Usize ×
-    (alloc.vec.Vec T → Std.Usize))
-
-/-- [alloc::vec::{alloc::vec::Vec<T>}::{impl core::ops::function::FnOnce<(&'_0 alloc::vec::Vec<T>,), usize> for alloc::vec::{alloc::vec::Vec<T>}::len<'static, T, A>}::call_once]:
-    Source: '/rustc/library/alloc/src/vec/mod.rs', lines 3135:4-3135:36
-    Name pattern: [alloc::vec::{alloc::vec::Vec<@T>}::{core::ops::function::FnOnce<@, (&'0 alloc::vec::Vec<@T>), usize>}::call_once]
-    Visibility: public -/
-@[rust_fun
-  "alloc::vec::{alloc::vec::Vec<@T>}::{core::ops::function::FnOnce<@, (&'0 alloc::vec::Vec<@T>), usize>}::call_once"]
-axiom
-  alloc.vec.Vec.len.Insts.CoreOpsFunctionFnOnceTupleShared0VecUsize.call_once
-  {T : Type} (A : Type) :
-  (alloc.vec.Vec T → Std.Usize) → alloc.vec.Vec T → Result Std.Usize
 
 /-- Trait implementation: [alloc::vec::{alloc::vec::Vec<T>}::{impl core::ops::function::FnOnce<(&'_0 alloc::vec::Vec<T>,), usize> for alloc::vec::{alloc::vec::Vec<T>}::len<'static, T, A>}]
     Source: '/rustc/library/alloc/src/vec/mod.rs', lines 3135:4-3135:36
@@ -52,9 +27,7 @@ axiom
 def alloc.vec.Vec.len.Insts.CoreOpsFunctionFnOnceTupleShared0VecUsize (T :
   Type) (A : Type) : core.ops.function.FnOnce (alloc.vec.Vec T → Std.Usize)
   (alloc.vec.Vec T) Std.Usize := {
-  call_once :=
-    alloc.vec.Vec.len.Insts.CoreOpsFunctionFnOnceTupleShared0VecUsize.call_once
-    A
+  call_once := alloc.vec.Vec.len.Insts.CoreOpsFunctionFnOnce.call_once A
 }
 
 /-- Trait implementation: [alloc::vec::{alloc::vec::Vec<T>}::{impl core::ops::function::FnMut<(&'_0 alloc::vec::Vec<T>,), usize> for alloc::vec::{alloc::vec::Vec<T>}::len<'static, T, A>}]
@@ -67,8 +40,7 @@ def alloc.vec.Vec.len.Insts.CoreOpsFunctionFnMutTupleShared0VecUsize (T : Type)
   (alloc.vec.Vec T) Std.Usize := {
   FnOnceInst :=
     alloc.vec.Vec.len.Insts.CoreOpsFunctionFnOnceTupleShared0VecUsize T A
-  call_mut :=
-    alloc.vec.Vec.len.Insts.CoreOpsFunctionFnMutTupleShared0VecUsize.call_mut A
+  call_mut := alloc.vec.Vec.len.Insts.CoreOpsFunctionFnMut.call_mut A
 }
 
 /-- [loop_after_map_fn_item::sum_after_longest]: loop body 0:
