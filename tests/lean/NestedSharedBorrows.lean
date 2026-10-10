@@ -22,13 +22,13 @@ noncomputable section
 
 namespace nested_shared_borrows
 
-/-- [core::option::{impl core::ops::try_trait::Try for core::option::Option<T>}::branch]:
+/-- [core::option::{impl core::ops::try_trait::Try<T, core::option::Option<!>> for core::option::Option<T>}::branch]:
     Source: '/rustc/library/core/src/option.rs', lines 2875:4-2875:64
-    Name pattern: [core::option::{core::ops::try_trait::Try<core::option::Option<@T>>}::branch]
+    Name pattern: [core::option::{core::ops::try_trait::Try<core::option::Option<@T>, @T, core::option::Option<!>>}::branch]
     Visibility: public -/
 @[rust_fun
-  "core::option::{core::ops::try_trait::Try<core::option::Option<@T>>}::branch"]
-axiom core.option.Option.Insts.CoreOpsTry_traitTry.branch
+  "core::option::{core::ops::try_trait::Try<core::option::Option<@T>, @T, core::option::Option<!>>}::branch"]
+axiom core.option.Option.Insts.CoreOpsTry_traitTryTOptionNever.branch
   {T : Type} :
   Option T → Result (core.ops.control_flow.ControlFlow (Option Never) T)
 
@@ -52,7 +52,7 @@ def do_option : Result (Option Unit) := do
     Visibility: public -/
 def double_ref_option (_arg : Std.U8) : Result (Option Unit) := do
   let o ← do_option
-  let cf ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o
+  let cf ← core.option.Option.Insts.CoreOpsTry_traitTryTOptionNever.branch o
   match cf with
   | core.ops.control_flow.ControlFlow.Continue _ => ok (some ())
   | core.ops.control_flow.ControlFlow.Break residual =>

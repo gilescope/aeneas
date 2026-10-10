@@ -1,8 +1,9 @@
 //@ [!lean] skip
-//! An equality between associated types in a where clause, on traits Charon cannot expand
-//! (mutually recursive through their associated types) - the KZG verifier's
-//! `E::G1Affine: CurveAffine<ScalarExt = E::Fr>`, `CurveAffine` and `CurveExt` naming each
-//! other. The constraint stays in the LLBC; the projection is rewritten to its right-hand side.
+//! Traits naming each other through their associated types' bounds - the KZG verifier's
+//! `CurveAffine` and `CurveExt` - with an equality on one of them in a where clause
+//! (`E::G1Affine: CurveAffine<ScalarExt = E::Fr>`). Charon lifts the associated types to
+//! parameters; one of the two bounds is dropped so that the Lean structures are not mutually
+//! recursive.
 
 pub trait Proj: Sized {
     type Scalar: Copy;

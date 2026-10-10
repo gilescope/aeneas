@@ -20,23 +20,21 @@ set_option maxRecDepth 2048
 namespace assoc_type_constraint
 
 /-- Trait declaration: [assoc_type_constraint::Proj]
-    Source: 'tests/src/assoc-type-constraint.rs', lines 7:0-10:1
+    Source: 'tests/src/assoc-type-constraint.rs', lines 8:0-11:1
     Visibility: public -/
-structure Proj (Self : Type) where
-  Scalar : Type
-  Affine : Type
-  coremarkerCopyScalarInst : core.marker.Copy Scalar
+structure Proj (Self : Type) (Self_Scalar : Type) (Self_Affine : Type) where
+  coremarkerCopyInst : core.marker.Copy Self_Scalar
 
 /-- Trait declaration: [assoc_type_constraint::Affine]
-    Source: 'tests/src/assoc-type-constraint.rs', lines 12:0-17:1
+    Source: 'tests/src/assoc-type-constraint.rs', lines 13:0-18:1
     Visibility: public -/
 structure Affine (Self : Type) (Self_ScalarA : Type) (Self_ProjA : Type) where
   coremarkerCopyInst : core.marker.Copy Self_ScalarA
-  ProjInst : Proj Self_ProjA
+  ProjInst : Proj Self_ProjA Self_ScalarA Self
   get : Self → Result Self_ScalarA
 
 /-- [assoc_type_constraint::scalar]:
-    Source: 'tests/src/assoc-type-constraint.rs', lines 19:0-21:1
+    Source: 'tests/src/assoc-type-constraint.rs', lines 20:0-22:1
     Visibility: public -/
 def scalar
   {F : Type} {A : Type} {Clause1_ProjA : Type} (coremarkerCopyInst :

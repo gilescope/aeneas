@@ -3607,7 +3607,8 @@ let fix_closure_output_outlives (crate : crate) (f : fun_decl) : fun_decl =
     structures, which Lean does not have. We drop the bound of an associated
     type which leads back to its own trait: it only gives access to the other
     trait's items through the associated type, and a use of it shows as a
-    missing clause (an error), never as a wrong model. *)
+    missing clause (an error), never as a wrong model. One clause per cycle is
+    dropped: the one pointing to the later declaration. *)
 let break_trait_assoc_cycles (crate : crate) : crate =
   let of_params (ps : trait_param list) =
     List.map (fun (p : trait_param) -> p.trait.binder_value.id) ps
@@ -3636,14 +3637,23 @@ let break_trait_assoc_cycles (crate : crate) : crate =
     in
     go [ a ]
   in
+  (* A clause closing a cycle: one per cycle is enough, so keep those pointing to
+     an earlier declaration *)
   let cyclic (d : trait_decl) (p : trait_param) =
-    reaches p.trait.binder_value.id d.def_id
+    let target = p.trait.binder_value.id in
+    TraitDeclId.compare_id target d.def_id >= 0 && reaches target d.def_id
   in
-  (* A bound of an associated type: Charon gives those it does not expand as
-     implied clauses of the trait on a projection ([Self::CurveExt: CurveExt]) *)
-  let on_assoc_type (p : trait_param) =
+  (* A bound of an associated type: Charon gives it as an implied clause of the
+     trait on the projection ([Self::CurveExt: CurveExt]) or, when it lifts the
+     associated type, on the parameter standing for it ([Self_CurveExt]) *)
+  let on_assoc_type (d : trait_decl) (p : trait_param) =
     match p.trait.binder_value.generics.types with
     | TTraitType _ :: _ -> true
+    | TVar (Free id) :: _ -> (
+        match List.nth_opt d.generics.types (TypeVarId.to_int id) with
+        | Some tp ->
+            String.length tp.name > 5 && String.sub tp.name 0 5 = "Self_"
+        | None -> false)
     | _ -> false
   in
   let trait_decls =
@@ -3651,7 +3661,7 @@ let break_trait_assoc_cycles (crate : crate) : crate =
       (fun (d : trait_decl) ->
         let implied_clauses =
           List.filter
-            (fun p -> not (on_assoc_type p && cyclic d p))
+            (fun p -> not (on_assoc_type d p && cyclic d p))
             d.implied_clauses
         in
         let types =
