@@ -807,7 +807,7 @@ let lean_builtin_funs =
     (* file: "Aeneas/Std/Core/Fmt.lean", line: 64 *)
     mk_fun "core::fmt::rt::{core::fmt::rt::Argument<'0>}::new_debug"
       "core.fmt.rt.Argument.new_debug";
-    (* file: "Aeneas/Std/Core/Fmt.lean", line: 195 *)
+    (* file: "Aeneas/Std/Core/Fmt.lean", line: 256 *)
     mk_fun "core::fmt::rt::{core::fmt::rt::Argument<'0>}::new_display"
       "core.fmt.rt.Argument.new_display";
     (* file: "Aeneas/Std/Core/Fmt.lean", line: 78 *)
@@ -846,6 +846,12 @@ let lean_builtin_funs =
     (* file: "Aeneas/Std/Core/Fmt.lean", line: 171 *)
     mk_fun "core::fmt::{core::fmt::Formatter<'a>}::debug_tuple_field1_finish"
       "core.fmt.Formatter.debug_tuple_field1_finish";
+    (* file: "Aeneas/Std/Core/Fmt.lean", line: 179 *)
+    mk_fun "core::fmt::{core::fmt::Formatter<'a>}::debug_tuple_field2_finish"
+      "core.fmt.Formatter.debug_tuple_field2_finish";
+    (* file: "Aeneas/Std/Core/Fmt.lean", line: 186 *)
+    mk_fun "core::fmt::{core::fmt::Formatter<'a>}::debug_tuple_field3_finish"
+      "core.fmt.Formatter.debug_tuple_field3_finish";
     (* file: "Aeneas/Std/Core/Fmt.lean", line: 91 *)
     mk_fun "core::fmt::{core::fmt::Formatter<'a>}::write_fmt"
       "core.fmt.Formatter.write_fmt";
@@ -3767,16 +3773,16 @@ let lean_builtin_trait_impls =
       "core.default.DefaultArrayEmpty";
     (* file: "Aeneas/Std/Array/Array.lean", line: 461 *)
     mk_trait_impl "core::default::Default<[@T; @N]>" "core.default.DefaultArray";
-    (* file: "Aeneas/Std/Core/Fmt.lean", line: 179 *)
+    (* file: "Aeneas/Std/Core/Fmt.lean", line: 240 *)
     mk_trait_impl "core::fmt::Debug<&'0 @T>" "core.fmt.DebugShared";
-    (* file: "Aeneas/Std/Core/Fmt.lean", line: 185 *)
+    (* file: "Aeneas/Std/Core/Fmt.lean", line: 246 *)
     mk_trait_impl "core::fmt::Debug<()>" "core.fmt.DebugUnit";
     (* file: "Aeneas/Std/Array/ArrayDebug.lean", line: 18 *)
     mk_trait_impl "core::fmt::Debug<[@T; @N]>" "Array.Insts.CoreFmtDebug";
     (* file: "Aeneas/Std/Vec.lean", line: 765 *)
     mk_trait_impl "core::fmt::Debug<alloc::vec::Vec<@T>>" "core.fmt.DebugVec"
       ~keep_params:(Some [ true; false ]);
-    (* file: "Aeneas/Std/Core/Fmt.lean", line: 190 *)
+    (* file: "Aeneas/Std/Core/Fmt.lean", line: 251 *)
     mk_trait_impl "core::fmt::Debug<bool>" "core.fmt.DebugBool";
     (* file: "Aeneas/Std/Array/ArraySlice.lean", line: 289 *)
     mk_trait_impl "core::fmt::Debug<core::array::TryFromSliceError>"

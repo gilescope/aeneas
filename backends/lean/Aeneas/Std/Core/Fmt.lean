@@ -176,6 +176,67 @@ def core.fmt.Formatter.debug_tuple_field1_finish :
   fun fmt _ _ =>
   .ok (.Ok (), fmt)
 
+@[expose, rust_fun "core::fmt::{core::fmt::Formatter<'a>}::debug_tuple_field2_finish", simp]
+def core.fmt.Formatter.debug_tuple_field2_finish :
+  core.fmt.Formatter → Str → Dyn (fun dyn => core.fmt.Debug dyn) →
+    Dyn (fun dyn => core.fmt.Debug dyn) →
+    Result ((core.result.Result Unit core.fmt.Error) × core.fmt.Formatter) :=
+  fun fmt _ _ _ => .ok (.Ok (), fmt)
+
+@[expose, rust_fun "core::fmt::{core::fmt::Formatter<'a>}::debug_tuple_field3_finish", simp]
+def core.fmt.Formatter.debug_tuple_field3_finish :
+  core.fmt.Formatter → Str → Dyn (fun dyn => core.fmt.Debug dyn) →
+    Dyn (fun dyn => core.fmt.Debug dyn) → Dyn (fun dyn => core.fmt.Debug dyn) →
+    Result ((core.result.Result Unit core.fmt.Error) × core.fmt.Formatter) :=
+  fun fmt _ _ _ _ => .ok (.Ok (), fmt)
+
+/-! The `debug_*_finish` models ignore the values they format, so they are monotone in them: a
+`Debug::fmt` recursing through its own impl as `dyn Debug` (a derived `Debug` on an enum with a
+`Vec<Self>` field) is a valid partial fixpoint. -/
+section
+open Lean.Order
+
+abbrev core.fmt.DynDebug := Dyn (fun dyn => core.fmt.Debug dyn)
+
+@[partial_fixpoint_monotone]
+theorem core.fmt.Formatter.debug_tuple_field1_finish.mono {γ : Sort w} [PartialOrder γ]
+    (fmt : core.fmt.Formatter) (s : Str) (a : γ → core.fmt.DynDebug) :
+    monotone (fun x => core.fmt.Formatter.debug_tuple_field1_finish fmt s (a x)) :=
+  fun _ _ _ => PartialOrder.rel_refl
+
+@[partial_fixpoint_monotone]
+theorem core.fmt.Formatter.debug_tuple_field2_finish.mono {γ : Sort w} [PartialOrder γ]
+    (fmt : core.fmt.Formatter) (s : Str) (a b : γ → core.fmt.DynDebug) :
+    monotone (fun x => core.fmt.Formatter.debug_tuple_field2_finish fmt s (a x) (b x)) :=
+  fun _ _ _ => PartialOrder.rel_refl
+
+@[partial_fixpoint_monotone]
+theorem core.fmt.Formatter.debug_tuple_field3_finish.mono {γ : Sort w} [PartialOrder γ]
+    (fmt : core.fmt.Formatter) (s : Str) (a b c : γ → core.fmt.DynDebug) :
+    monotone (fun x => core.fmt.Formatter.debug_tuple_field3_finish fmt s (a x) (b x) (c x)) :=
+  fun _ _ _ => PartialOrder.rel_refl
+
+@[partial_fixpoint_monotone]
+theorem core.fmt.Formatter.debug_struct_field1_finish.mono {γ : Sort w} [PartialOrder γ]
+    (fmt : core.fmt.Formatter) (s n : Str) (a : γ → core.fmt.DynDebug) :
+    monotone (fun x => core.fmt.Formatter.debug_struct_field1_finish fmt s n (a x)) :=
+  fun _ _ _ => PartialOrder.rel_refl
+
+@[partial_fixpoint_monotone]
+theorem core.fmt.Formatter.debug_struct_field2_finish.mono {γ : Sort w} [PartialOrder γ]
+    (fmt : core.fmt.Formatter) (s n m : Str) (a b : γ → core.fmt.DynDebug) :
+    monotone (fun x => core.fmt.Formatter.debug_struct_field2_finish fmt s n (a x) m (b x)) :=
+  fun _ _ _ => PartialOrder.rel_refl
+
+@[partial_fixpoint_monotone]
+theorem core.fmt.Formatter.debug_struct_field3_finish.mono {γ : Sort w} [PartialOrder γ]
+    (fmt : core.fmt.Formatter) (s n m o : Str) (a b c : γ → core.fmt.DynDebug) :
+    monotone (fun x =>
+      core.fmt.Formatter.debug_struct_field3_finish fmt s n (a x) m (b x) o (c x)) :=
+  fun _ _ _ => PartialOrder.rel_refl
+
+end
+
 @[expose, reducible, rust_trait_impl "core::fmt::Debug<&'0 @T>"]
 def core.fmt.DebugShared {T : Type} (DebugInst : core.fmt.Debug T) :
   core.fmt.Debug T := {

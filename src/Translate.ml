@@ -1119,6 +1119,27 @@ let export_trait_impl (fmt : Format.formatter) (_config : gen_config)
     Extract.extract_trait_impl ctx fmt ~is_rec trait_impl;
     EmitJson.record_trait_impl_if_enabled ctx trait_impl)
 
+(** Whether the bodies of [f] (with its loops) refer to the trait impl [id] *)
+let fun_mentions_trait_impl (f : pure_fun_translation) (id : TraitImplId.id) :
+    bool =
+  let found = ref false in
+  let visitor =
+    object
+      inherit [_] Pure.iter_expr as super
+
+      method! visit_TraitImpl env id' generics =
+        if TraitImplId.compare_id id id' = 0 then found := true
+        else super#visit_TraitImpl env id' generics
+    end
+  in
+  List.iter
+    (fun (d : Pure.fun_decl) ->
+      Option.iter
+        (fun (body : Pure.fun_body) -> visitor#visit_texpr () body.body)
+        d.body)
+    (f.loops @ f.bodies @ [ f.f ]);
+  !found
+
 (** A generic utility to generate the extracted definitions: as we may want to
     split the definitions between different files (or not), we can control what
     is precisely extracted. *)
@@ -1238,6 +1259,15 @@ let extract_definitions (fmt : Format.formatter) (config : gen_config)
             match pure_fun.f.Pure.src with
             (* Global initializers are translated along with the global definition *)
             | _ when pure_fun.f.is_global_decl_body -> ()
+            | TraitImplFun (impl_ref, _, _, _)
+              when Config.backend () = Lean
+                   && fun_mentions_trait_impl pure_fun impl_ref.id ->
+                (* A method recursing through its own impl, e.g. a derived
+                   [Debug] formatting a [Vec<Self>] as [dyn Debug]: Charon
+                   ignores the edges from a method to its parent impl, so we
+                   handle it as a group of functions recursing through trait
+                   impls (aeneas#1264) *)
+                export_fun_impl_group [ id ] [ impl_ref.id ]
             | _ ->
                 (* Translate *)
                 export_functions_group [ pure_fun ])
