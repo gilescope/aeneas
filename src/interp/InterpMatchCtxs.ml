@@ -367,7 +367,13 @@ let rec match_types (span : Meta.span) ~(recover : bool) (ctx0 : eval_ctx)
         "Not the same raw pointer types";
       let ty = match_rec ty0 ty1 in
       TRawPtr (ty, rk0)
-  | TDynTrait _, TDynTrait _ | TFnPtr _, TFnPtr _ | TFnDef _, TFnDef _ ->
+  | TFnPtr _, TFnPtr _ | TFnDef _, TFnDef _ ->
+      (* Function items and pointers hold no borrows: the regions in their
+         generics and signatures don't matter. *)
+      if TypesUtils.ty_erase_regions ty0 = TypesUtils.ty_erase_regions ty1 then
+        ty1
+      else match_distinct_types ty0 ty1
+  | TDynTrait _, TDynTrait _ ->
       [%craise_recover] recover span "Not implemented yet"
   | TPtrMetadata ty0, TPtrMetadata ty1 ->
       let ty = match_rec ty0 ty1 in
