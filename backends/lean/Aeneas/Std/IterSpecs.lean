@@ -45,6 +45,17 @@ against it once, and each instantiation proves it of its iterator. -/
   | it, [] => inst.next it ⦃ o _ => o = none ⦄
   | it, x :: xs => inst.next it ⦃ o it' => o = some x ∧ Yields inst it' xs ⦄
 
+/-- `YieldsPrefix inst it ss` - the iterator `it` starts by yielding exactly `ss`, then zero
+or more further items. Unbounded iterators (e.g. `std::iter::successors` streams) satisfy this
+for any finite prefix; the zip inside a bounded loop stops after `|ss|` items regardless. -/
+def YieldsPrefix {T I : Type} (inst : core.iter.traits.iterator.Iterator I T) (it : I) (ss : List T) : Prop :=
+  ∃ tail : List T, Yields inst it (ss ++ tail)
+
+/-- Every finite `Yields` is also a `YieldsPrefix` (with empty tail). -/
+theorem YieldsPrefix.of_yields {T I : Type} (inst : core.iter.traits.iterator.Iterator I T)
+    (it : I) (ss : List T) (h : Yields inst it ss) : YieldsPrefix inst it ss :=
+  ⟨[], by simpa using h⟩
+
 /-- The integers in `[a, b)`. -/
 @[expose] def intRange (a b : ℤ) : List ℤ := (List.range (b - a).toNat).map fun j : ℕ => a + (j : ℤ)
 
@@ -486,6 +497,70 @@ theorem core.iter.traits.iterator.Iterator.collect_vec_back_spec {I T : Type} [G
   simp only [uncurry'_pair] at hl'
   subst hl'
   simp [hl]
+
+/-- `iterToListBack` over `map(f)`, `f` known by a spec as in `Map.yields_spec`: the list gained
+`ys` with `R j ys[j]`, and the given-back `Map`'s closure meets the invariant at the end. -/
+theorem alloc.vec.FromIteratorVec.iterToListBack_map_spec {I F Item B : Type}
+    (IA : core.iter.traits.iterator.Iterator I Item) (FI : core.ops.function.FnMut F Item B) :
+    ∀ (xs : List Item) (R : ℕ → B → Prop) (P : ℕ → F → Prop) (it : I) (f : F) (acc : List B),
+    Yields IA it xs → P 0 f →
+    (∀ j (hj : j < xs.length) f, P j f → FI.call_mut f xs[j] ⦃ y f' => R j y ∧ P (j + 1) f' ⦄) →
+    alloc.vec.FromIteratorVec.iterToListBack
+      (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator IA FI) ⟨it, f⟩ acc
+    ⦃ l back => ∃ ys : List B, l = acc.reverse ++ ys ∧ ys.length = xs.length ∧
+      (∀ j (hj : j < ys.length), R j ys[j]) ∧ P xs.length back.f ⦄
+  | [], R, P, it, f, acc, hy, h0, _ => by
+    simp only [Yields] at hy
+    obtain ⟨⟨o, it'⟩, hnext, ho⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at ho; subst ho
+    rw [alloc.vec.FromIteratorVec.iterToListBack]
+    simp [core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator,
+      core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next, hnext, h0]
+  | x :: xs, R, P, it, f, acc, hy, h0, hs => by
+    simp only [Yields] at hy
+    obtain ⟨⟨o, it'⟩, hnext, hpost⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at hpost
+    obtain ⟨rfl, hy'⟩ := hpost
+    obtain ⟨⟨y, f'⟩, hcall, hpost'⟩ := spec_eq_ok (hs 0 (by simp) f h0)
+    simp only [uncurry'_pair] at hpost'
+    obtain ⟨hR, hP⟩ := hpost'
+    simp only [List.getElem_cons_zero] at hcall
+    rw [alloc.vec.FromIteratorVec.iterToListBack]
+    simp only [core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator,
+      core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next, hnext, hcall,
+      bind_tc_ok, Std.bind_ok]
+    refine WP.spec_mono (alloc.vec.FromIteratorVec.iterToListBack_map_spec IA FI xs
+      (fun j => R (j + 1)) (fun j => P (j + 1)) it' f' (y :: acc) hy' hP
+      fun j hj g hg => by
+        have h := hs (j + 1) (by simp; omega) g hg
+        rwa [List.getElem_cons_succ] at h) ?_
+    rintro ⟨l, back⟩ ⟨ys, hl, hlen, hRs, hPb⟩
+    refine ⟨y :: ys, by simp [hl], by simp [hlen], fun j hj => ?_, by simpa using hPb⟩
+    cases j with
+    | zero => simpa using hR
+    | succ j => simpa using hRs j (by simpa using hj)
+
+/-- `map(f).collect::<Vec<_>>()` where `f` gives back (it holds a `&mut`), `f` known by a spec as
+in `Map.yields_spec`: the caller learns the outputs and the closure's final state. -/
+theorem core.iter.traits.iterator.Iterator.collect_vec_map_back_spec {I F Item B : Type}
+    [GivesBack F] (IA : core.iter.traits.iterator.Iterator I Item)
+    (FI : core.ops.function.FnMut F Item B) (xs : List Item) (R : ℕ → B → Prop)
+    (P : ℕ → F → Prop) (it : I) (f : F) (hy : Yields IA it xs) (hl : xs.length ≤ Usize.max)
+    (h0 : P 0 f)
+    (hs : ∀ j (hj : j < xs.length) f, P j f → FI.call_mut f xs[j] ⦃ y f' => R j y ∧ P (j + 1) f' ⦄) :
+    core.iter.traits.iterator.Iterator.collect.default
+      (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator IA FI)
+      (core.iter.traits.collect.FromIteratorVec B) ⟨it, f⟩
+    ⦃ v back => ∃ ys : List B, v.val = ys ∧ ys.length = xs.length ∧
+      (∀ j (hj : j < ys.length), R j ys[j]) ∧ P xs.length back.f ⦄ := by
+  simp only [core.iter.traits.iterator.Iterator.collect.default, CollectShape.collect,
+    FromIterBack.fromIterBack]
+  rw [bind_tc_eq]
+  refine spec_bind (alloc.vec.FromIteratorVec.iterToListBack_map_spec IA FI xs R P it f [] hy h0 hs) ?_
+  rintro ⟨l, back⟩ ⟨ys, rfl, hlen, hR, hP⟩
+  simp only [List.reverse_nil, List.nil_append] at hR ⊢
+  simp [hlen, hl]
+  exact ⟨fun j hj => hR j (by omega), hP⟩
 
 /-- `any(p)` with a stateless predicate over an iterator yielding `xs` is `xs.any p`. -/
 theorem core.iter.traits.iterator.Iterator.any_spec {I F Item : Type}

@@ -124,3 +124,27 @@ example (ss : Slice (Slice ℕ)) (FI : core.ops.function.FnMut Unit (Slice ℕ) 
 example : alloc.vec.IntoIteratorVec.into_iter (alloc.vec.Vec.from [1#u32, 2#u32] (by scalar_tac)) ⦃ it =>
     Yields (core.iter.traits.iterator.IteratorVecIntoIter U32) it [1#u32, 2#u32] ⦄ :=
   alloc.vec.IntoIteratorVec.into_iter_yields _
+
+/-- A closure's state, holding a `&mut`: `collect` gives it back. -/
+structure Counter where
+  n : ℕ
+
+instance : GivesBack Counter := ⟨⟩
+
+-- `iter().map(f).collect::<Vec<_>>()` with a counting closure: the caller learns the final count
+example (s : Slice ℕ) (FI : core.ops.function.FnMut Counter ℕ ℕ)
+    (hFI : ∀ c x, FI.call_mut c x ⦃ y c' => y = x + c.n ∧ c'.n = c.n + 1 ⦄) :
+    core.iter.traits.iterator.Iterator.collect.default
+      (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
+        (core.iter.traits.iterator.IteratorSliceIter ℕ) FI)
+      (core.iter.traits.collect.FromIteratorVec ℕ)
+      ({ iter := ⟨s, 0⟩, f := ⟨0⟩ } : core.iter.adapters.map.Map (core.slice.iter.Iter ℕ) Counter)
+    ⦃ v back => v.val.length = s.val.length ∧ back.f.n = s.val.length ⦄ := by
+  refine WP.spec_mono (core.iter.traits.iterator.Iterator.collect_vec_map_back_spec _ FI s.val
+    (fun j y => y = s.val.getD j 0 + j) (fun j c => c.n = j) (⟨s, 0⟩ : core.slice.iter.Iter ℕ) ⟨0⟩
+    (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨s, 0⟩ : core.slice.iter.Iter ℕ) rfl)
+    s.property rfl
+    (fun j _ c hc => WP.spec_mono (hFI c _) fun ⟨_, _⟩ h => by
+      simp_all [List.getD_eq_getElem?_getD])) ?_
+  rintro ⟨v, back⟩ ⟨ys, hv, hl, -, hb⟩
+  exact ⟨hv ▸ hl, hb⟩
