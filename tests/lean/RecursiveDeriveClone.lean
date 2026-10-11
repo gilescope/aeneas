@@ -42,8 +42,8 @@ def Label.Insts.CoreCloneClone.clone (self : Label) : Result Label := do
     ok (Label.Custom i)
   | Label.Collection __self_0 =>
     let v ←
-      alloc.vec.CloneVec.clone
-        ({ clone := (Label.Insts.CoreCloneClone.clone) }) __self_0
+      alloc.vec.CloneVec.clone ({ clone := (Label.Insts.CoreCloneClone.clone) }
+        : core.clone.Clone Label) __self_0
     ok (Label.Collection v)
   | Label.NoLabel => ok Label.NoLabel
 partial_fixpoint monotonicity by aeneas_monotonicity []
@@ -92,7 +92,8 @@ def Label.Insts.CoreCmpPartialEqLabel.eq
       | Label.Custom _ => ok true
       | Label.Collection __arg1_0 =>
         alloc.vec.partial_eq.PartialEqVec.eq
-          ({ eq := (Label.Insts.CoreCmpPartialEqLabel.eq) }) __self_0 __arg1_0
+          ({ eq := (Label.Insts.CoreCmpPartialEqLabel.eq) } :
+          core.cmp.PartialEq Label Label) __self_0 __arg1_0
       | Label.NoLabel => ok true
     | Label.NoLabel => ok true
   else ok false
@@ -157,10 +158,12 @@ def Label.Insts.CoreCmpOrd.cmp
         alloc.vec.OrdVec.cmp
           ({ eqInst := Label.Insts.CoreCmpEq,
              partialOrdInst :=
-               { partialEqInst := Label.Insts.CoreCmpPartialEqLabel,
-                 partial_cmp :=
-                   (Label.Insts.CoreCmpPartialOrdLabel.partial_cmp) },
-             cmp := (Label.Insts.CoreCmpOrd.cmp) }) __self_0 __arg1_0
+               ({ partialEqInst := Label.Insts.CoreCmpPartialEqLabel,
+                  partial_cmp :=
+                    (Label.Insts.CoreCmpPartialOrdLabel.partial_cmp) } :
+               core.cmp.PartialOrd Label Label),
+             cmp := (Label.Insts.CoreCmpOrd.cmp) } : core.cmp.Ord Label)
+          __self_0 __arg1_0
       | Label.NoLabel => ok Ordering.eq
     | Label.NoLabel => ok Ordering.eq
   | Ordering.gt => ok Ordering.gt

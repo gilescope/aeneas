@@ -706,8 +706,6 @@ let extract_texpr_errors (fmt : F.formatter) =
   | Lean -> F.pp_print_string fmt "sorry"
   | HOL4 -> F.pp_print_string fmt "(* ERROR: could not generate the code *)"
 
-(** - [inside_do]: [true] if we are inside a do block. In Lean, controls whether
-      we can print let-bindings or if we need to insert a [do] first. *)
 (** The default body of a provided method of a builtin trait whose model has no
     field for it (e.g. [Iterator::zip], which a field could not type: its
     [IntoIterator] bound holds an [Iterator]). std's overrides of provided
@@ -724,11 +722,11 @@ let builtin_method_default (trait_decl : trait_decl)
           trait_decl.methods
       with
       | Some m when not (List.mem_assoc m.item_name info.methods) ->
-          Option.map
-            (fun (d : fun_decl_ref) -> d.fun_id)
-            m.default.binder_value
+          Option.map (fun (d : fun_decl_ref) -> d.fun_id) m.default.binder_value
       | _ -> None)
 
+(** - [inside_do]: [true] if we are inside a do block. In Lean, controls whether
+      we can print let-bindings or if we need to insert a [do] first. *)
 let rec extract_texpr (span : Meta.span) (ctx : extraction_ctx)
     (fmt : F.formatter) ~(inside : bool) ~(inside_do : bool) (e : texpr) : unit
     =
@@ -1000,26 +998,29 @@ and extract_function_call (span : Meta.span) (ctx : extraction_ctx)
           in
 
           [%sanity_check] trait_decl.item_meta.span (lp_id = None);
-          begin match builtin_method_default trait_decl method_name with
-          | Some default_id ->
-              (* The model of the trait has no field for this provided method:
+          begin
+            match builtin_method_default trait_decl method_name with
+            | Some default_id ->
+                (* The model of the trait has no field for this provided method:
                  call the model of its default body on the instance *)
-              F.pp_print_string fmt
-                (ctx_get_function span (FromLlbc (FunId default_id, None)) ctx);
-              F.pp_print_space fmt ();
-              extract_trait_ref trait_decl.item_meta.span ctx fmt
-                TypeDeclId.Set.empty ~inside:true trait_ref
-          | None ->
-              extract_trait_ref trait_decl.item_meta.span ctx fmt
-                TypeDeclId.Set.empty ~inside:true trait_ref;
-              let fun_name =
-                ctx_get_trait_method span
-                  trait_ref.trait_decl_ref.trait_decl_id method_name ctx
-              in
-              let add_brackets (s : string) =
-                if backend () = Coq then "(" ^ s ^ ")" else s
-              in
-              F.pp_print_string fmt ("." ^ add_brackets fun_name)
+                F.pp_print_string fmt
+                  (ctx_get_function span
+                     (FromLlbc (FunId default_id, None))
+                     ctx);
+                F.pp_print_space fmt ();
+                extract_trait_ref trait_decl.item_meta.span ctx fmt
+                  TypeDeclId.Set.empty ~inside:true trait_ref
+            | None ->
+                extract_trait_ref trait_decl.item_meta.span ctx fmt
+                  TypeDeclId.Set.empty ~inside:true trait_ref;
+                let fun_name =
+                  ctx_get_trait_method span
+                    trait_ref.trait_decl_ref.trait_decl_id method_name ctx
+                in
+                let add_brackets (s : string) =
+                  if backend () = Coq then "(" ^ s ^ ")" else s
+                in
+                F.pp_print_string fmt ("." ^ add_brackets fun_name)
           end
       | _ ->
           let fun_name = ctx_get_function span fun_id ctx in
@@ -1256,7 +1257,9 @@ and extract_field_projector (span : Meta.span) (ctx : extraction_ctx)
         in
         let qualified =
           backend () = Lean
-          && (match proj.adt_id with TAdtId _ -> true | _ -> false)
+          && (match proj.adt_id with
+             | TAdtId _ -> true
+             | _ -> false)
           && has_alias proj.adt_id
         in
         if qualified then (
@@ -1269,19 +1272,19 @@ and extract_field_projector (span : Meta.span) (ctx : extraction_ctx)
           F.pp_close_box fmt ();
           if inside then F.pp_print_string fmt ")")
         else (
-        (* Open a box *)
-        F.pp_open_hovbox fmt ctx.indent_incr;
-        (* Extract the expression *)
-        extract_texpr span ctx fmt ~inside:true ~inside_do arg;
-        (* We allow to break where the "." appears (except Lean, it's a syntax error) *)
-        if backend () <> Lean then F.pp_print_break fmt 0 0;
-        F.pp_print_string fmt ".";
-        (* If in Coq, the field projection has to be parenthesized *)
-        (match backend () with
-        | FStar | Lean | HOL4 -> F.pp_print_string fmt field_name
-        | Coq -> F.pp_print_string fmt ("(" ^ field_name ^ ")"));
-        (* Close the box *)
-        F.pp_close_box fmt ())
+          (* Open a box *)
+          F.pp_open_hovbox fmt ctx.indent_incr;
+          (* Extract the expression *)
+          extract_texpr span ctx fmt ~inside:true ~inside_do arg;
+          (* We allow to break where the "." appears (except Lean, it's a syntax error) *)
+          if backend () <> Lean then F.pp_print_break fmt 0 0;
+          F.pp_print_string fmt ".";
+          (* If in Coq, the field projection has to be parenthesized *)
+          (match backend () with
+          | FStar | Lean | HOL4 -> F.pp_print_string fmt field_name
+          | Coq -> F.pp_print_string fmt ("(" ^ field_name ^ ")"));
+          (* Close the box *)
+          F.pp_close_box fmt ())
   | arg :: args ->
       (* Call extract_App again, but in such a way that the first argument is
        * isolated *)
@@ -3560,8 +3563,8 @@ type fn_trait = FnOnce | FnMut | Fn
     [call_mut] of a closure capturing a [&mut]: it gives back the closure's own
     region with a function [Self → Self], which nothing outside the call can
     observe, so the adapter applies it to the [self] given back at once. Such a
-    closure has one [Output] for [FnMut] and [FnOnce], so its [call_once],
-    which would give back the captured state, always fails. *)
+    closure has one [Output] for [FnMut] and [FnOnce], so its [call_once], which
+    would give back the captured state, always fails. *)
 type method_adapter =
   | NoAdapter
   | FnAdapter of fn_trait * method_shape * ty  (** The adjusted [Output] *)
@@ -3611,7 +3614,9 @@ let compute_method_adapter (ctx : extraction_ctx) (impl : trait_impl)
             | "core.ops.function.Fn" -> Some Fn
             | _ -> None
           in
-          let has_role role = List.exists (fun (_, r) -> r = role) shape.backs in
+          let has_role role =
+            List.exists (fun (_, r) -> r = role) shape.backs
+          in
           (* A [Self → Self] back is applied to the [self] given back, which
              only [call_mut] has *)
           let self_fun_ok =
@@ -3700,10 +3705,13 @@ let extract_adapted_method (fmt : F.formatter) (adapter : method_adapter)
         | [ x ] -> x
         | xs -> "(" ^ String.concat ", " xs ^ ")"
       in
-      let named role = List.filter_map (fun (b, r) -> if r = role then Some b else None) backs in
+      let named role =
+        List.filter_map (fun (b, r) -> if r = role then Some b else None) backs
+      in
       let others =
         List.filter_map
-          (fun (b, r) -> if b = "self'" || r = BackSelfFun then None else Some b)
+          (fun (b, r) ->
+            if b = "self'" || r = BackSelfFun then None else Some b)
           backs
       in
       (* The closure's own regions end with the call: give them back at once *)
@@ -3807,8 +3815,8 @@ let trait_impl_keep_method (ctx : extraction_ctx) (span : Meta.span)
 (** The methods of a builtin trait whose Lean model has no default, so an impl
     must give them. Charon only translates the methods of a std impl which the
     crate uses, so a generated impl may lack one: it gets a body which always
-    fails, as an {!Unsupported} method does, so that nothing can be proved
-    about a call to it. A default would be wrong: [Iterator::size_hint]'s is
+    fails, as an {!Unsupported} method does, so that nothing can be proved about
+    a call to it. A default would be wrong: [Iterator::size_hint]'s is
     [(0, None)], which most std iterators override. *)
 let builtin_required_methods : (string * string list) list =
   [ ("core.iter.traits.iterator.Iterator", [ "size_hint" ]) ]
@@ -3943,8 +3951,9 @@ let extract_trait_impl_literal (ctx : extraction_ctx) (fmt : F.formatter)
         (fun field -> (field, fun () -> extract_failing_method fmt))
         (missing_required_methods ctx impl)
   in
-  if inside then F.pp_print_string fmt "(";
-  F.pp_print_string fmt "{ ";
+  (* Ascribed with the trait it implements: the fields alone may not determine
+     the trait's parameters (e.g. its [Self] when no method mentions it) *)
+  F.pp_print_string fmt "({ ";
   (* Lean requires the fields of a structure instance which spans several lines
      to start at the same column: break only in a box aligned on the first *)
   F.pp_open_hvbox fmt 0;
@@ -3961,7 +3970,12 @@ let extract_trait_impl_literal (ctx : extraction_ctx) (fmt : F.formatter)
     (types @ parents @ methods);
   F.pp_close_box fmt ();
   F.pp_print_string fmt " }";
-  if inside then F.pp_print_string fmt ")"
+  F.pp_print_space fmt ();
+  F.pp_print_string fmt ":";
+  F.pp_print_space fmt ();
+  extract_trait_decl_ref span ctx fmt TypeDeclId.Set.empty ~inside:false
+    (subst_visitor#visit_trait_decl_ref subst (fn_impl_trait ctx impl));
+  F.pp_print_string fmt ")"
 
 let () = extract_trait_impl_literal_hook := extract_trait_impl_literal
 

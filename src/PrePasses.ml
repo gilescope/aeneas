@@ -1959,14 +1959,16 @@ let filter_marker_traits (crate : crate) : crate =
     in
     visitor#visit_crate () crate
 
-(** Drop the trait methods whose declaration names an item missing from the crate.
+(** Drop the trait methods whose declaration names an item missing from the
+    crate.
 
-    Charon keeps a trait's method in the trait declaration even when the method, or a trait
-    or type its signature names, was left out with [--exclude] (e.g. midnight-proofs'
-    provided [Params::downsize_from_circuit], whose bound names an excluded [Circuit]); the
-    model then fails on the dangling id. Such a method cannot be modelled, so it goes from
-    the trait declaration and from the trait's impls, as if excluded with the rest; a use of
-    it would still fail, where it is used. *)
+    Charon keeps a trait's method in the trait declaration even when the method,
+    or a trait or type its signature names, was left out with [--exclude] (e.g.
+    midnight-proofs' provided [Params::downsize_from_circuit], whose bound names
+    an excluded [Circuit]); the model then fails on the dangling id. Such a
+    method cannot be modelled, so it goes from the trait declaration and from
+    the trait's impls, as if excluded with the rest; a use of it would still
+    fail, where it is used. *)
 let filter_dangling_trait_methods (crate : crate) : crate =
   let dangling = ref false in
   let visitor =
@@ -1995,7 +1997,8 @@ let filter_dangling_trait_methods (crate : crate) : crate =
       (fun _ (d : trait_decl) ->
         let ids =
           TraitMethodId.Map.fold
-            (fun id m acc -> if is_dangling m then TraitMethodId.Set.add id acc else acc)
+            (fun id m acc ->
+              if is_dangling m then TraitMethodId.Set.add id acc else acc)
             d.methods TraitMethodId.Set.empty
         in
         if TraitMethodId.Set.is_empty ids then None else Some ids)
@@ -2011,14 +2014,22 @@ let filter_dangling_trait_methods (crate : crate) : crate =
     let trait_decls =
       TraitDeclId.Map.map
         (fun (d : trait_decl) ->
-          { d with methods = TraitMethodId.Map.filter (fun id _ -> keep d.def_id id) d.methods })
+          {
+            d with
+            methods =
+              TraitMethodId.Map.filter (fun id _ -> keep d.def_id id) d.methods;
+          })
         crate.trait_decls
     in
     let trait_impls =
       TraitImplId.Map.map
         (fun (i : trait_impl) ->
           let trait_id = i.impl_trait.id in
-          { i with methods = TraitMethodId.Map.filter (fun id _ -> keep trait_id id) i.methods })
+          {
+            i with
+            methods =
+              TraitMethodId.Map.filter (fun id _ -> keep trait_id id) i.methods;
+          })
         crate.trait_impls
     in
     { crate with trait_decls; trait_impls }
@@ -3579,26 +3590,17 @@ let fix_closure_output_outlives (crate : crate) (f : fun_decl) : fun_decl =
             f)
   | [] -> f
 
-(** Identify associated types reached through several bounds (a diamond).
+(** Replace the variables bound by a method's binder [id] by [find id] *)
+let diamond_bound_visitor (find : TypeVarId.id -> TypeVarId.id) =
+  object
+    inherit [_] map_crate as super
 
-    Charon's [--remove-associated-types] turns each associated type into a type
-    parameter per path that reaches it, without noticing when two paths reach
-    the same predicate (a documented limitation of its
-    [expand_associated_types]): with
-    [F: WithSmallOrderMulGroup<3> + FromUniformBytes<64>], both bounds imply
-    [F: PrimeField], and [<F as PrimeField>::Repr] becomes two unrelated
-    parameters [Clause2_Clause0_Repr] and [Clause5_Clause0_Repr]. Calls then
-    fail to type-check ("The input arguments don't have the proper type").
+    method! visit_TVar env var =
+      match var with
+      | Bound (db, id) -> TVar (Bound (db, find id))
+      | _ -> super#visit_TVar env var
+  end
 
-    By coherence, two references to the same trait with the same arguments other
-    than its associated types denote the same impl, so their associated types
-    are equal. For every function, we gather the trait references its bounds
-    imply (transitively through the traits' implied clauses), group them by
-    trait and non-associated arguments, and identify the function's own type
-    parameters that stand for the same associated type. Associated-type
-    parameters of a trait are recognised by Charon's naming, [Self_<path>].
-
-    TODO: remove once Charon identifies them. *)
 (** Drop the [dyn] bounds of the standard library's functions.
 
     [io::Error::new<E: Into<Box<dyn Error + Send + Sync>>>(kind, error)]: Aeneas
@@ -3628,7 +3630,10 @@ let drop_dyn_clauses (crate : crate) : crate =
         | StructuredBody _ -> None
         | _ ->
             if List.exists mentions_dyn f.generics.trait_clauses then
-              Some (List.map (fun p -> not (mentions_dyn p)) f.generics.trait_clauses)
+              Some
+                (List.map
+                   (fun p -> not (mentions_dyn p))
+                   f.generics.trait_clauses)
             else None)
       crate.fun_decls
   in
@@ -3666,23 +3671,28 @@ let drop_dyn_clauses (crate : crate) : crate =
           | Some keep ->
               (* Renumber the clauses kept, and their uses in the signature *)
               let old_ids =
-                List.map (fun (p : trait_param) -> p.clause_id) (filter keep f.generics.trait_clauses)
+                List.map
+                  (fun (p : trait_param) -> p.clause_id)
+                  (filter keep f.generics.trait_clauses)
               in
               let renumber id =
                 let rec go i = function
                   | [] -> id
-                  | x :: rest -> if x = id then TraitClauseId.of_int i else go (i + 1) rest
+                  | x :: rest ->
+                      if x = id then TraitClauseId.of_int i else go (i + 1) rest
                 in
                 go 0 old_ids
               in
               let trait_clauses =
                 List.mapi
-                  (fun i (p : trait_param) -> { p with clause_id = TraitClauseId.of_int i })
+                  (fun i (p : trait_param) ->
+                    { p with clause_id = TraitClauseId.of_int i })
                   (filter keep f.generics.trait_clauses)
               in
               let visitor =
                 object
                   inherit [_] map_crate
+
                   method! visit_Clause _ var =
                     match var with
                     | Free id -> Clause (Free (renumber id))
@@ -3696,9 +3706,9 @@ let drop_dyn_clauses (crate : crate) : crate =
     { crate with fun_decls }
 
 (** Read the length of a slice through [Len]. Slice patterns read the length of
-    a slice reference's pointer metadata ([copy (s.metadata)], with
-    [s : &[T]]), which Aeneas cannot evaluate; [Len] of the slice behind [s] is
-    the same length, which it can. *)
+    a slice reference's pointer metadata ([copy (s.metadata)], with [s : &[T]]),
+    which Aeneas cannot evaluate; [Len] of the slice behind [s] is the same
+    length, which it can. *)
 let slice_metadata_to_len (_ : crate) (f : fun_decl) : fun_decl =
   let visitor =
     object
@@ -3712,7 +3722,9 @@ let slice_metadata_to_len (_ : crate) (f : fun_decl) : fun_decl =
               _ ) -> (
             match base.ty with
             | TRef (_, (TSlice (elem_ty, _) as slice_ty), _) ->
-                let slice = { kind = PlaceProjection (base, Deref); ty = slice_ty } in
+                let slice =
+                  { kind = PlaceProjection (base, Deref); ty = slice_ty }
+                in
                 Len (slice, elem_ty, None)
             | _ -> super#visit_rvalue env rv)
         | _ -> super#visit_rvalue env rv
@@ -3812,14 +3824,14 @@ let break_trait_assoc_cycles (crate : crate) : crate =
     [CurveAffine] and [CurveExt]); their associated types stay projections
     ([TraitClause3::ScalarExt]), and the equalities bounding them stay
     constraints ([E::G1Affine: CurveAffine<ScalarExt = E::Fr>]), which Aeneas
-    does not support. Within each item we replace a projection by the type
-    its item's constraints equate it with. A trait's own constraints are on
-    [Self]'s implied clauses ([Self::ImpliedClause1::Scalar = Self_ScalarA]):
-    a projection through that implied clause of a reference to the trait is
+    does not support. Within each item we replace a projection by the type its
+    item's constraints equate it with. A trait's own constraints are on [Self]'s
+    implied clauses ([Self::ImpliedClause1::Scalar = Self_ScalarA]): a
+    projection through that implied clause of a reference to the trait is
     replaced by the right-hand side, instantiated with the reference. The
     equalities are the where clauses', so this only names the same type
-    differently; a projection which no constraint matches is left, and a
-    missed rewrite shows as a type error, not a wrong model. *)
+    differently; a projection which no constraint matches is left, and a missed
+    rewrite shows as a type error, not a wrong model. *)
 let apply_assoc_type_constraints (crate : crate) : crate =
   let constraints (g : generic_params) : trait_type_constraint list =
     List.map
@@ -3848,14 +3860,17 @@ let apply_assoc_type_constraints (crate : crate) : crate =
                       c.type_id = id
                       &&
                       match c.trait_ref.kind with
-                      | ParentClause ({ kind = Self; _ }, cid) -> cid = clause_id
+                      | ParentClause ({ kind = Self; _ }, cid) ->
+                          cid = clause_id
                       | _ -> false
                     in
                     match
                       TraitDeclId.Map.find_opt base_decl.id crate.trait_decls
                     with
                     | Some d -> (
-                        match List.find_opt on_self (constraints d.generics) with
+                        match
+                          List.find_opt on_self (constraints d.generics)
+                        with
                         | Some c -> (
                             try
                               let subst =
@@ -3864,7 +3879,8 @@ let apply_assoc_type_constraints (crate : crate) : crate =
                               in
                               self#visit_ty env
                                 (Substitute.ty_substitute subst c.ty)
-                            with Invalid_argument _ -> TTraitType (tr, id, args))
+                            with Invalid_argument _ ->
+                              TTraitType (tr, id, args))
                         | None -> TTraitType (tr, id, args))
                     | None -> TTraitType (tr, id, args))
                 | _ -> TTraitType (tr, id, args)))
@@ -3905,8 +3921,8 @@ let apply_assoc_type_constraints (crate : crate) : crate =
 
 (** The map identifying the type parameters of [generics] which stand for the
     same associated type (see {!unify_diamond_assoc_types}), if there are any *)
-let diamond_assoc_types_map (crate : crate) (generics : generic_params) :
-    (TypeVarId.id -> TypeVarId.id) option =
+let diamond_assoc_types_map ?(bound : bool = false) (crate : crate)
+    (generics : generic_params) : (TypeVarId.id -> TypeVarId.id) option =
   let is_assoc (p : type_param) =
     String.length p.name > 5 && String.sub p.name 0 5 = "Self_"
   in
@@ -3946,6 +3962,21 @@ let diamond_assoc_types_map (crate : crate) (generics : generic_params) :
       if TypeVarId.compare_id a b < 0 then Hashtbl.replace parent b a
       else Hashtbl.replace parent a b
   in
+  (* A binder's variables are reached at different de Bruijn depths through the clauses'
+     region binders: compare them by index alone *)
+  let normalize =
+    let v =
+      object
+        inherit [_] map_ty
+
+        method! visit_TVar _ var =
+          match var with
+          | Bound (_, id) when bound -> TVar (Bound (0, id))
+          | _ -> TVar var
+      end
+    in
+    v#visit_ty ()
+  in
   let split ((tr, d) : trait_decl_ref * trait_decl) =
     if List.length d.generics.types <> List.length tr.generics.types then None
     else
@@ -3953,14 +3984,15 @@ let diamond_assoc_types_map (crate : crate) (generics : generic_params) :
       let key =
         ( tr.id,
           List.filter_map
-            (fun (p, t) -> if is_assoc p then None else Some t)
+            (fun (p, t) -> if is_assoc p then None else Some (normalize t))
             pairs,
           tr.generics.const_generics )
       in
       Some
         ( key,
-          List.filter_map (fun (p, t) -> if is_assoc p then Some t else None) pairs
-        )
+          List.filter_map
+            (fun (p, t) -> if is_assoc p then Some t else None)
+            pairs )
   in
   let groups = Hashtbl.create 8 in
   List.iter
@@ -3974,7 +4006,9 @@ let diamond_assoc_types_map (crate : crate) (generics : generic_params) :
               List.iter2
                 (fun t0 t ->
                   match (t0, t) with
-                  | TVar (Free a), TVar (Free b) -> union a b
+                  | TVar (Free a), TVar (Free b) when not bound -> union a b
+                  | TVar (Bound (_, a)), TVar (Bound (_, b)) when bound ->
+                      union a b
                   | _ -> ())
                 assoc0 assoc))
     !refs;
@@ -4037,12 +4071,66 @@ let unify_diamond_assoc_types_in_impls (crate : crate) : crate =
       (fun (impl : trait_impl) ->
         if not impl.item_meta.is_local then impl
         else
-          match diamond_assoc_types_map crate impl.generics with
-          | None -> impl
-          | Some find -> (diamond_visitor find)#visit_trait_impl () impl)
+          let impl =
+            match diamond_assoc_types_map crate impl.generics with
+            | None -> impl
+            | Some find -> (diamond_visitor find)#visit_trait_impl () impl
+          in
+          (* The methods' own generics, as the trait's
+             ({!unify_diamond_assoc_types_in_trait_decls}) *)
+          let methods =
+            TraitMethodId.Map.map
+              (fun (b : fun_decl_ref binder) ->
+                match
+                  diamond_assoc_types_map ~bound:true crate b.binder_params
+                with
+                | None -> b
+                | Some find ->
+                    let v = diamond_bound_visitor find in
+                    {
+                      binder_params = v#visit_generic_params () b.binder_params;
+                      binder_value = v#visit_fun_decl_ref () b.binder_value;
+                    })
+              impl.methods
+          in
+          { impl with methods })
       crate.trait_impls
   in
   { crate with trait_impls }
+
+(** {!unify_diamond_assoc_types} for the methods declared by the crate's own
+    traits: a method binds its generics
+    ([write<T: Transcript>() where Self::Commitment: Hashable<T::Hash>]), whose
+    diamond parameters its impls identify (they are functions), so the trait's
+    field type must too, or an impl inlined as a structure literal does not
+    type-check. The method's parameters are the only type variables its binder
+    binds. *)
+let unify_diamond_assoc_types_in_trait_decls (crate : crate) : crate =
+  let bound_visitor = diamond_bound_visitor in
+  let trait_decls =
+    TraitDeclId.Map.map
+      (fun (d : trait_decl) ->
+        if not d.item_meta.is_local then d
+        else
+          let methods =
+            TraitMethodId.Map.map
+              (fun (b : trait_method binder) ->
+                match
+                  diamond_assoc_types_map ~bound:true crate b.binder_params
+                with
+                | None -> b
+                | Some find ->
+                    let v = bound_visitor find in
+                    {
+                      binder_params = v#visit_generic_params () b.binder_params;
+                      binder_value = v#visit_trait_method () b.binder_value;
+                    })
+              d.methods
+          in
+          { d with methods })
+      crate.trait_decls
+  in
+  { crate with trait_decls }
 
 (** Normalise function-item types: no binder, ['static] regions.
 
@@ -4108,6 +4196,7 @@ let declare_option (crate : crate) : crate =
           crate with
           declarations = Some (TypeGroup (NonRecGroup d.def_id) :: declarations);
         }
+
 (** Replace the reads of anonymous constants (i.e., the promoted constants) with
     calls to their initializers. Ex.:
 
@@ -4342,6 +4431,7 @@ let apply_passes (crate : crate) : crate =
   let crate = apply_assoc_type_constraints crate in
   let crate = break_trait_assoc_cycles crate in
   let crate = unify_diamond_assoc_types_in_impls crate in
+  let crate = unify_diamond_assoc_types_in_trait_decls crate in
   (* Passes that apply to individual function bodies *)
   let function_passes =
     [

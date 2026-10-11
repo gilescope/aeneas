@@ -96,7 +96,7 @@ def Tree.Insts.Recursive_impl_generic_methodVisit.visit
       ({ visit := ( fun {V1 : Type} (coreopsfunctionFnPTupleU32U32Inst :
            core.ops.function.Fn V1 Std.U32 Std.U32) =>
            Tree.Insts.Recursive_impl_generic_methodVisit.visit
-           coreopsfunctionFnPTupleU32U32Inst) })
+           coreopsfunctionFnPTupleU32U32Inst) } : Visit Tree)
       coreopsfunctionFnVTupleU32U32Inst s v
 partial_fixpoint monotonicity by aeneas_monotonicity [visit_all, visit_all_loop, visit_all_loop.body]
 

@@ -125,8 +125,8 @@ def Label.Insts.CoreHashHash.hash
   | Label.Collection __self_0 =>
     alloc.vec.Vec.Insts.CoreHashHash.hash
       ({ hash := ( fun {H : Type} (corehashHasherInst1 : core.hash.Hasher H) =>
-           Label.Insts.CoreHashHash.hash corehashHasherInst1) })
-      corehashHasherInst __self_0 state1
+           Label.Insts.CoreHashHash.hash corehashHasherInst1) } :
+      core.hash.Hash Label) corehashHasherInst __self_0 state1
 partial_fixpoint monotonicity by aeneas_monotonicity []
 
 /-- Trait implementation: [vec_extra::{impl core::hash::Hash for vec_extra::Label}]

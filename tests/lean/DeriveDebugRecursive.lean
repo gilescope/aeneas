@@ -44,20 +44,23 @@ def Label.Insts.CoreFmtDebug.fmt
   | Label.Collection __self_0 =>
     let __self_01 :=
       Dyn.mk _ (core.fmt.DebugShared (core.fmt.DebugVec
-        ({ fmt := (Label.Insts.CoreFmtDebug.fmt) }))) __self_0
+        ({ fmt := (Label.Insts.CoreFmtDebug.fmt) } : core.fmt.Debug Label)))
+        __self_0
     core.fmt.Formatter.debug_tuple_field1_finish f (toStr "Collection")
       __self_01
   | Label.Helper __self_0 __self_1 =>
     let __self_01 := Dyn.mk _ core.fmt.DebugUsize __self_0
     let __self_11 :=
       Dyn.mk _ (core.fmt.DebugShared (core.fmt.DebugVec
-        ({ fmt := (Label.Insts.CoreFmtDebug.fmt) }))) __self_1
+        ({ fmt := (Label.Insts.CoreFmtDebug.fmt) } : core.fmt.Debug Label)))
+        __self_1
     core.fmt.Formatter.debug_tuple_field2_finish f (toStr "Helper") __self_01
       __self_11
   | Label.Named __self_0 =>
     let __self_01 :=
       Dyn.mk _ (core.fmt.DebugShared (core.fmt.DebugVec
-        ({ fmt := (Label.Insts.CoreFmtDebug.fmt) }))) __self_0
+        ({ fmt := (Label.Insts.CoreFmtDebug.fmt) } : core.fmt.Debug Label)))
+        __self_0
     core.fmt.Formatter.debug_struct_field1_finish f (toStr "Named") (toStr
       "inner") __self_01
 partial_fixpoint monotonicity by aeneas_monotonicity []
