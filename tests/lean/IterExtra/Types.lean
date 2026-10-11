@@ -49,4 +49,14 @@ def total.closure := Unit
 @[reducible]
 def order.closure := Slice Std.Usize
 
+/-- [iter_extra::first_big::{closure}]
+    Source: 'tests/src/iter-extra.rs', lines 42:34-42:46 -/
+@[reducible]
+def first_big.closure := Unit
+
+/-- [iter_extra::first_big_index::{closure}]
+    Source: 'tests/src/iter-extra.rs', lines 46:16-46:32 -/
+@[reducible]
+def first_big_index.closure := Unit
+
 end iter_extra

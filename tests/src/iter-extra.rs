@@ -37,3 +37,11 @@ pub fn order(lens: &[usize]) -> Vec<usize> {
     order.sort_by_key(|&i| (lens[i], i));
     order
 }
+
+pub fn first_big(a: &[u32], b: &[u32]) -> Option<u32> {
+    a.iter().chain(b.iter()).find(|x| **x > 10).copied()
+}
+
+pub fn first_big_index(n: usize) -> Option<usize> {
+    (0..n).find(|i| *i * *i > 10)
+}

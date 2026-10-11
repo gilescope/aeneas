@@ -484,4 +484,114 @@ def order (lens : Slice Std.Usize) : Result (alloc.vec.Vec Std.Usize) := do
       (Pair.Insts.CoreCmpOrd core.cmp.OrdUsize core.cmp.OrdUsize) s lens
   ok (deref_mut_back s1)
 
+/-- [iter_extra::first_big::{impl core::ops::function::FnMut<(&'_0 &'_1 u32,), bool> for iter_extra::first_big::{closure}}::call_mut]:
+    Source: 'tests/src/iter-extra.rs', lines 42:34-42:46 -/
+def
+  first_big.closure.Insts.CoreOpsFunctionFnMutTupleShared0Shared1U32Bool.call_mut
+  (c : first_big.closure) (tupled_args : Std.U32) :
+  Result (Bool × first_big.closure)
+  := do
+  ok (tupled_args > 10#u32, c)
+
+/-- [iter_extra::first_big::{impl core::ops::function::FnOnce<(&'_0 &'_1 u32,), bool> for iter_extra::first_big::{closure}}::call_once]:
+    Source: 'tests/src/iter-extra.rs', lines 42:34-42:46 -/
+def
+  first_big.closure.Insts.CoreOpsFunctionFnOnceTupleShared0Shared1U32Bool.call_once
+  (c : first_big.closure) (i : Std.U32) : Result Bool := do
+  let (b, _) ←
+    first_big.closure.Insts.CoreOpsFunctionFnMutTupleShared0Shared1U32Bool.call_mut
+      c i
+  ok b
+
+/-- Trait implementation: [iter_extra::first_big::{impl core::ops::function::FnOnce<(&'_0 &'_1 u32,), bool> for iter_extra::first_big::{closure}}]
+    Source: 'tests/src/iter-extra.rs', lines 42:34-42:46 -/
+@[reducible]
+def first_big.closure.Insts.CoreOpsFunctionFnOnceTupleShared0Shared1U32Bool :
+  core.ops.function.FnOnce first_big.closure Std.U32 Bool := {
+  call_once :=
+    first_big.closure.Insts.CoreOpsFunctionFnOnceTupleShared0Shared1U32Bool.call_once
+}
+
+/-- Trait implementation: [iter_extra::first_big::{impl core::ops::function::FnMut<(&'_0 &'_1 u32,), bool> for iter_extra::first_big::{closure}}]
+    Source: 'tests/src/iter-extra.rs', lines 42:34-42:46 -/
+@[reducible]
+def first_big.closure.Insts.CoreOpsFunctionFnMutTupleShared0Shared1U32Bool :
+  core.ops.function.FnMut first_big.closure Std.U32 Bool := {
+  FnOnceInst :=
+    first_big.closure.Insts.CoreOpsFunctionFnOnceTupleShared0Shared1U32Bool
+  call_mut :=
+    first_big.closure.Insts.CoreOpsFunctionFnMutTupleShared0Shared1U32Bool.call_mut
+}
+
+/-- [iter_extra::first_big]:
+    Source: 'tests/src/iter-extra.rs', lines 41:0-43:1
+    Visibility: public -/
+def first_big
+  (a : Slice Std.U32) (b : Slice Std.U32) : Result (Option Std.U32) := do
+  let i ← core.slice.Slice.iter a
+  let i1 ← core.slice.Slice.iter b
+  let c ←
+    core.iter.traits.iterator.Iterator.chain.default
+      (core.iter.traits.iterator.IteratorSliceIter Std.U32)
+      (core.iter.traits.collect.IntoIterator.Blanket
+      (core.iter.traits.iterator.IteratorSliceIter Std.U32)) i i1
+  let (o, _) ←
+    core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.find
+      (core.iter.traits.iterator.IteratorSliceIter Std.U32)
+      (core.iter.traits.iterator.IteratorSliceIter Std.U32)
+      first_big.closure.Insts.CoreOpsFunctionFnMutTupleShared0Shared1U32Bool c
+      ()
+  core.option.OptionShared0T.copied core.marker.CopyU32 o
+
+/-- [iter_extra::first_big_index::{impl core::ops::function::FnMut<(&'_0 usize,), bool> for iter_extra::first_big_index::{closure}}::call_mut]:
+    Source: 'tests/src/iter-extra.rs', lines 46:16-46:32 -/
+def
+  first_big_index.closure.Insts.CoreOpsFunctionFnMutTupleShared0UsizeBool.call_mut
+  (c : first_big_index.closure) (tupled_args : Std.Usize) :
+  Result (Bool × first_big_index.closure)
+  := do
+  let i ← tupled_args * tupled_args
+  ok (i > 10#usize, c)
+
+/-- [iter_extra::first_big_index::{impl core::ops::function::FnOnce<(&'_0 usize,), bool> for iter_extra::first_big_index::{closure}}::call_once]:
+    Source: 'tests/src/iter-extra.rs', lines 46:16-46:32 -/
+def
+  first_big_index.closure.Insts.CoreOpsFunctionFnOnceTupleShared0UsizeBool.call_once
+  (c : first_big_index.closure) (i : Std.Usize) : Result Bool := do
+  let (b, _) ←
+    first_big_index.closure.Insts.CoreOpsFunctionFnMutTupleShared0UsizeBool.call_mut
+      c i
+  ok b
+
+/-- Trait implementation: [iter_extra::first_big_index::{impl core::ops::function::FnOnce<(&'_0 usize,), bool> for iter_extra::first_big_index::{closure}}]
+    Source: 'tests/src/iter-extra.rs', lines 46:16-46:32 -/
+@[reducible]
+def first_big_index.closure.Insts.CoreOpsFunctionFnOnceTupleShared0UsizeBool :
+  core.ops.function.FnOnce first_big_index.closure Std.Usize Bool := {
+  call_once :=
+    first_big_index.closure.Insts.CoreOpsFunctionFnOnceTupleShared0UsizeBool.call_once
+}
+
+/-- Trait implementation: [iter_extra::first_big_index::{impl core::ops::function::FnMut<(&'_0 usize,), bool> for iter_extra::first_big_index::{closure}}]
+    Source: 'tests/src/iter-extra.rs', lines 46:16-46:32 -/
+@[reducible]
+def first_big_index.closure.Insts.CoreOpsFunctionFnMutTupleShared0UsizeBool :
+  core.ops.function.FnMut first_big_index.closure Std.Usize Bool := {
+  FnOnceInst :=
+    first_big_index.closure.Insts.CoreOpsFunctionFnOnceTupleShared0UsizeBool
+  call_mut :=
+    first_big_index.closure.Insts.CoreOpsFunctionFnMutTupleShared0UsizeBool.call_mut
+}
+
+/-- [iter_extra::first_big_index]:
+    Source: 'tests/src/iter-extra.rs', lines 45:0-47:1
+    Visibility: public -/
+def first_big_index (n : Std.Usize) : Result (Option Std.Usize) := do
+  let (o, _) ←
+    core.iter.traits.iterator.Iterator.find.default
+      (core.iter.traits.iterator.IteratorRange core.iter.range.StepUsize)
+      first_big_index.closure.Insts.CoreOpsFunctionFnMutTupleShared0UsizeBool
+      { start := 0#usize, «end» := n } ()
+  ok o
+
 end iter_extra

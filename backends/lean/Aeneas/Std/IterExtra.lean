@@ -1,5 +1,5 @@
-/- `Cloned`, `Successors`, `Rev::fold`, `Zip::next_back`, `Take::fold`, `unzip`, `reduce`,
-`sort_by_key` -/
+/- `Cloned`, `Successors`, `Rev::fold`, `Zip::next_back`, `Take::fold`, `find`, `unzip`,
+`reduce`, `sort_by_key` -/
 module
 public import Aeneas.Std.Core.IterAdapters
 public import Aeneas.Std.VecExtra
@@ -236,6 +236,32 @@ def core.iter.traits.iterator.Iterator.reduce.default {Self F Item : Type}
         let (acc, f) ← FnMutInst.call_mut f (acc, x)
         ok (.cont (it, acc, f))) (it, first, f)
     ok (some acc)
+
+/-! ## `find` -/
+
+/-- `find`: the first item the predicate accepts, and the iterator past it (`&mut self`) -/
+@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::find"]
+def core.iter.traits.iterator.Iterator.find.default {Self P Item : Type}
+    (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
+    (FnMutInst : core.ops.function.FnMut P Item Bool) (self : Self) (p : P) :
+    Result ((Option Item) × Self) :=
+  loop (fun ((it, p) : Self × P) => do
+    let (o, it) ← IteratorInst.next it
+    match o with
+    | none => ok (.done (none, it))
+    | some x =>
+      let (b, p) ← FnMutInst.call_mut p x
+      if b then ok (.done (some x, it)) else ok (.cont (it, p))) (self, p)
+
+/-- `Chain::find`: the provided method (core's `try_fold` override agrees) -/
+@[rust_fun
+  "core::iter::adapters::chain::{core::iter::traits::iterator::Iterator<core::iter::adapters::chain::Chain<@A, @B>, @Clause0_Item>}::find"]
+def core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.find {A B P Item : Type}
+    (IA : core.iter.traits.iterator.Iterator A Item) (IB : core.iter.traits.iterator.Iterator B Item)
+    (FnMutInst : core.ops.function.FnMut P Item Bool) (self : core.iter.adapters.chain.Chain A B)
+    (p : P) : Result ((Option Item) × core.iter.adapters.chain.Chain A B) :=
+  core.iter.traits.iterator.Iterator.find.default
+    (core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator IA IB) FnMutInst self p
 
 /-! ## `sort_by_key` -/
 
