@@ -62,6 +62,17 @@ def alloc.vec.Vec.Insts.CoreIterTraitsCollectExtend.extend {T I IntoIter : Type}
     (← IntoIteratorInst.into_iter items)
   items.foldlM Vec.push v
 
+@[reducible, rust_trait_impl "core::iter::traits::collect::Extend<alloc::vec::Vec<@T>, @T>"
+  (keepParams := [true, false])]
+def alloc.vec.Vec.Insts.CoreIterTraitsCollectExtend (T : Type) :
+    core.iter.traits.collect.Extend (alloc.vec.Vec T) T where
+  extend IntoIteratorInst := alloc.vec.Vec.Insts.CoreIterTraitsCollectExtend.extend
+    IntoIteratorInst
+
+@[reducible, rust_trait_impl "core::default::Default<alloc::vec::Vec<@T>>"]
+def alloc.vec.Vec.Insts.CoreDefaultDefault (T : Type) : core.default.Default (alloc.vec.Vec T) where
+  default := alloc.vec.Vec.Insts.CoreDefaultDefault.default T
+
 /-- `vec.iter().map(Vec::len)`: the function item `Vec::len` called through `FnMut`. A function
 item is extracted as the function itself, and holds no state. The allocator parameter is
 kept: the fn item's impls pass it. -/
