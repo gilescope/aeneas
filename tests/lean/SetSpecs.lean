@@ -181,3 +181,37 @@ example (xs : List Usize) (hxs : xs.length ≤ Usize.max) :
 
 -- or_insert preserves sorted order and reflects key-absent/present in the length.
 #check @alloc.collections.btree.map.entry.Entry.or_insert_sorted_length
+
+/-! ## 16. Lifted lemmas from IntermediateSets (SetSpecs.lean additions) -/
+
+-- Iterator::find: returns the first element satisfying the predicate.
+#check @core.slice.iter.Iter.find_spec
+
+-- collect() into BTreeSet: same members, strictly sorted.
+#check @collect_btreeset_spec
+
+-- HashMap hashIter yields key-value pairs permutation.
+#check @hashIter_yields
+
+-- collect() from a (K×V) iterator into HashMap: lookup equals last pair.
+#check @collect_hashmap_spec
+
+/-! ## 17. Lifted lemmas from IntermediateSets (CollectionsSpecs.lean additions) -/
+
+-- lookupL on a nodup list: value is uniquely determined by membership.
+#check @lookupL_of_mem_nodup
+
+-- lookupL membership: (k, v) ∈ es ↔ lookupL es k = some v (for nodup).
+#check @lookupL_mem
+
+-- lookupL isSome iff key has a mapping.
+#check @lookupL_isSome_iff
+
+-- filterMap length when all elements map to Some.
+#check @length_filterMap_of_isSome
+
+-- zip of filterMap-of-isSome.
+#check @zip_filterMap_of_isSome
+
+-- mapState with unit state is just a map.
+#check @mapState_unit

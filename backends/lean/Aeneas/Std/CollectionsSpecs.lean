@@ -73,6 +73,79 @@ theorem lookupL_eq_none_of_findIdx {K V : Type} (k : K) :
       rw [lookupL_cons, if_neg ha]
       exact lookupL_eq_none_of_findIdx k es (by cases hj : (es.findIdx? fun e => decide (e.1 = k)) <;> simp_all)
 
+/-! ## Further `lookupL` lemmas -/
+
+open Classical in
+/-- If the keys are nodup and `(k, v) ∈ es`, then `lookupL es k = some v`. -/
+theorem lookupL_of_mem_nodup {K V : Type} : ∀ {es : List (K × V)} {k : K} {v : V},
+    (es.map (·.1)).Nodup → (k, v) ∈ es → lookupL es k = some v
+  | [], _, _, _, h => by simp at h
+  | (k', v') :: es, k, v, hnd, h => by
+    rw [lookupL_cons]
+    rw [List.map_cons, List.nodup_cons] at hnd
+    rcases List.mem_cons.mp h with h | h
+    · simp only [Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h; simp
+    · have hne : k' ≠ k := fun e => hnd.1 (by rw [e]; exact List.mem_map_of_mem (f := (·.1)) h)
+      rw [ite_eq_right hne]; exact lookupL_of_mem_nodup hnd.2 h
+
+open Classical in
+/-- `lookupL es k = some v` implies `(k, v) ∈ es`. -/
+theorem lookupL_mem {K V : Type} : ∀ {es : List (K × V)} {k : K} {v : V},
+    lookupL es k = some v → (k, v) ∈ es
+  | [], _, _, h => by simp at h
+  | (k', v') :: es, k, v, h => by
+    rw [lookupL_cons] at h
+    by_cases hk : k' = k
+    · rw [ite_eq_left hk] at h; obtain rfl := Option.some.inj h; subst hk; simp
+    · rw [ite_eq_right hk] at h; exact List.mem_cons_of_mem _ (lookupL_mem h)
+
+open Classical in
+/-- `lookupL es k` is some iff `k` appears as a key in `es`. -/
+theorem lookupL_isSome_iff {K V : Type} (es : List (K × V)) (k : K) :
+    (lookupL es k).isSome ↔ k ∈ es.map (·.1) := by
+  induction es with
+  | nil => simp
+  | cons e es ih =>
+    rw [lookupL_cons]
+    by_cases h : e.1 = k
+    · simp [h]
+    · rw [ite_eq_right h, ih]
+      simp only [List.map_cons, List.mem_cons]
+      constructor
+      · exact Or.inr
+      · rintro (h' | h')
+        · exact absurd h'.symm h
+        · exact h'
+
+/-! ## `List.filterMap` length/zip lemmas -/
+
+/-- `filterMap f l` has the same length as `l` when `f x` is always `some`. -/
+theorem length_filterMap_of_isSome {α β : Type} (f : α → Option β) :
+    ∀ (l : List α), (∀ x ∈ l, (f x).isSome) → (l.filterMap f).length = l.length
+  | [], _ => rfl
+  | x :: l, h => by
+    obtain ⟨y, hy⟩ := Option.isSome_iff_exists.mp (h x (by simp))
+    simp [hy, length_filterMap_of_isSome f l fun z hz => h z (by simp [hz])]
+
+/-- `zip (filterMap f l) m = filterMap (fun xe => (f xe.1).map (·, xe.2)) (zip l m)`
+    when `f` is always `some` on `l`. -/
+theorem zip_filterMap_of_isSome {α β γ : Type} (f : α → Option β) :
+    ∀ (l : List α) (m : List γ), (∀ x ∈ l, (f x).isSome) →
+      (l.filterMap f).zip m = (l.zip m).filterMap (fun xe => (f xe.1).map (·, xe.2))
+  | [], _, _ => rfl
+  | _ :: _, [], _ => by simp
+  | x :: l, e :: m, h => by
+    obtain ⟨y, hy⟩ := Option.isSome_iff_exists.mp (h x (by simp))
+    simp [hy, zip_filterMap_of_isSome f l m fun z hz => h z (by simp [hz])]
+
+/-! ## `List.mapState` with unit state -/
+
+/-- `List.mapState g ()` equals `List.map (fun x => (g () x).1)`. -/
+theorem mapState_unit {A B : Type} (g : Unit → A → B × Unit) :
+    ∀ xs : List A, List.mapState g () xs = xs.map (fun x => (g () x).1)
+  | [] => rfl
+  | x :: xs => by simp [List.mapState, mapState_unit g xs]
+
 /-! ## `HashMap`, keys compared by `Eq` -/
 
 section HashMap

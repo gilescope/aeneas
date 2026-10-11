@@ -106,6 +106,55 @@ theorem core.iter.traits.iterator.Iterator.position.default_spec {I F Item : Typ
   refine spec_mono (positionLoop_spec IA FI P f hp xs it 0 hy (by simp [hn])) ?_
   rintro ⟨b, _⟩ h; simp only [uncurry'_pair] at *; simp [h]
 
+/-! ## 2b. `Iter::find` -/
+
+private def findLoopBody {T Pst : Type} (FI : core.ops.function.FnMut Pst T Bool) :
+    core.slice.iter.Iter T × Pst →
+    Result (ControlFlow (core.slice.iter.Iter T × Pst) ((Option T) × core.slice.iter.Iter T)) :=
+  fun ((it, p) : core.slice.iter.Iter T × Pst) => do
+    let (o, it) ← core.slice.iter.IteratorSliceIter.next it
+    match o with
+    | none => ok (.done (none, it))
+    | some x =>
+      let (b, p) ← FI.call_mut p x
+      if b then ok (.done (some x, it)) else ok (.cont (it, p))
+
+private theorem findLoopBody_eq {T P : Type} (FI : core.ops.function.FnMut P T Bool)
+    (it : core.slice.iter.Iter T) (p : P) :
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.find FI it p =
+    loop (findLoopBody FI) (it, p) := by
+  unfold core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.find findLoopBody; rfl
+
+private theorem findLoop_spec {T Pst : Type} (FI : core.ops.function.FnMut Pst T Bool)
+    (P : T → Bool) (p : Pst) (hp : ∀ x, FI.call_mut p x = ok (P x, p)) :
+    ∀ (xs : List T) (it : core.slice.iter.Iter T),
+    Yields (core.iter.traits.iterator.IteratorSliceIter T) it xs →
+    loop (findLoopBody FI) (it, p) ⦃ r _ => r = xs.find? P ⦄
+  | [], it, hy => by
+    simp only [Yields] at hy
+    obtain ⟨⟨opt, it'⟩, hn, hpost⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at hpost; subst hpost
+    rw [loop]; simp [findLoopBody, hn]
+  | x :: xs, it, hy => by
+    simp only [Yields] at hy
+    obtain ⟨⟨opt, it'⟩, hn, hpost⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at hpost; obtain ⟨rfl, hy'⟩ := hpost
+    rw [loop]; simp only [findLoopBody, hn, hp x, bind_tc_ok, Std.bind_ok]
+    cases hP : P x
+    · simp only [hP, Bool.false_eq_true, ↓reduceIte, Std.bind_ok, List.find?_cons]
+      exact findLoop_spec FI P p hp xs it' hy'
+    · simp [hP, spec_ok, List.find?_cons]
+
+/-- `slice::Iter::find` with a pure predicate: the first item from the iterator's position on. -/
+theorem core.slice.iter.Iter.find_spec {T Pst : Type} (FI : core.ops.function.FnMut Pst T Bool)
+    (P : T → Bool) (p : Pst) (hp : ∀ x, FI.call_mut p x = ok (P x, p)) (it : core.slice.iter.Iter T)
+    (hi : it.i ≤ it.slice.val.length) :
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.find FI it p ⦃ r _ =>
+      r = (it.slice.val.drop it.i).find? P ⦄ := by
+  rw [findLoopBody_eq]
+  exact findLoop_spec FI P p hp _ it
+    (core.slice.iter.IteratorSliceIter.yields _ it rfl)
+
 /-! ## 3. `Cloned` iterator -/
 
 /-- `Cloned` yields the same items as the inner iterator when `clone = id`. -/
@@ -415,6 +464,18 @@ theorem alloc.collections.btree.set.BTreeSetTGlobal.Insts.CoreIterTraitsCollectF
   simp only [spec_ok]
   exact ⟨fun x => (hmem x).trans hperm.mem_iff, hpw⟩
 
+/-- `collect()` into a `BTreeSet<usize>` from any yielding iterator: same members, strictly sorted.
+Corollary of `from_iter_spec_sorted`; pass `IntoIterator.Blanket IA` explicitly to avoid the
+metavariable ambiguity that arises with `_` for the IntoIterator argument. -/
+theorem collect_btreeset_spec {I : Type} (IA : core.iter.traits.iterator.Iterator I Usize) (it : I)
+    (xs : List Usize) (hy : Yields IA it xs) :
+    core.iter.traits.iterator.Iterator.collect.default IA
+      (alloc.collections.btree.set.BTreeSetTGlobal.Insts.CoreIterTraitsCollectFromIterator core.cmp.OrdUsize)
+      it ⦃ S => (∀ x, x ∈ S.items ↔ x ∈ xs) ∧ S.items.Pairwise (· < ·) ⦄ := by
+  simp only [core.iter.traits.iterator.Iterator.collect.default, CollectShape.collect]
+  exact alloc.collections.btree.set.BTreeSetTGlobal.Insts.CoreIterTraitsCollectFromIterator.from_iter_spec_sorted
+    core.cmp.OrdUsize OrdUsize_lawful _ it it rfl xs hy
+
 /-- Two strictly-sorted lists with the same membership are equal. -/
 theorem List.eq_of_pairwise_lt_of_mem_iff {T : Type} [LinearOrder T] {xs ys : List T}
     (hxs : xs.Pairwise (· < ·)) (hys : ys.Pairwise (· < ·))
@@ -613,6 +674,17 @@ theorem std.collections.hash.map.HashMap.iter_yields_perm {K V S A : Type}
                std.collections.hash.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV.next,
                spec_ok, uncurry'_pair]
     exact ⟨trivial, ih⟩
+
+/-- `HashMap::Iter` built directly from a list yields that list. -/
+theorem hashIter_yields {K V : Type} : ∀ (xs : List (K × V)),
+    Yields (std.collections.hash.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV K V)
+      { items := xs } xs
+  | [] => by
+    simp [Yields, std.collections.hash.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV.next]
+  | x :: xs => by
+    simp only [Yields, std.collections.hash.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV,
+      std.collections.hash.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV.next, spec_ok]
+    exact ⟨rfl, hashIter_yields xs⟩
 
 /-! ## 9. `len` specs -/
 
@@ -918,6 +990,31 @@ theorem std.collections.hash.map.HashMapKVSGlobal.Insts.CoreIterTraitsCollectFro
   intro k
   rw [hentries k, lookupL_nil]
   cases lookupL xs.reverse k <;> rfl
+
+/-- `FromIterator` instance for `HashMap`: wraps `from_iter` so `collect.default` can use it. -/
+@[reducible, rust_trait_impl
+  "core::iter::traits::collect::FromIterator<std::collections::hash::map::HashMap<@K, @V, @S, alloc::alloc::Global>, (@K, @V)>"]
+def std.collections.hash.map.HashMapKVSGlobal.Insts.CoreIterTraitsCollectFromIteratorPair
+    {K : Type} (V : Type) {S Hasher : Type}
+    (EqInst : core.cmp.Eq K) (hI : core.hash.Hash K)
+    (bI : core.hash.BuildHasher S Hasher) (dI : core.default.Default S) :
+    core.iter.traits.collect.FromIterator (std.collections.hash.map.HashMap K V S Global) (K × V) :=
+  { from_iter := fun IntoIteratorInst =>
+      std.collections.hash.map.HashMapKVSGlobal.Insts.CoreIterTraitsCollectFromIteratorPair.from_iter
+        EqInst hI bI dI IntoIteratorInst }
+
+/-- `collect()` into a `HashMap` from an iterator yielding `xs`: later pairs win. -/
+theorem collect_hashmap_spec {I K V S Hasher : Type} (IA : core.iter.traits.iterator.Iterator I (K × V))
+    (EqInst : core.cmp.Eq K) (hI : core.hash.Hash K) (bI : core.hash.BuildHasher S Hasher)
+    (dI : core.default.Default S)
+    (hEq : ∀ a b, ∃ r, EqInst.partialEqInst.eq a b = ok r ∧ (r = true ↔ a = b))
+    (it : I) (xs : List (K × V)) (hy : Yields IA it xs) :
+    core.iter.traits.iterator.Iterator.collect.default IA
+      (std.collections.hash.map.HashMapKVSGlobal.Insts.CoreIterTraitsCollectFromIteratorPair V EqInst hI bI dI)
+      it ⦃ m => ∀ k, lookupL m.entries k = lookupL xs.reverse k ⦄ := by
+  simp only [core.iter.traits.iterator.Iterator.collect.default, CollectShape.collect]
+  exact std.collections.hash.map.HashMapKVSGlobal.Insts.CoreIterTraitsCollectFromIteratorPair.from_iter_spec
+    EqInst hI bI dI (core.iter.traits.collect.IntoIterator.Blanket IA) hEq it it rfl xs hy
 
 /-! ## 10. `BTreeSet` linear order and `OrdLawful` -/
 

@@ -369,7 +369,7 @@ def alloc.collections.btree.set.BTreeSetTGlobal.Insts.CoreIterTraitsCollectFromI
   let items ← alloc.collections.btree.sortBy OrdInst id items
   ok { items := ← alloc.collections.btree.dedupLast OrdInst id items }
 
-@[reducible, rust_trait_impl
+@[expose, reducible, rust_trait_impl
   "core::iter::traits::collect::FromIterator<alloc::collections::btree::set::BTreeSet<@T, alloc::alloc::Global>, @T>"]
 def alloc.collections.btree.set.BTreeSetTGlobal.Insts.CoreIterTraitsCollectFromIterator
   {T : Type} (OrdInst : core.cmp.Ord T) :
