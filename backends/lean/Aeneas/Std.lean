@@ -24,6 +24,7 @@ public import Aeneas.Std.Vec
 public import Aeneas.Std.VecExtra
 public import Aeneas.Std.MiscExtra
 public import Aeneas.Std.IterExtra
+public import Aeneas.Std.CollectionsExtra
 public import Aeneas.Std.VecIter
 public import Aeneas.Data.Tuples
 public import Aeneas.Std.RangeIter

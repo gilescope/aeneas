@@ -37,6 +37,7 @@ package «tests» {}
 @[default_target] lean_lib ClosureNestedBorrows
 @[default_target] lean_lib ClosureOutputBorrows
 @[default_target] lean_lib Closures
+@[default_target] lean_lib CollectionsExtra
 @[default_target] lean_lib Constants
 @[default_target] lean_lib ConstantsLean
 @[default_target] lean_lib ConstShadow

@@ -23,10 +23,10 @@ debug assertions (`count` and `sum` use `#[rustc_inherit_overflow_checks]`). -/
 /-- `fold`: `f` over every item, front to back -/
 @[trait_default, rust_fun "core::iter::traits::iterator::Iterator::fold"]
 def core.iter.traits.iterator.Iterator.fold.default
-  {Self B F Item : Type} [S : FoldShape B F]
+  {Self B F Item : Type} {Out : Type} [S : FoldShape B F Out]
   (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
   (FnMutInst : core.ops.function.FnMut F (B × Item) B)
-  (self : Self) (init : B) (f : F) : Result S.Out := do
+  (self : Self) (init : B) (f : F) : Result Out := do
   let (acc, f) ← loop (fun ((it, acc, f) : Self × B × F) => do
     let (o, it) ← IteratorInst.next it
     match o with
@@ -629,8 +629,8 @@ def core.iter.traits.iterator.Iterator.position.default
 @[rust_fun
   "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::fold"]
 def core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.fold
-  {T B F : Type} [S : FoldShape B F] (FnMutInst : core.ops.function.FnMut F (B × T) B)
-  (it : core.slice.iter.Iter T) (init : B) (f : F) : Result S.Out :=
+  {T B F : Type} {Out : Type} [S : FoldShape B F Out] (FnMutInst : core.ops.function.FnMut F (B × T) B)
+  (it : core.slice.iter.Iter T) (init : B) (f : F) : Result Out :=
   core.iter.traits.iterator.Iterator.fold.default (S := S)
     (core.iter.traits.iterator.IteratorSliceIter T) FnMutInst it init f
 

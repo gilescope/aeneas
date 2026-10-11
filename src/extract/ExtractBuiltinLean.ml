@@ -29,6 +29,9 @@ let lean_builtin_types =
     (* file: "Aeneas/Std/BTree.lean", line: 322 *)
     mk_type "alloc::collections::btree::set::IntoIter"
       "alloc.collections.btree.set.IntoIter";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 238 *)
+    mk_type "alloc::collections::btree::set::Iter"
+      "alloc.collections.btree.set.Iter";
     (* file: "Aeneas/Std/Alloc.lean", line: 13 *)
     mk_type "alloc::string::String" "String";
     (* file: "Aeneas/Std/Vec.lean", line: 30 *)
@@ -253,9 +256,23 @@ let lean_builtin_types =
     mk_type "core::sync::atomic::AtomicBool" "core.sync.atomic.AtomicBool";
     (* file: "Aeneas/Std/Core/Atomic.lean", line: 12 *)
     mk_type "core::sync::atomic::AtomicU32" "core.sync.atomic.AtomicU32";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 100 *)
+    mk_type "std::collections::hash::map::Entry"
+      "std.collections.hash.map.Entry" ~mut_regions:[ 0 ];
     (* file: "Aeneas/Std/HashMap.lean", line: 20 *)
     mk_type "std::collections::hash::map::HashMap"
       "std.collections.hash.map.HashMap";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 44 *)
+    mk_type "std::collections::hash::map::Iter" "std.collections.hash.map.Iter";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 107 *)
+    mk_type "std::collections::hash::map::OccupiedEntry"
+      "std.collections.hash.map.OccupiedEntry" ~mut_regions:[ 0 ];
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 111 *)
+    mk_type "std::collections::hash::map::VacantEntry"
+      "std.collections.hash.map.VacantEntry" ~mut_regions:[ 0 ];
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 153 *)
+    mk_type "std::collections::hash::set::HashSet"
+      "std.collections.hash.set.HashSet";
     (* file: "Aeneas/Std/HashMap.lean", line: 77 *)
     mk_type "std::hash::random::DefaultHasher" "std.hash.random.DefaultHasher";
     (* file: "Aeneas/Std/HashMap.lean", line: 73 *)
@@ -318,6 +335,11 @@ let lean_builtin_funs =
       "alloc::collections::btree::map::{alloc::collections::btree::map::BTreeMap<@K, \
        @V, @A>}::iter"
       "alloc.collections.btree.map.BTreeMap.iter";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 177 *)
+    mk_fun
+      "alloc::collections::btree::map::{alloc::collections::btree::map::BTreeMap<@K, \
+       @V, @A>}::len"
+      "alloc.collections.btree.map.BTreeMap.len";
     (* file: "Aeneas/Std/BTree.lean", line: 41 *)
     mk_fun
       "alloc::collections::btree::map::{alloc::collections::btree::map::BTreeMap<@K, \
@@ -364,11 +386,47 @@ let lean_builtin_funs =
       "alloc::collections::btree::map::{core::ops::index::Index<alloc::collections::btree::map::BTreeMap<@K, \
        @V, @A>, &'0 @Q, @V>}::index"
       "alloc.collections.btree.map.BTreeMap.Insts.CoreOpsIndexIndexShared0QV.index";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 186 *)
+    mk_fun
+      "alloc::collections::btree::set::{alloc::collections::btree::set::BTreeSet<@T, \
+       @A>}::is_empty"
+      "alloc.collections.btree.set.BTreeSet.is_empty";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 242 *)
+    mk_fun
+      "alloc::collections::btree::set::{alloc::collections::btree::set::BTreeSet<@T, \
+       @A>}::iter"
+      "alloc.collections.btree.set.BTreeSet.iter";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 193 *)
+    mk_fun
+      "alloc::collections::btree::set::{core::clone::Clone<alloc::collections::btree::set::BTreeSet<@T, \
+       @A>>}::clone"
+      "alloc.collections.btree.set.BTreeSet.Insts.CoreCloneClone.clone";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 230 *)
+    mk_fun
+      "alloc::collections::btree::set::{core::cmp::Ord<alloc::collections::btree::set::BTreeSet<@T, \
+       @A>>}::cmp"
+      "alloc.collections.btree.set.BTreeSet.Insts.CoreCmpOrd.cmp";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 202 *)
+    mk_fun
+      "alloc::collections::btree::set::{core::cmp::PartialEq<alloc::collections::btree::set::BTreeSet<@T, \
+       @A>, alloc::collections::btree::set::BTreeSet<@T, @A>>}::eq"
+      "alloc.collections.btree.set.BTreeSet.Insts.CoreCmpPartialEqBTreeSet.eq";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 223 *)
+    mk_fun
+      "alloc::collections::btree::set::{core::cmp::PartialOrd<alloc::collections::btree::set::BTreeSet<@T, \
+       @A>, alloc::collections::btree::set::BTreeSet<@T, @A>>}::partial_cmp"
+      "alloc.collections.btree.set.BTreeSet.Insts.CoreCmpPartialOrdBTreeSet.partial_cmp";
     (* file: "Aeneas/Std/BTree.lean", line: 327 *)
     mk_fun
       "alloc::collections::btree::set::{core::iter::traits::collect::FromIterator<alloc::collections::btree::set::BTreeSet<@T, \
        alloc::alloc::Global>, @T>}::from_iter"
       "alloc.collections.btree.set.BTreeSetTGlobal.Insts.CoreIterTraitsCollectFromIterator.from_iter";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 249 *)
+    mk_fun
+      "alloc::collections::btree::set::{core::iter::traits::collect::IntoIterator<&'a \
+       alloc::collections::btree::set::BTreeSet<@T, @A>, &'a @T, \
+       alloc::collections::btree::set::Iter<'a, @T>>}::into_iter"
+      "SharedABTreeSet.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter";
     (* file: "Aeneas/Std/BTree.lean", line: 347 *)
     mk_fun
       "alloc::collections::btree::set::{core::iter::traits::collect::IntoIterator<alloc::collections::btree::set::BTreeSet<@T, \
@@ -384,6 +442,21 @@ let lean_builtin_funs =
       "alloc::collections::btree::set::{core::iter::traits::iterator::Iterator<alloc::collections::btree::set::IntoIter<@T, \
        @A>, @T>}::size_hint"
       "alloc.collections.btree.set.IntoIter.Insts.CoreIterTraitsIteratorIterator.size_hint";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 274 *)
+    mk_fun
+      "alloc::collections::btree::set::{core::iter::traits::iterator::Iterator<alloc::collections::btree::set::Iter<'a, \
+       @T>, &'a @T>}::max"
+      "alloc.collections.btree.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.max";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 256 *)
+    mk_fun
+      "alloc::collections::btree::set::{core::iter::traits::iterator::Iterator<alloc::collections::btree::set::Iter<'a, \
+       @T>, &'a @T>}::next"
+      "alloc.collections.btree.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 266 *)
+    mk_fun
+      "alloc::collections::btree::set::{core::iter::traits::iterator::Iterator<alloc::collections::btree::set::Iter<'a, \
+       @T>, &'a @T>}::size_hint"
+      "alloc.collections.btree.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.size_hint";
     (* file: "Aeneas/Std/Std/Io.lean", line: 17 *)
     mk_fun "alloc::fmt::format" "alloc.fmt.format";
     (* file: "Aeneas/Std/Std/Io.lean", line: 31 *)
@@ -782,6 +855,18 @@ let lean_builtin_funs =
     mk_fun "core::cmp::max" "core.cmp.max";
     (* file: "Aeneas/Std/Core/Cmp.lean", line: 206 *)
     mk_fun "core::cmp::min" "core.cmp.min";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 93 *)
+    mk_fun "core::cmp::{core::cmp::Ordering}::is_eq" "core.cmp.Ordering.is_eq";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 108 *)
+    mk_fun "core::cmp::{core::cmp::Ordering}::is_ge" "core.cmp.Ordering.is_ge";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 102 *)
+    mk_fun "core::cmp::{core::cmp::Ordering}::is_gt" "core.cmp.Ordering.is_gt";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 105 *)
+    mk_fun "core::cmp::{core::cmp::Ordering}::is_le" "core.cmp.Ordering.is_le";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 99 *)
+    mk_fun "core::cmp::{core::cmp::Ordering}::is_lt" "core.cmp.Ordering.is_lt";
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 96 *)
+    mk_fun "core::cmp::{core::cmp::Ordering}::is_ne" "core.cmp.Ordering.is_ne";
     (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 817 *)
     mk_fun
       "core::convert::num::ptr_try_from_impls::{core::convert::TryFrom<u32, \
@@ -1720,7 +1805,7 @@ let lean_builtin_funs =
     mk_fun "core::num::{usize}::cast_signed" "core.num.Usize.cast_signed";
     (* file: "Aeneas/Std/Scalar/Ops/DivCeil.lean", line: 54 *)
     mk_fun "core::num::{usize}::div_ceil" "core.num.Usize.div_ceil";
-    (* file: "Aeneas/Std/MiscExtra.lean", line: 94 *)
+    (* file: "Aeneas/Std/MiscExtra.lean", line: 112 *)
     mk_fun "core::num::{usize}::ilog2" "core.num.Usize.ilog2";
     (* file: "Aeneas/Std/Scalar/CoreConvertNum.lean", line: 789 *)
     mk_fun "core::num::{usize}::is_multiple_of" "core.num.Usize.is_multiple_of";
@@ -3669,11 +3754,71 @@ let lean_builtin_funs =
       "std::collections::hash::map::{core::iter::traits::collect::FromIterator<std::collections::hash::map::HashMap<@K, \
        @V, @S, alloc::alloc::Global>, (@K, @V)>}::from_iter"
       "std.collections.hash.map.HashMapKVSGlobal.Insts.CoreIterTraitsCollectFromIteratorPair.from_iter";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 80 *)
+    mk_fun
+      "std::collections::hash::map::{core::iter::traits::iterator::Iterator<std::collections::hash::map::Iter<'a, \
+       @K, @V>, (&'a @K, &'a @V)>}::count"
+      "std.collections.hash.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV.count";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 87 *)
+    mk_fun
+      "std::collections::hash::map::{core::iter::traits::iterator::Iterator<std::collections::hash::map::Iter<'a, \
+       @K, @V>, (&'a @K, &'a @V)>}::fold"
+      "std.collections.hash.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV.fold";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 54 *)
+    mk_fun
+      "std::collections::hash::map::{core::iter::traits::iterator::Iterator<std::collections::hash::map::Iter<'a, \
+       @K, @V>, (&'a @K, &'a @V)>}::next"
+      "std.collections.hash.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV.next";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 64 *)
+    mk_fun
+      "std::collections::hash::map::{core::iter::traits::iterator::Iterator<std::collections::hash::map::Iter<'a, \
+       @K, @V>, (&'a @K, &'a @V)>}::size_hint"
+      "std.collections.hash.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV.size_hint";
     (* file: "Aeneas/Std/HashMap.lean", line: 35 *)
     mk_fun
       "std::collections::hash::map::{core::ops::index::Index<std::collections::hash::map::HashMap<@K, \
        @V, @S, @A>, &'0 @Q, @V>}::index"
       "std.collections.hash.map.HashMap.Insts.CoreOpsIndexIndexShared0QV.index";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 139 *)
+    mk_fun
+      "std::collections::hash::map::{std::collections::hash::map::Entry<'a, \
+       @K, @V, @A>}::or_insert"
+      "std.collections.hash.map.Entry.or_insert";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 127 *)
+    mk_fun
+      "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, \
+       @V, @S, @A>}::entry"
+      "std.collections.hash.map.HashMap.entry";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 35 *)
+    mk_fun
+      "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, \
+       @V, @S, @A>}::get"
+      "std.collections.hash.map.HashMap.get";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 48 *)
+    mk_fun
+      "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, \
+       @V, @S, @A>}::iter"
+      "std.collections.hash.map.HashMap.iter";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 29 *)
+    mk_fun
+      "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, \
+       @V, @S, @A>}::len"
+      "std.collections.hash.map.HashMap.len";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 23 *)
+    mk_fun
+      "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, \
+       @V, std::hash::random::RandomState, alloc::alloc::Global>}::new"
+      "std.collections.hash.map.HashMapKVRandomStateGlobal.new";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 157 *)
+    mk_fun
+      "std::collections::hash::set::{core::default::Default<std::collections::hash::set::HashSet<@T, \
+       @S, alloc::alloc::Global>>}::default"
+      "std.collections.hash.set.HashSetTSGlobal.Insts.CoreDefaultDefault.default";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 166 *)
+    mk_fun
+      "std::collections::hash::set::{std::collections::hash::set::HashSet<@T, \
+       @S, @A>}::insert"
+      "std.collections.hash.set.HashSet.insert";
     (* file: "Aeneas/Std/HashMap.lean", line: 84 *)
     mk_fun
       "std::hash::random::{core::default::Default<std::hash::random::RandomState>}::default"
@@ -4082,6 +4227,12 @@ let lean_builtin_trait_impls =
       "core::iter::traits::collect::IntoIterator<&'a [@T], &'a @T, \
        core::slice::iter::Iter<'a, @T>>"
       "SharedSlice.Insts.CoreIterTraitsCollectIntoIteratorSharedIter";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 287 *)
+    mk_trait_impl
+      "core::iter::traits::collect::IntoIterator<&'a \
+       alloc::collections::btree::set::BTreeSet<@T, @A>, &'a @T, \
+       alloc::collections::btree::set::Iter<'a, @T>>"
+      "SharedABTreeSet.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter";
     (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 103 *)
     mk_trait_impl
       "core::iter::traits::collect::IntoIterator<&'a alloc::vec::Vec<@T>, &'a \
@@ -4133,6 +4284,11 @@ let lean_builtin_trait_impls =
       "core::iter::traits::iterator::Iterator<alloc::collections::btree::set::IntoIter<@T, \
        @A>, @T>"
       "alloc.collections.btree.set.IntoIter.Insts.CoreIterTraitsIteratorIterator";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 280 *)
+    mk_trait_impl
+      "core::iter::traits::iterator::Iterator<alloc::collections::btree::set::Iter<'a, \
+       @T>, &'a @T>"
+      "alloc.collections.btree.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT";
     (* file: "Aeneas/Std/VecIter.lean", line: 31 *)
     mk_trait_impl
       "core::iter::traits::iterator::Iterator<alloc::vec::into_iter::IntoIter<@T, \
@@ -4237,6 +4393,11 @@ let lean_builtin_trait_impls =
     mk_trait_impl
       "core::iter::traits::iterator::Iterator<core::str::iter::Chars<'a>, char>"
       "core.iter.traits.iterator.IteratorChars";
+    (* file: "Aeneas/Std/CollectionsExtra.lean", line: 71 *)
+    mk_trait_impl
+      "core::iter::traits::iterator::Iterator<std::collections::hash::map::Iter<'a, \
+       @K, @V>, (&'a @K, &'a @V)>"
+      "std.collections.hash.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV";
     (* file: "Aeneas/Std/Array/Array.lean", line: 477 *)
     mk_trait_impl "core::marker::Copy<[@T; @N]>" "Array.Insts.CoreMarkerCopy";
     (* file: "Aeneas/Std/Core/Core.lean", line: 67 *)

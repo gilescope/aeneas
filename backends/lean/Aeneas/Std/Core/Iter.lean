@@ -1093,10 +1093,9 @@ instance {Self F : Type} [GivesBack F] : MapShape Self F :=
     fun m => (m, (·.f))⟩
 
 /-- The output of `fold(it, init, f)`: the result, and the closure in its final state. -/
-class FoldShape (B F : Type) where
-  Out : Type
+class FoldShape (B F : Type) (Out : outParam Type) where
   ofFold : B → F → Out
 
-instance (priority := low) {B F : Type} : FoldShape B F := ⟨B, fun b _ => b⟩
+instance (priority := low) {B F : Type} : FoldShape B F B := ⟨fun b _ => b⟩
 
-instance {B F : Type} [GivesBack F] : FoldShape B F := ⟨B × F, Prod.mk⟩
+instance {B F : Type} [GivesBack F] : FoldShape B F (B × F) := ⟨Prod.mk⟩

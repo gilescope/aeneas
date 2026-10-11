@@ -59,10 +59,10 @@ def core.iter.adapters.cloned.Cloned.Insts.CoreIterTraitsIteratorIterator {I T :
 @[rust_fun
   "core::iter::adapters::cloned::{core::iter::traits::iterator::Iterator<core::iter::adapters::cloned::Cloned<@I>, @T>}::fold"]
 def core.iter.adapters.cloned.Cloned.Insts.CoreIterTraitsIteratorIterator.fold
-    {I T Acc F : Type} [S : FoldShape Acc F]
+    {I T Acc F : Type} {Out : Type} [S : FoldShape Acc F Out]
     (IteratorInst : core.iter.traits.iterator.Iterator I T) (CloneInst : core.clone.Clone T)
     (FnMutInst : core.ops.function.FnMut F (Acc × T) Acc)
-    (self : core.iter.adapters.cloned.Cloned I) (init : Acc) (f : F) : Result S.Out :=
+    (self : core.iter.adapters.cloned.Cloned I) (init : Acc) (f : F) : Result Out :=
   core.iter.traits.iterator.Iterator.fold.default (S := S)
     (core.iter.adapters.cloned.Cloned.Insts.CoreIterTraitsIteratorIterator IteratorInst
       CloneInst) FnMutInst self init f
@@ -133,10 +133,10 @@ def core.iter.traits.double_ended.DoubleEndedIterator.rfold {I B F Item : Type}
 @[rust_fun
   "core::iter::adapters::rev::{core::iter::traits::iterator::Iterator<core::iter::adapters::rev::Rev<@I>, @Clause0_Clause0_Item>}::fold"]
 def core.iter.adapters.rev.Rev.Insts.CoreIterTraitsIteratorIterator.fold
-    {I Acc F Item : Type} [S : FoldShape Acc F]
+    {I Acc F Item : Type} {Out : Type} [S : FoldShape Acc F Out]
     (DEInst : core.iter.traits.double_ended.DoubleEndedIterator I Item)
     (FnMutInst : core.ops.function.FnMut F (Acc × Item) Acc)
-    (self : core.iter.adapters.rev.Rev I) (init : Acc) (f : F) : Result S.Out := do
+    (self : core.iter.adapters.rev.Rev I) (init : Acc) (f : F) : Result Out := do
   let (acc, f) ← core.iter.traits.double_ended.DoubleEndedIterator.rfold DEInst FnMutInst
     self.iter init f
   ok (S.ofFold acc f)
@@ -185,10 +185,10 @@ def core.iter.adapters.zip.Zip.Insts.CoreIterTraitsDouble_endedDoubleEndedIterat
 @[rust_fun
   "core::iter::adapters::take::{core::iter::traits::iterator::Iterator<core::iter::adapters::take::Take<@I>, @Clause0_Item>}::fold"]
 def core.iter.adapters.take.Take.Insts.CoreIterTraitsIteratorIterator.fold
-    {I B F Item : Type} [S : FoldShape B F]
+    {I B F Item : Type} {Out : Type} [S : FoldShape B F Out]
     (IteratorInst : core.iter.traits.iterator.Iterator I Item)
     (FnMutInst : core.ops.function.FnMut F (B × Item) B)
-    (self : core.iter.adapters.take.Take I) (init : B) (f : F) : Result S.Out :=
+    (self : core.iter.adapters.take.Take I) (init : B) (f : F) : Result Out :=
   core.iter.traits.iterator.Iterator.fold.default (S := S)
     (core.iter.traits.iterator.IteratorTake IteratorInst) FnMutInst self init f
 

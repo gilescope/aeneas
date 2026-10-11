@@ -90,6 +90,24 @@ def core.marker.PhantomData.Insts.CoreCloneClone.clone {T : Type}
     (p : core.marker.PhantomData T) : Result (core.marker.PhantomData T) :=
   ok p
 
+@[expose, rust_fun "core::cmp::{core::cmp::Ordering}::is_eq"]
+def core.cmp.Ordering.is_eq (o : Ordering) : Result Bool := ok (o = .eq)
+
+@[expose, rust_fun "core::cmp::{core::cmp::Ordering}::is_ne"]
+def core.cmp.Ordering.is_ne (o : Ordering) : Result Bool := ok (o != .eq)
+
+@[expose, rust_fun "core::cmp::{core::cmp::Ordering}::is_lt"]
+def core.cmp.Ordering.is_lt (o : Ordering) : Result Bool := ok (o = .lt)
+
+@[expose, rust_fun "core::cmp::{core::cmp::Ordering}::is_gt"]
+def core.cmp.Ordering.is_gt (o : Ordering) : Result Bool := ok (o = .gt)
+
+@[expose, rust_fun "core::cmp::{core::cmp::Ordering}::is_le"]
+def core.cmp.Ordering.is_le (o : Ordering) : Result Bool := ok (o != .gt)
+
+@[expose, rust_fun "core::cmp::{core::cmp::Ordering}::is_ge"]
+def core.cmp.Ordering.is_ge (o : Ordering) : Result Bool := ok (o != .lt)
+
 /-- `usize::ilog2`: the floor of the base-2 logarithm; panics on `0` -/
 @[expose, rust_fun "core::num::{usize}::ilog2"]
 def core.num.Usize.ilog2 (x : Usize) : Result U32 :=
