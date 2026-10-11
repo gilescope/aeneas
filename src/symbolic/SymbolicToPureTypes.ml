@@ -1104,9 +1104,13 @@ and translate_trait_method_sig (decls_ctx : C.decls_ctx)
   let inputs = List.map (ty_substitute subst) flat_sig.inputs in
   let output = ty_substitute subst flat_sig.output in
 
-  let explicit_info = compute_explicit_info method_generics inputs in
+  (* The inputs mention the trait's parameters too (free variables), whose
+     indices the method's (bound) ones reuse *)
+  let explicit_info =
+    compute_explicit_info ~bound_only:true method_generics inputs
+  in
   let known_from_trait_refs =
-    compute_known_info explicit_info method_generics
+    compute_known_info ~bound_only:true explicit_info method_generics
   in
   {
     flat_sig with

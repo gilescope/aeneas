@@ -20,7 +20,9 @@ pub trait Transcript {
 
 pub trait Scheme {
     type Commitment;
-    fn write<T: Transcript>(t: &mut T, c: &Self::Commitment)
+    type Params;
+    type Guard;
+    fn write<T: Transcript>(t: &mut T, c: &Self::Commitment, g: &Self::Guard)
     where
         Self::Commitment: Hashable<T::Hash>;
     fn size() -> usize;
@@ -30,7 +32,9 @@ pub struct Kzg;
 
 impl Scheme for Kzg {
     type Commitment = u32;
-    fn write<T: Transcript>(t: &mut T, c: &u32)
+    type Params = ();
+    type Guard = u8;
+    fn write<T: Transcript>(t: &mut T, c: &u32, _g: &u8)
     where
         u32: Hashable<T::Hash>,
     {
@@ -40,6 +44,16 @@ impl Scheme for Kzg {
     fn size() -> usize {
         sizes::<Kzg>(1)
     }
+}
+
+/// Calls the method through the instance: the trait's parameters (`Self::Guard`, free) and the
+/// method's (bound) share indices, which must not make the method's unused diamond parameter
+/// implicit (it could not be inferred)
+pub fn write_through<S: Scheme, T: Transcript>(t: &mut T, c: &S::Commitment, g: &S::Guard)
+where
+    S::Commitment: Hashable<T::Hash>,
+{
+    S::write(t, c, g)
 }
 
 /// Recurses through `Kzg`'s impl, which is then inlined as a literal

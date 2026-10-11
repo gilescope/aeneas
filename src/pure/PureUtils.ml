@@ -1753,16 +1753,29 @@ let adjust_explicit_info (explicit : explicit_info) (is_trait_method : bool)
     }
   else explicit
 
-let mk_visited_params_visitor () =
+(** [bound_only]: only the variables bound by the innermost binder, i.e. a trait
+    method's own parameters in its signature, where the trait's (free) ones
+    share their indices *)
+let mk_visited_params_visitor ?(bound_only : bool = false) () =
   let tys = ref Pure.TypeVarId.Set.empty in
   let cgs = ref Pure.ConstGenericVarId.Set.empty in
   let visitor =
     object
-      inherit [_] Pure.iter_type_decl
+      inherit [_] Pure.iter_type_decl as super
       method! visit_type_var_id _ id = tys := Pure.TypeVarId.Set.add id !tys
 
       method! visit_const_generic_var_id _ id =
         cgs := Pure.ConstGenericVarId.Set.add id !cgs
+
+      method! visit_TVar env var =
+        match var with
+        | Free _ when bound_only -> ()
+        | _ -> super#visit_TVar env var
+
+      method! visit_CgVar env var =
+        match var with
+        | Free _ when bound_only -> ()
+        | _ -> super#visit_CgVar env var
     end
   in
   (visitor, tys, cgs)
@@ -1789,9 +1802,11 @@ let mk_visited_params_visitor () =
     For now, we only filter trait clauses of the shape [A : Allocator], while
     filtering the corresponding argument at the same time, so this should not be
     a problem, but it may be in the future. *)
-let compute_explicit_info (generics : Pure.generic_params) (input_tys : ty list)
-    : explicit_info =
-  let visitor, implicit_tys, implicit_cgs = mk_visited_params_visitor () in
+let compute_explicit_info ?(bound_only : bool = false)
+    (generics : Pure.generic_params) (input_tys : ty list) : explicit_info =
+  let visitor, implicit_tys, implicit_cgs =
+    mk_visited_params_visitor ~bound_only ()
+  in
   List.iter (visitor#visit_trait_param ()) generics.trait_clauses;
   List.iter (visitor#visit_ty ()) input_tys;
   let make_explicit_ty (v : type_param) : Pure.explicit =
@@ -1814,9 +1829,11 @@ let explicit_info_has_explicit (info : explicit_info) : bool =
     the trait refs are provided.
 
     This is similar to [compute_explicit_info]. *)
-let compute_known_info (explicit : explicit_info)
+let compute_known_info ?(bound_only : bool = false) (explicit : explicit_info)
     (generics : Pure.generic_params) : known_info =
-  let visitor, known_tys, known_cgs = mk_visited_params_visitor () in
+  let visitor, known_tys, known_cgs =
+    mk_visited_params_visitor ~bound_only ()
+  in
   List.iter (visitor#visit_trait_param ()) generics.trait_clauses;
   let make_known_ty ((e, v) : explicit * type_param) : Pure.known =
     if e = Explicit || Pure.TypeVarId.Set.mem v.index !known_tys then Known

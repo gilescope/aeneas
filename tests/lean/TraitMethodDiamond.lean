@@ -41,42 +41,45 @@ structure Transcript (Self : Type) (Self_Hash : Type) (Self_Clause0_Input :
   hasher : Self → Result (Self_Hash × (Self_Hash → Self))
 
 /-- Trait declaration: [trait_method_diamond::Scheme]
-    Source: 'tests/src/trait-method-diamond.rs', lines 21:0-27:1
+    Source: 'tests/src/trait-method-diamond.rs', lines 21:0-29:1
     Visibility: public -/
-structure Scheme (Self : Type) (Self_Commitment : Type) where
+structure Scheme (Self : Type) (Self_Commitment : Type) (Self_Params : Type)
+  (Self_Guard : Type) where
   write : forall {T : Type} {Clause0_Hash : Type} {Clause0_Clause0_Input :
     Type} (Clause1_Clause0_Input : Type) (TranscriptInst : Transcript T
     Clause0_Hash Clause0_Clause0_Input) (HashableInst : Hashable
     Self_Commitment Clause0_Hash Clause0_Clause0_Input), T → Self_Commitment
-    → Result T
+    → Self_Guard → Result T
   size : Result Std.Usize
 
 /-- [trait_method_diamond::Kzg]
-    Source: 'tests/src/trait-method-diamond.rs', lines 29:0-29:15
+    Source: 'tests/src/trait-method-diamond.rs', lines 31:0-31:15
     Visibility: public -/
 @[reducible]
 def Kzg := Unit
 
 /-- [trait_method_diamond::sizes]:
-    Source: 'tests/src/trait-method-diamond.rs', lines 46:0-48:1
+    Source: 'tests/src/trait-method-diamond.rs', lines 60:0-62:1
     Visibility: public -/
 def sizes
-  {S : Type} {Clause0_Commitment : Type} (SchemeInst : Scheme S
-  Clause0_Commitment) (n : Std.Usize) :
+  {S : Type} {Clause0_Commitment : Type} {Clause0_Params : Type} {Clause0_Guard
+  : Type} (SchemeInst : Scheme S Clause0_Commitment Clause0_Params
+  Clause0_Guard) (n : Std.Usize) :
   Result Std.Usize
   := do
   if n = 0#usize
   then ok 0#usize
   else SchemeInst.size
 
-/-- [trait_method_diamond::{impl trait_method_diamond::Scheme<u32> for trait_method_diamond::Kzg}::write]:
-    Source: 'tests/src/trait-method-diamond.rs', lines 33:4-39:5
+/-- [trait_method_diamond::{impl trait_method_diamond::Scheme<u32, (), u8> for trait_method_diamond::Kzg}::write]:
+    Source: 'tests/src/trait-method-diamond.rs', lines 37:4-43:5
     Visibility: public -/
-def Kzg.Insts.Trait_method_diamondSchemeU32.write
+def Kzg.Insts.Trait_method_diamondSchemeU32TupleU8.write
   {T : Type} {Clause0_Hash : Type} {Clause0_Clause0_Input : Type}
   (Clause1_Clause0_Input : Type) (TranscriptInst : Transcript T Clause0_Hash
   Clause0_Clause0_Input) (HashableU32Clause0_HashClause0_Clause0_InputInst :
-  Hashable Std.U32 Clause0_Hash Clause0_Clause0_Input) (t : T) (c : Std.U32) :
+  Hashable Std.U32 Clause0_Hash Clause0_Clause0_Input) (t : T) (c : Std.U32)
+  (_g : Std.U8) :
   Result T
   := do
   let x ← HashableU32Clause0_HashClause0_Clause0_InputInst.to_input c
@@ -86,31 +89,49 @@ def Kzg.Insts.Trait_method_diamondSchemeU32.write
       t1 x
   ok (hasher_back t2)
 
-/-- [trait_method_diamond::{impl trait_method_diamond::Scheme<u32> for trait_method_diamond::Kzg}::size]:
-    Source: 'tests/src/trait-method-diamond.rs', lines 40:4-42:5
+/-- [trait_method_diamond::{impl trait_method_diamond::Scheme<u32, (), u8> for trait_method_diamond::Kzg}::size]:
+    Source: 'tests/src/trait-method-diamond.rs', lines 44:4-46:5
     Visibility: public -/
-def Kzg.Insts.Trait_method_diamondSchemeU32.size : Result Std.Usize := do
+def Kzg.Insts.Trait_method_diamondSchemeU32TupleU8.size
+  : Result Std.Usize := do
   sizes
     ({ write := ( fun {T : Type} {Clause0_Hash : Type} {Clause0_Clause0_Input :
          Type} (Clause1_Clause0_Input : Type) (TranscriptInst : Transcript T
          Clause0_Hash Clause0_Clause0_Input) (HashableU32PPInst : Hashable
          Std.U32 Clause0_Hash Clause0_Clause0_Input) =>
-         Kzg.Insts.Trait_method_diamondSchemeU32.write Clause0_Clause0_Input
-         TranscriptInst HashableU32PPInst),
-       size := (Kzg.Insts.Trait_method_diamondSchemeU32.size) } : Scheme Kzg
-    Std.U32) 1#usize
+         Kzg.Insts.Trait_method_diamondSchemeU32TupleU8.write
+         Clause0_Clause0_Input TranscriptInst HashableU32PPInst),
+       size := (Kzg.Insts.Trait_method_diamondSchemeU32TupleU8.size) } : Scheme
+    Kzg Std.U32 Unit Std.U8) 1#usize
 partial_fixpoint monotonicity by aeneas_monotonicity [sizes]
 
-/-- Trait implementation: [trait_method_diamond::{impl trait_method_diamond::Scheme<u32> for trait_method_diamond::Kzg}]
-    Source: 'tests/src/trait-method-diamond.rs', lines 31:0-43:1 -/
+/-- Trait implementation: [trait_method_diamond::{impl trait_method_diamond::Scheme<u32, (), u8> for trait_method_diamond::Kzg}]
+    Source: 'tests/src/trait-method-diamond.rs', lines 33:0-47:1 -/
 @[reducible]
-impl_def Kzg.Insts.Trait_method_diamondSchemeU32 : Scheme Kzg Std.U32 := {
+impl_def Kzg.Insts.Trait_method_diamondSchemeU32TupleU8 : Scheme Kzg Std.U32
+  Unit Std.U8 := {
   write := fun {T : Type} {Clause0_Hash : Type} {Clause0_Clause0_Input : Type}
     (Clause1_Clause0_Input : Type) (TranscriptInst : Transcript T Clause0_Hash
     Clause0_Clause0_Input) (HashableU32PPInst : Hashable Std.U32 Clause0_Hash
-    Clause0_Clause0_Input) => Kzg.Insts.Trait_method_diamondSchemeU32.write
-    Clause0_Clause0_Input TranscriptInst HashableU32PPInst
-  size := Kzg.Insts.Trait_method_diamondSchemeU32.size
+    Clause0_Clause0_Input) =>
+    Kzg.Insts.Trait_method_diamondSchemeU32TupleU8.write Clause0_Clause0_Input
+    TranscriptInst HashableU32PPInst
+  size := Kzg.Insts.Trait_method_diamondSchemeU32TupleU8.size
 }
+
+/-- [trait_method_diamond::write_through]:
+    Source: 'tests/src/trait-method-diamond.rs', lines 52:0-57:1
+    Visibility: public -/
+def write_through
+  {S : Type} {T : Type} {Clause0_Commitment : Type} {Clause0_Params : Type}
+  {Clause0_Guard : Type} {Clause1_Hash : Type} {Clause1_Clause0_Input : Type}
+  (Clause2_Clause0_Input : Type) (SchemeInst : Scheme S Clause0_Commitment
+  Clause0_Params Clause0_Guard) (TranscriptInst : Transcript T Clause1_Hash
+  Clause1_Clause0_Input) (HashableInst : Hashable Clause0_Commitment
+  Clause1_Hash Clause1_Clause0_Input) (t : T) (c : Clause0_Commitment)
+  (g : Clause0_Guard) :
+  Result T
+  := do
+  SchemeInst.write Clause1_Clause0_Input TranscriptInst HashableInst t c g
 
 end trait_method_diamond

@@ -3856,8 +3856,8 @@ let extract_failing_method (fmt : F.formatter) : unit =
     them (aeneas#1264): those impls are only defined after the group, so inside
     it we inline their (reducible) definition. *)
 let extract_trait_impl_literal (ctx : extraction_ctx) (fmt : F.formatter)
-    ~(inside : bool) (impl_id : trait_impl_id) (generics : generic_args) : unit
-    =
+    ~inside:(_ : bool) (impl_id : trait_impl_id) (generics : generic_args) :
+    unit =
   let impl =
     [%unwrap_opt_span] None
       (TraitImplId.Map.find_opt impl_id ctx.trans_trait_impls)
