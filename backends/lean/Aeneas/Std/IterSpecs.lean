@@ -249,6 +249,105 @@ theorem core.slice.Slice.iter_yields {T : Type} (s : Slice T) :
     core.slice.Slice.iter s ⦃ it => Yields (core.iter.traits.iterator.IteratorSliceIter T) it s.val ⦄ := by
   simpa [core.slice.Slice.iter] using core.slice.iter.IteratorSliceIter.yields _ ⟨s, 0⟩ rfl
 
+/-- A `vec::IntoIter` yields the elements left. -/
+theorem alloc.vec.into_iter.IntoIter.yields {T : Type} :
+    ∀ (xs : List T) (it : alloc.vec.into_iter.IntoIter T), it.val = xs →
+      Yields (core.iter.traits.iterator.IteratorVecIntoIter T) it xs
+  | [], it, hv => by
+    have hn : alloc.vec.into_iter.IteratorIntoIter.next it = ok (none, it) := by
+      unfold alloc.vec.into_iter.IteratorIntoIter.next
+      split
+      · rfl
+      · rename_i hd tl h; rw [hv] at h; exact absurd h.symm (List.cons_ne_nil hd tl)
+    simp only [Yields, hn, spec_ok, uncurry'_pair]
+  | hd :: tl, it, hv => by
+    have hbound : tl.length ≤ Usize.max := by
+      have h := alloc.vec.Vec.property it; simp only [hv, List.length_cons] at h; omega
+    have hn : alloc.vec.into_iter.IteratorIntoIter.next it =
+        (ok (some hd, alloc.vec.Vec.from tl hbound) :
+          Result (Option T × alloc.vec.into_iter.IntoIter T)) := by
+      unfold alloc.vec.into_iter.IteratorIntoIter.next
+      split
+      · rename_i h; rw [hv] at h; exact absurd h (List.cons_ne_nil hd tl)
+      · rename_i hd' tl' h; rw [hv] at h
+        obtain ⟨rfl, rfl⟩ := List.cons.inj h; rfl
+    simp only [Yields, hn, spec_ok]
+    exact ⟨rfl, alloc.vec.into_iter.IntoIter.yields tl _ (alloc.vec.Vec.from_val tl hbound)⟩
+
+/-- `v.into_iter()` yields `v`. -/
+theorem alloc.vec.IntoIteratorVec.into_iter_yields {T : Type} (v : alloc.vec.Vec T) :
+    alloc.vec.IntoIteratorVec.into_iter v ⦃ it =>
+      Yields (core.iter.traits.iterator.IteratorVecIntoIter T) it v.val ⦄ := by
+  simp only [alloc.vec.IntoIteratorVec.into_iter, spec_ok]
+  exact alloc.vec.into_iter.IntoIter.yields _ v rfl
+
+/-- `fold.default`'s loop over an iterator yielding `xs`, through denotations `σB`/`σItem`. -/
+private theorem fold_loop_yields_spec
+    {I G B Item K : Type}
+    (σB : B → K) (σItem : Item → K)
+    (IA : core.iter.traits.iterator.Iterator I Item)
+    (GI : core.ops.function.FnMut G (B × Item) B)
+    (step : K → K → K) (g : G)
+    (hstep : ∀ acc x, GI.call_mut g (acc, x) ⦃ r g' => σB r = step (σB acc) (σItem x) ∧ g' = g ⦄) :
+    ∀ (xs : List Item) (it : I) (init : B),
+    Yields IA it xs →
+    loop (fun ((it, acc, g) : I × B × G) => do
+      let (o, it) ← IA.next it
+      match o with
+      | none => ok (.done (acc, g))
+      | some x =>
+        let (acc, g) ← GI.call_mut g (acc, x)
+        ok (.cont (it, acc, g))) (it, init, g)
+    ⦃ (acc, g') => σB acc = (xs.map σItem).foldl step (σB init) ∧ g' = g ⦄ := by
+  intro xs
+  induction xs with
+  | nil =>
+    intro it init hy
+    simp only [Yields] at hy
+    obtain ⟨⟨o, it'⟩, hnext, ho⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at ho; subst ho
+    rw [loop]; simp only [hnext, Std.bind_ok]
+    simp [spec_ok]
+  | cons x xs' ih =>
+    intro it init hy
+    simp only [Yields] at hy
+    obtain ⟨⟨o, it'⟩, hnext, hpost⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at hpost
+    obtain ⟨rfl, hys'⟩ := hpost
+    have hst := hstep init x
+    obtain ⟨⟨v, g'⟩, hcall, hvg⟩ := spec_eq_ok hst
+    simp only [uncurry'_pair] at hvg
+    obtain ⟨hrv, hrg⟩ := hvg; subst hrg
+    rw [loop]
+    -- split: one-step body / continuation
+    apply WP.spec_bind (Pₘ := fun r => r = ControlFlow.cont (it', v, g'))
+    · -- body (it, init, g') ⦃ r => r = .cont (it', v, g') ⦄
+      simp [hnext, hcall, Std.bind_ok, spec_ok]
+    · intro r hr; rw [hr]
+      simp only [List.map_cons, List.foldl_cons, ← hrv]
+      exact ih it' v hys'
+
+/-- `fold(init, f)` over an iterator yielding `xs`, when each call denotes `step` and leaves the
+closure as it was: the result denotes `(xs.map σItem).foldl step (σB init)`. -/
+theorem core.iter.traits.iterator.Iterator.fold.default_yields_spec
+    {I G B Item K : Type}
+    (σB : B → K) (σItem : Item → K)
+    (IA : core.iter.traits.iterator.Iterator I Item)
+    (GI : core.ops.function.FnMut G (B × Item) B)
+    (step : K → K → K) (g : G)
+    (hstep : ∀ acc x, GI.call_mut g (acc, x) ⦃ r g' => σB r = step (σB acc) (σItem x) ∧ g' = g ⦄) :
+    ∀ (xs : List Item) (it : I) (init : B),
+    Yields IA it xs →
+    core.iter.traits.iterator.Iterator.fold.default (S := inferInstance) IA GI it init g
+    ⦃ r => σB r = (xs.map σItem).foldl step (σB init) ⦄ := by
+  intro xs it init hy
+  simp only [core.iter.traits.iterator.Iterator.fold.default, bind_tc_eq]
+  apply spec_bind (fold_loop_yields_spec σB σItem IA GI step g hstep xs it init hy)
+  rintro ⟨acc, g'⟩ ⟨hacc, -⟩
+  -- FoldShape B G B (low-priority instance) has ofFold := fun b _ => b
+  change ok acc ⦃ r => σB r = (xs.map σItem).foldl step (σB init) ⦄
+  simp [hacc, spec_ok]
+
 /-- Threads a state through `g` over `xs`, listing the outputs. -/
 @[expose] def _root_.List.mapState {S A B : Type} (g : S → A → B × S) : S → List A → List B
   | _, [] => []

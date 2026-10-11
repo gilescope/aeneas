@@ -7,7 +7,8 @@ namespace Aeneas.Std
 
 open Result
 
-@[expose, rust_type "alloc::vec::into_iter::IntoIter" (keepParams := [true, false])]
+/-- Reducible, so `into_iter v = ok v` typechecks where specs are matched (`simp only`, `step`). -/
+@[expose, reducible, rust_type "alloc::vec::into_iter::IntoIter" (keepParams := [true, false])]
 def alloc.vec.into_iter.IntoIter (T : Type) : Type := alloc.vec.Vec T
 
 @[expose, rust_fun

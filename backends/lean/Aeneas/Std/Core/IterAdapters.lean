@@ -21,7 +21,7 @@ debug assertions (`count` and `sum` use `#[rustc_inherit_overflow_checks]`). -/
 /-! ## Provided methods, from `next` -/
 
 /-- `fold`: `f` over every item, front to back -/
-@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::fold"]
+@[expose, trait_default, rust_fun "core::iter::traits::iterator::Iterator::fold"]
 def core.iter.traits.iterator.Iterator.fold.default
   {Self B F Item : Type} {Out : Type} [S : FoldShape B F Out]
   (IteratorInst : core.iter.traits.iterator.Iterator Self Item)

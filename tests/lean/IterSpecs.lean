@@ -119,3 +119,8 @@ example (ss : Slice (Slice ℕ)) (FI : core.ops.function.FnMut Unit (Slice ℕ) 
     fun s _ => ⟨⟨s, 0⟩, ⟨s, 0⟩, s.val, hFI s, rfl,
       (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨s, 0⟩ : core.slice.iter.Iter ℕ) rfl),
       rfl⟩
+
+-- `vec![1, 2].into_iter()` yields `1, 2`
+example : alloc.vec.IntoIteratorVec.into_iter (alloc.vec.Vec.from [1#u32, 2#u32] (by scalar_tac)) ⦃ it =>
+    Yields (core.iter.traits.iterator.IteratorVecIntoIter U32) it [1#u32, 2#u32] ⦄ :=
+  alloc.vec.IntoIteratorVec.into_iter_yields _
