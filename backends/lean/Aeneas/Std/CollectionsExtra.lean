@@ -32,7 +32,7 @@ def std.collections.hash.map.HashMap.len {K V S A : Type}
     (m : std.collections.hash.map.HashMap K V S A) : Result Usize :=
   UScalar.tryMk .Usize m.entries.length
 
-@[rust_fun
+@[expose, rust_fun
   "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::get"]
 def std.collections.hash.map.HashMap.get {K V S A Q Hasher : Type}
     (_EqKInst : core.cmp.Eq K) (_HashKInst : core.hash.Hash K)
@@ -113,6 +113,7 @@ structure std.collections.hash.map.VacantEntry (K V A : Type) where
   entry : std.collections.hash.map.Entry K V A
 
 /-- The position of the entry whose key equals `k` -/
+@[expose]
 def std.collections.hash.map.HashMap.position {K V : Type} (EqInst : core.cmp.Eq K) :
     List (K × V) → K → Result (Option Nat)
   | [], _ => ok none
@@ -124,7 +125,7 @@ def std.collections.hash.map.HashMap.position {K V : Type} (EqInst : core.cmp.Eq
       | none => ok none
 
 /-- The entry, and giving it back gives back the map -/
-@[rust_fun
+@[expose, rust_fun
   "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::entry"]
 def std.collections.hash.map.HashMap.entry {K V S A Hasher : Type} (EqInst : core.cmp.Eq K)
     (_HashInst : core.hash.Hash K) (_BuildHasherInst : core.hash.BuildHasher S Hasher)
@@ -136,7 +137,7 @@ def std.collections.hash.map.HashMap.entry {K V S A Hasher : Type} (EqInst : cor
 
 /-- The value at the key, appending `(key, default)` if absent; writing through the returned
 `&mut V` replaces that entry's value -/
-@[rust_fun
+@[expose, rust_fun
   "std::collections::hash::map::{std::collections::hash::map::Entry<'a, @K, @V, @A>}::or_insert"]
 def std.collections.hash.map.Entry.or_insert {K V A : Type}
     (e : std.collections.hash.map.Entry K V A) (default : V) :

@@ -38,3 +38,84 @@ example : core.num.I64.unsigned_abs ((-5)#i64) ⦃ y => y.val = 5 ⦄ := by
   have := core.num.I64.unsigned_abs_spec ((-5)#i64); simpa using this
 example : core.num.I32.abs ((-7)#i32) ⦃ y => y.val = 7 ⦄ := by
   have := core.num.I32.abs_spec ((-7)#i32) (by scalar_tac); simpa using this
+
+-- `iter()` then `collect()` gives the slice back
+example (s : Slice U32) :
+    core.iter.traits.iterator.Iterator.collect.default
+      (core.iter.traits.iterator.IteratorSliceIter U32)
+      (core.iter.traits.collect.FromIteratorVec U32) ⟨s, 0⟩ ⦃ v => v.val = s.val ⦄ :=
+  core.iter.traits.iterator.Iterator.collect_vec_spec _ _ _
+    (by simpa using core.slice.iter.IteratorSliceIter.yields _ ⟨s, 0⟩ rfl) s.property
+
+-- a stateful `map`: each output is the item plus the running count
+example : List.mapState (fun (n : ℕ) (x : ℕ) => (x + n, n + 1)) 0 [10, 20, 30] = [10, 21, 32] :=
+  rfl
+
+-- `map` with a counting closure over `iter()` yields the outputs `mapState` lists
+example (s : Slice ℕ) (FI : core.ops.function.FnMut ℕ ℕ ℕ)
+    (hFI : ∀ n x, FI.call_mut n x = ok (x + n, n + 1)) :
+    Yields (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
+      (core.iter.traits.iterator.IteratorSliceIter ℕ) FI)
+      ({ iter := { slice := s, i := 0 }, f := 0 } : core.iter.adapters.map.Map (core.slice.iter.Iter ℕ) ℕ)
+      (List.mapState (fun n x => (x + n, n + 1)) 0 s.val) :=
+  core.iter.adapters.map.Map.yields _ FI _ (fun _ _ => True) (fun x _ n _ => ⟨hFI n x, trivial⟩)
+    s.val (⟨s, 0⟩ : core.slice.iter.Iter ℕ) 0
+    (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨s, 0⟩ : core.slice.iter.Iter ℕ) rfl)
+    trivial
+
+-- `BTreeMap` lookup by a `usize` key finds the first entry with that key
+example (es : List (Usize × ℕ)) (q : Usize) :
+    alloc.collections.btree.map.BTreeMap.lookup (core.borrow.Borrow.Blanket Usize)
+      core.cmp.OrdUsize es q = ok ((es.find? fun e => decide (e.1 = q)).map (·.2)) := by
+  rw [alloc.collections.btree.map.BTreeMap.lookup_eq core.cmp.OrdUsize q (fun k =>
+    ⟨compare q.val k.val, rfl, by
+      rw [compare_eq_iff_eq]; exact ⟨fun h => (UScalar.eq_of_val_eq h).symm,
+        fun h => by rw [h]⟩⟩) es]
+  congr; funext e; congr 1
+
+-- `map` with a closure known by a spec: outputs at least the item, a counter as state
+example (s : Slice ℕ) (FI : core.ops.function.FnMut ℕ ℕ ℕ)
+    (hFI : ∀ n x, FI.call_mut n x ⦃ y n' => x ≤ y ∧ n' = n + 1 ⦄) :
+    ∃ ys : List ℕ, ys.length = s.val.length ∧ (∀ j (_hj : j < ys.length), s.val.getD j 0 ≤ ys[j]) ∧
+      Yields (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
+        (core.iter.traits.iterator.IteratorSliceIter ℕ) FI)
+        ({ iter := { slice := s, i := 0 }, f := 0 } :
+          core.iter.adapters.map.Map (core.slice.iter.Iter ℕ) ℕ) ys :=
+  core.iter.adapters.map.Map.yields_spec _ FI s.val (fun j y => s.val.getD j 0 ≤ y) (fun j n => n = j)
+    (⟨s, 0⟩ : core.slice.iter.Iter ℕ) 0
+    (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨s, 0⟩ : core.slice.iter.Iter ℕ) rfl)
+    rfl (fun j _ n hn => WP.spec_mono (hFI n _) fun ⟨_, _⟩ h => by simp_all [List.getD_eq_getElem?_getD])
+
+-- `iter().any(p)` with a stateless predicate is `List.any`
+example (s : Slice ℕ) (FI : core.ops.function.FnMut Unit ℕ Bool)
+    (hFI : ∀ x, FI.call_mut () x = ok (decide (x = 3), ())) :
+    core.iter.traits.iterator.Iterator.any.default (core.iter.traits.iterator.IteratorSliceIter ℕ)
+      FI (⟨s, 0⟩ : core.slice.iter.Iter ℕ) () ⦃ b _ => b = s.val.any (fun x => decide (x = 3)) ⦄ :=
+  core.iter.traits.iterator.Iterator.any_spec _ FI _ () hFI s.val (⟨s, 0⟩ : core.slice.iter.Iter ℕ)
+    (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨s, 0⟩ : core.slice.iter.Iter ℕ) rfl)
+
+-- `a.chain(b)` over two slices yields both, in order
+example (s t : Slice ℕ) :
+    Yields (core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator
+      (core.iter.traits.iterator.IteratorSliceIter ℕ) (core.iter.traits.iterator.IteratorSliceIter ℕ))
+      ⟨some (⟨s, 0⟩ : core.slice.iter.Iter ℕ), some (⟨t, 0⟩ : core.slice.iter.Iter ℕ)⟩ (s.val ++ t.val) :=
+  core.iter.adapters.chain.Chain.yields _ _ t.val _
+    (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨t, 0⟩ : core.slice.iter.Iter ℕ) rfl)
+    s.val _
+    (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨s, 0⟩ : core.slice.iter.Iter ℕ) rfl)
+
+-- `flat_map` of a slice of slices, each iterated, yields their concatenation
+example (ss : Slice (Slice ℕ)) (FI : core.ops.function.FnMut Unit (Slice ℕ) (core.slice.iter.Iter ℕ))
+    (hFI : ∀ s, FI.call_mut () s = ok (⟨s, 0⟩, ())) :
+    ∃ yss : List (List ℕ), yss.length = ss.val.length ∧
+      (∀ i (hi : i < ss.val.length) (hi' : i < yss.length), yss[i] = ss.val[i].val) ∧
+      Yields (core.iter.adapters.flatten.FlatMap.Insts.CoreIterTraitsIteratorIterator
+        (core.iter.traits.iterator.IteratorSliceIter (Slice ℕ))
+        (core.iter.traits.collect.IntoIterator.Blanket (core.iter.traits.iterator.IteratorSliceIter ℕ))
+        FI) ⟨some (⟨ss, 0⟩ : core.slice.iter.Iter (Slice ℕ)), (), none, none⟩ yss.flatten :=
+  core.iter.adapters.flatten.FlatMap.yields _ _ FI () (fun s ys => ys = s.val) ss.val _
+    (by simpa using
+          core.slice.iter.IteratorSliceIter.yields _ (⟨ss, 0⟩ : core.slice.iter.Iter (Slice ℕ)) rfl)
+    fun s _ => ⟨⟨s, 0⟩, ⟨s, 0⟩, s.val, hFI s, rfl,
+      (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨s, 0⟩ : core.slice.iter.Iter ℕ) rfl),
+      rfl⟩

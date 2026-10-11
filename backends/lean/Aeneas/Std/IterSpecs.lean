@@ -2,11 +2,24 @@
 ranges, and `List.overwrite` (what an `iter_mut()` loop's backward function writes). -/
 module
 public import Aeneas.Std.RangeIter
+public import Aeneas.Std.Core.IterAdapters
+public import Aeneas.Std.VecIter
 public section
 
 namespace Aeneas.Std
 
 open Result core.ops.range WP ScalarElab
+
+/-! ## Specs are equations
+
+`Result` is deterministic: a spec says the computation succeeds with a value satisfying it. -/
+
+theorem spec_eq_ok {α : Type} {m : Result α} {P : α → Prop} (h : m ⦃ x => P x ⦄) :
+    ∃ v, m = ok v ∧ P v := by
+  cases m using Result.cases with
+  | ret r => exact ⟨r, rfl, (spec_ok r).1 h⟩
+  | vis i k => exact absurd h (by simp)
+  | div => exact absurd h (by simp)
 
 /-! ## `foldlM` -/
 
@@ -211,6 +224,325 @@ theorem core.ops.range.RangeInclusive.yields_'S (r : core.ops.range.RangeInclusi
   core.ops.range.RangeInclusive.yields_IScalar (by intros; rfl)
     (by intros; simp [core.cmp.impls.PartialOrd'S.le])
     (by intros; simp [core.cmp.impls.PartialOrd'S.lt]) _ r hx rfl
+
+/-! ## Slices, `map` and `collect` -/
+
+/-- `slice.iter()` at index `i` yields the items from `i`. -/
+theorem core.slice.iter.IteratorSliceIter.yields {T : Type} :
+    ∀ (n : ℕ) (it : core.slice.iter.Iter T), it.slice.val.length - it.i = n →
+    Yields (core.iter.traits.iterator.IteratorSliceIter T) it (it.slice.val.drop it.i)
+  | 0, it, hn => by
+    have h : ¬ it.i < it.slice.val.length := by omega
+    rw [List.drop_of_length_le (by omega)]
+    simp [Yields, core.iter.traits.iterator.IteratorSliceIter, core.slice.iter.IteratorSliceIter.next,
+      h]
+  | n + 1, it, hn => by
+    have hi : it.i < it.slice.val.length := by omega
+    rw [List.drop_eq_getElem_cons hi]
+    simp only [Yields, core.iter.traits.iterator.IteratorSliceIter,
+      core.slice.iter.IteratorSliceIter.next, Slice.len_val, Slice.length, hi, ↓reduceDIte, spec_ok]
+    refine ⟨rfl, ?_⟩
+    simpa using core.slice.iter.IteratorSliceIter.yields n { it with i := it.i + 1 } (by simp; omega)
+
+/-- `s.iter()` yields `s`. -/
+theorem core.slice.Slice.iter_yields {T : Type} (s : Slice T) :
+    core.slice.Slice.iter s ⦃ it => Yields (core.iter.traits.iterator.IteratorSliceIter T) it s.val ⦄ := by
+  simpa [core.slice.Slice.iter] using core.slice.iter.IteratorSliceIter.yields _ ⟨s, 0⟩ rfl
+
+/-- Threads a state through `g` over `xs`, listing the outputs. -/
+@[expose] def _root_.List.mapState {S A B : Type} (g : S → A → B × S) : S → List A → List B
+  | _, [] => []
+  | s, x :: xs => (g s x).1 :: List.mapState g (g s x).2 xs
+
+/-- `map(f)` over an iterator yielding `xs` yields the outputs of `f`'s calls, its state
+threaded through: `P rest f` is the invariant with `rest` still to come. -/
+theorem core.iter.adapters.map.Map.yields {I F Item B : Type}
+    (IA : core.iter.traits.iterator.Iterator I Item) (FI : core.ops.function.FnMut F Item B)
+    (g : F → Item → B × F) (P : List Item → F → Prop)
+    (hg : ∀ x xs f, P (x :: xs) f → FI.call_mut f x = ok (g f x) ∧ P xs (g f x).2) :
+    ∀ (xs : List Item) (it : I) (f : F), Yields IA it xs → P xs f →
+    Yields (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator IA FI) ⟨it, f⟩
+      (List.mapState g f xs)
+  | [], it, f, hy, _ => by
+    simp only [Yields, core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator,
+      core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next, List.mapState]
+    rw [bind_tc_eq]
+    refine spec_bind hy ?_
+    rintro ⟨o, it'⟩ ho
+    simp only [uncurry'_pair] at ho
+    subst ho; simp
+  | x :: xs, it, f, hy, hP => by
+    obtain ⟨hc, hP'⟩ := hg x xs f hP
+    simp only [Yields] at hy
+    simp only [Yields, core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator,
+      core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next, List.mapState]
+    rw [bind_tc_eq]
+    refine spec_bind hy ?_
+    rintro ⟨o, it'⟩ ⟨ho, hy'⟩
+    subst ho
+    simp only [hc, bind_tc_ok, spec_ok]
+    exact ⟨rfl, core.iter.adapters.map.Map.yields IA FI g P hg xs it' (g f x).2 hy' hP'⟩
+
+/-- `map(f)` over an iterator yielding `xs`, when `f`'s calls are known only by a spec: it yields
+some `ys` as long as `xs` with `R j ys[j]`; `P j f` is the closure's invariant before item `j`. -/
+theorem core.iter.adapters.map.Map.yields_spec {I F Item B : Type}
+    (IA : core.iter.traits.iterator.Iterator I Item) (FI : core.ops.function.FnMut F Item B) :
+    ∀ (xs : List Item) (R : ℕ → B → Prop) (P : ℕ → F → Prop)
+    (it : I) (f : F), Yields IA it xs → P 0 f →
+    (∀ j (hj : j < xs.length) f, P j f → FI.call_mut f xs[j] ⦃ y f' => R j y ∧ P (j + 1) f' ⦄) →
+    ∃ ys : List B, ys.length = xs.length ∧ (∀ j (hj : j < ys.length), R j ys[j]) ∧
+      Yields (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator IA FI) ⟨it, f⟩ ys
+  | [], R, P, it, f, hy, _, _ => ⟨[], rfl, by simp, by
+      simp only [Yields, core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator,
+        core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next]
+      rw [bind_tc_eq]
+      refine spec_bind hy ?_
+      rintro ⟨o, it'⟩ ho
+      simp only [uncurry'_pair] at ho
+      subst ho; simp⟩
+  | x :: xs, R, P, it, f, hy, h0, hs => by
+    simp only [Yields] at hy
+    obtain ⟨⟨o, it'⟩, hnext, hpost⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at hpost
+    obtain ⟨rfl, hy'⟩ := hpost
+    obtain ⟨⟨y, f'⟩, hcall, hpost'⟩ := spec_eq_ok (hs 0 (by simp) f h0)
+    simp only [uncurry'_pair] at hpost'
+    obtain ⟨hR, hP⟩ := hpost'
+    obtain ⟨ys, hl, hRs, hys⟩ := core.iter.adapters.map.Map.yields_spec IA FI xs
+      (fun j => R (j + 1)) (fun j => P (j + 1)) it' f' hy' hP
+      fun j hj g hg => by
+        have h := hs (j + 1) (by simp; omega) g hg
+        rwa [List.getElem_cons_succ] at h
+    refine ⟨y :: ys, by simp [hl], fun j hj => ?_, ?_⟩
+    · cases j with
+      | zero => simpa using hR
+      | succ j => simpa using hRs j (by simpa using hj)
+    · simp only [Yields, core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator,
+        core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next]
+      simp only [List.getElem_cons_zero] at hcall
+      simp [hnext, hcall, hys]
+
+theorem alloc.vec.FromIteratorVec.iterToList_spec {T I : Type}
+    (IA : core.iter.traits.iterator.Iterator I T) :
+    ∀ (xs : List T) (it : I) (acc : List T), Yields IA it xs →
+    alloc.vec.FromIteratorVec.iterToList IA it acc ⦃ l => l = acc.reverse ++ xs ⦄
+  | [], it, acc, hy => by
+    rw [alloc.vec.FromIteratorVec.iterToList, bind_tc_eq]
+    refine spec_bind hy ?_
+    rintro ⟨o, it'⟩ ho
+    simp only [uncurry'_pair] at ho
+    subst ho; simp
+  | x :: xs, it, acc, hy => by
+    simp only [Yields] at hy
+    rw [alloc.vec.FromIteratorVec.iterToList, bind_tc_eq]
+    refine spec_bind hy ?_
+    rintro ⟨o, it'⟩ ⟨ho, hy'⟩
+    subst ho
+    simpa using alloc.vec.FromIteratorVec.iterToList_spec IA xs it' (x :: acc) hy'
+
+theorem alloc.vec.FromIteratorVec.iterToListBack_spec {T I : Type}
+    (IA : core.iter.traits.iterator.Iterator I T) :
+    ∀ (xs : List T) (it : I) (acc : List T), Yields IA it xs →
+    alloc.vec.FromIteratorVec.iterToListBack IA it acc ⦃ l _ => l = acc.reverse ++ xs ⦄
+  | [], it, acc, hy => by
+    rw [alloc.vec.FromIteratorVec.iterToListBack, bind_tc_eq]
+    refine spec_bind hy ?_
+    rintro ⟨o, it'⟩ ho
+    simp only [uncurry'_pair] at ho
+    subst ho; simp
+  | x :: xs, it, acc, hy => by
+    simp only [Yields] at hy
+    rw [alloc.vec.FromIteratorVec.iterToListBack, bind_tc_eq]
+    refine spec_bind hy ?_
+    rintro ⟨o, it'⟩ ⟨ho, hy'⟩
+    subst ho
+    simpa using alloc.vec.FromIteratorVec.iterToListBack_spec IA xs it' (x :: acc) hy'
+
+/-- `collect::<Vec<_>>()` of an iterator yielding `xs` is `xs`. -/
+theorem core.iter.traits.iterator.Iterator.collect_vec_spec {I T : Type}
+    (IA : core.iter.traits.iterator.Iterator I T) (it : I) (xs : List T)
+    (hy : Yields IA it xs) (hl : xs.length ≤ Usize.max) :
+    core.iter.traits.iterator.Iterator.collect.default (S := instCollectShape) IA
+      (core.iter.traits.collect.FromIteratorVec T) it ⦃ v => v.val = xs ⦄ := by
+  simp only [core.iter.traits.iterator.Iterator.collect.default, CollectShape.collect,
+    core.iter.traits.collect.FromIteratorVec, alloc.vec.FromIteratorVec.from_iter,
+    core.iter.traits.collect.IntoIterator.Blanket,
+    core.iter.traits.collect.IntoIterator.Blanket.into_iter, bind_tc_ok]
+  rw [bind_tc_eq]
+  refine spec_bind (alloc.vec.FromIteratorVec.iterToList_spec IA xs it [] hy) ?_
+  rintro l rfl
+  simp [hl]
+
+/-- `collect::<Vec<_>>()` of an iterator that gives back (it holds a `&mut`) is `xs`. -/
+theorem core.iter.traits.iterator.Iterator.collect_vec_back_spec {I T : Type} [GivesBack I]
+    (IA : core.iter.traits.iterator.Iterator I T) (it : I) (xs : List T)
+    (hy : Yields IA it xs) (hl : xs.length ≤ Usize.max) :
+    core.iter.traits.iterator.Iterator.collect.default IA
+      (core.iter.traits.collect.FromIteratorVec T) it ⦃ v _ => v.val = xs ⦄ := by
+  simp only [core.iter.traits.iterator.Iterator.collect.default, CollectShape.collect,
+    FromIterBack.fromIterBack]
+  rw [bind_tc_eq]
+  refine spec_bind (alloc.vec.FromIteratorVec.iterToListBack_spec IA xs it [] hy) ?_
+  rintro ⟨l, it'⟩ hl'
+  simp only [uncurry'_pair] at hl'
+  subst hl'
+  simp [hl]
+
+/-- `any(p)` with a stateless predicate over an iterator yielding `xs` is `xs.any p`. -/
+theorem core.iter.traits.iterator.Iterator.any_spec {I F Item : Type}
+    (IA : core.iter.traits.iterator.Iterator I Item) (FI : core.ops.function.FnMut F Item Bool)
+    (p : Item → Bool) (f : F) (hp : ∀ x, FI.call_mut f x = ok (p x, f)) :
+    ∀ (xs : List Item) (it : I), Yields IA it xs →
+    core.iter.traits.iterator.Iterator.any.default IA FI it f ⦃ b _ => b = xs.any p ⦄
+  | [], it, hy => by
+    simp only [Yields] at hy
+    obtain ⟨⟨o, it'⟩, hnext, ho⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at ho
+    subst ho
+    unfold core.iter.traits.iterator.Iterator.any.default
+    rw [loop]
+    simp [hnext]
+  | x :: xs, it, hy => by
+    simp only [Yields] at hy
+    obtain ⟨⟨o, it'⟩, hnext, hpost⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at hpost
+    obtain ⟨rfl, hy'⟩ := hpost
+    unfold core.iter.traits.iterator.Iterator.any.default
+    rw [loop]
+    simp only [hnext, hp, bind_tc_ok, Std.bind_ok]
+    cases hpx : p x
+    · simp only [Bool.false_eq_true, ↓reduceIte, Std.bind_ok, List.any_cons, hpx, Bool.false_or]
+      exact core.iter.traits.iterator.Iterator.any_spec IA FI p f hp xs it' hy'
+    · simp [hpx]
+
+/-- `Yields` depends only on what `next` returns. -/
+theorem Yields_congr {I Item : Type} (inst : core.iter.traits.iterator.Iterator I Item) {s1 s2 : I}
+    (h : inst.next s1 = inst.next s2) (ys : List Item) : Yields inst s1 ys ↔ Yields inst s2 ys := by
+  cases ys <;> simp [Yields, h]
+
+/-- `chain`'s second half, once the first is dropped, yields what it yields. -/
+theorem core.iter.adapters.chain.Chain.yields_b {A B Item : Type}
+    (IA : core.iter.traits.iterator.Iterator A Item) (IB : core.iter.traits.iterator.Iterator B Item) :
+    ∀ (ys : List Item) (b : B), Yields IB b ys →
+    Yields (core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator IA IB) ⟨none, some b⟩ ys
+  | [], b, hy => by
+    simp only [Yields] at hy
+    obtain ⟨⟨o, b'⟩, hnext, ho⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at ho
+    subst ho
+    simp [Yields, core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator,
+      core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next, hnext]
+  | y :: ys, b, hy => by
+    simp only [Yields] at hy
+    obtain ⟨⟨o, b'⟩, hnext, hpost⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at hpost
+    obtain ⟨rfl, hy'⟩ := hpost
+    simp only [Yields, core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator,
+      core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next, hnext, bind_tc_ok,
+      spec_ok]
+    exact ⟨rfl, core.iter.adapters.chain.Chain.yields_b IA IB ys b' hy'⟩
+
+/-- `a.chain(b)` yields `a`'s items, then `b`'s. -/
+theorem core.iter.adapters.chain.Chain.yields {A B Item : Type}
+    (IA : core.iter.traits.iterator.Iterator A Item) (IB : core.iter.traits.iterator.Iterator B Item)
+    (ys : List Item) (b : B) (hb : Yields IB b ys) :
+    ∀ (xs : List Item) (a : A), Yields IA a xs →
+    Yields (core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator IA IB)
+      ⟨some a, some b⟩ (xs ++ ys)
+  | [], a, hy => by
+    simp only [Yields] at hy
+    obtain ⟨⟨o, a'⟩, hnext, ho⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at ho
+    subst ho
+    refine (Yields_congr _ ?_ ys).2 (core.iter.adapters.chain.Chain.yields_b IA IB ys b hb)
+    simp [core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator,
+      core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next, hnext]
+  | x :: xs, a, hy => by
+    simp only [Yields] at hy
+    obtain ⟨⟨o, a'⟩, hnext, hpost⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at hpost
+    obtain ⟨rfl, hy'⟩ := hpost
+    simp only [List.cons_append, Yields, core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator,
+      core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next, hnext, bind_tc_ok,
+      spec_ok]
+    exact ⟨rfl, core.iter.adapters.chain.Chain.yields IA IB ys b hb xs a' hy'⟩
+
+section FlatMap
+variable {I U F Item0 Item IntoIter : Type}
+  (IA : core.iter.traits.iterator.Iterator I Item0)
+  (II : core.iter.traits.collect.IntoIterator U Item IntoIter)
+  (FI : core.ops.function.FnMut F Item0 U)
+
+local notation "FM" => core.iter.adapters.flatten.FlatMap.Insts.CoreIterTraitsIteratorIterator IA II FI
+
+/-- A `flat_map` draining its front iterator yields what is left of it, then the rest. -/
+theorem core.iter.adapters.flatten.FlatMap.yields_front (it : Option I) (f : F)
+    (R : List Item) (hR : Yields FM ⟨it, f, none, none⟩ R) :
+    ∀ (zs : List Item) (front : IntoIter), Yields II.iteratorInst front zs →
+    Yields FM ⟨it, f, some front, none⟩ (zs ++ R)
+  | [], front, hy => by
+    simp only [Yields] at hy
+    obtain ⟨⟨o, front'⟩, hnext, ho⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at ho
+    subst ho
+    refine (Yields_congr _ ?_ R).2 hR
+    simp only [core.iter.adapters.flatten.FlatMap.Insts.CoreIterTraitsIteratorIterator,
+      core.iter.adapters.flatten.FlatMap.Insts.CoreIterTraitsIteratorIterator.next]
+    conv => lhs; rw [loop]
+    simp [hnext]
+  | z :: zs, front, hy => by
+    simp only [Yields] at hy
+    obtain ⟨⟨o, front'⟩, hnext, hpost⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at hpost
+    obtain ⟨rfl, hy'⟩ := hpost
+    simp only [List.cons_append, Yields, core.iter.adapters.flatten.FlatMap.Insts.CoreIterTraitsIteratorIterator,
+      core.iter.adapters.flatten.FlatMap.Insts.CoreIterTraitsIteratorIterator.next]
+    rw [loop]
+    simp only [hnext, bind_tc_ok, Std.bind_ok, spec_ok]
+    exact ⟨rfl, core.iter.adapters.flatten.FlatMap.yields_front it f R hR zs front' hy'⟩
+
+/-- `flat_map(f)` over an iterator yielding `xs`, with a stateless `f` whose results each yield
+some `ys` with `Q x ys`, yields their concatenation. -/
+theorem core.iter.adapters.flatten.FlatMap.yields (f : F) (Q : Item0 → List Item → Prop) :
+    ∀ (xs : List Item0) (it : I), Yields IA it xs →
+    (∀ x ∈ xs, ∃ u ii ys, FI.call_mut f x = ok (u, f) ∧ II.into_iter u = ok ii ∧
+      Yields II.iteratorInst ii ys ∧ Q x ys) →
+    ∃ yss : List (List Item), yss.length = xs.length ∧
+      (∀ i (hi : i < xs.length) (hi' : i < yss.length), Q xs[i] yss[i]) ∧
+      Yields FM ⟨some it, f, none, none⟩ yss.flatten
+  | [], it, hy, _ => by
+    simp only [Yields] at hy
+    obtain ⟨⟨o, it'⟩, hnext, ho⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at ho
+    subst ho
+    refine ⟨[], rfl, by simp, ?_⟩
+    simp only [List.flatten_nil, Yields, core.iter.adapters.flatten.FlatMap.Insts.CoreIterTraitsIteratorIterator,
+      core.iter.adapters.flatten.FlatMap.Insts.CoreIterTraitsIteratorIterator.next]
+    rw [loop]
+    simp only [hnext, bind_tc_ok, Std.bind_ok]
+    rw [loop]
+    simp
+  | x :: xs, it, hy, hx => by
+    simp only [Yields] at hy
+    obtain ⟨⟨o, it'⟩, hnext, hpost⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at hpost
+    obtain ⟨rfl, hy'⟩ := hpost
+    obtain ⟨u, ii, ys, hc, hii, hys, hQ⟩ := hx x (by simp)
+    obtain ⟨yss, hl, hQs, hY⟩ := core.iter.adapters.flatten.FlatMap.yields f Q xs it' hy'
+      fun x' hx' => hx x' (by simp [hx'])
+    refine ⟨ys :: yss, by simp [hl], fun i hi hi' => ?_, ?_⟩
+    · cases i with
+      | zero => simpa using hQ
+      | succ i => simpa using hQs i (by simpa using hi) (by simpa using hi')
+    · rw [List.flatten_cons]
+      refine (Yields_congr _ ?_ _).2
+        (core.iter.adapters.flatten.FlatMap.yields_front IA II FI (some it') f _ hY ys ii hys)
+      simp only [core.iter.adapters.flatten.FlatMap.Insts.CoreIterTraitsIteratorIterator,
+        core.iter.adapters.flatten.FlatMap.Insts.CoreIterTraitsIteratorIterator.next]
+      conv => lhs; rw [loop]
+      simp [hnext, hc, hii]
+
+end FlatMap
 
 /-! ## `List.overwrite` -/
 

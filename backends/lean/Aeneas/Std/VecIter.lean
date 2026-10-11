@@ -59,7 +59,7 @@ def core.iter.traits.collect.IntoIteratorVec (T : Type) :
 }
 
 /-- Iterate and collect elements into a list -/
-def alloc.vec.FromIteratorVec.iterToList
+@[expose] def alloc.vec.FromIteratorVec.iterToList
     {T : Type} {IntoIter : Type}
     (iterInst : core.iter.traits.iterator.Iterator IntoIter T)
     (iter : IntoIter) (acc : List T) : Result (List T) := do
@@ -82,7 +82,7 @@ def alloc.vec.FromIteratorVec.from_iter
     else .fail .panic
 
 /-- `iterToList`, also giving back the exhausted iterator -/
-def alloc.vec.FromIteratorVec.iterToListBack
+@[expose] def alloc.vec.FromIteratorVec.iterToListBack
     {T : Type} {I : Type}
     (iterInst : core.iter.traits.iterator.Iterator I T)
     (iter : I) (acc : List T) : Result (List T × I) := do

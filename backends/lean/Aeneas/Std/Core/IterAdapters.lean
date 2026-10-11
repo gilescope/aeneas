@@ -49,7 +49,7 @@ def core.iter.traits.iterator.Iterator.count.default
     | some _ => ok (.cont (it, ← n + 1#usize))) (self, 0#usize)
 
 /-- `any`: whether some item satisfies `f`, stopping at the first; takes `&mut self` -/
-@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::any"]
+@[expose, trait_default, rust_fun "core::iter::traits::iterator::Iterator::any"]
 def core.iter.traits.iterator.Iterator.any.default
   {Self F Item : Type}
   (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
@@ -138,7 +138,7 @@ def core.cmp.impls.OrdUsize.cmp.Insts.CoreOpsFunctionFnMut.call_mut
 /-! ## `Map` -/
 
 /-- `f` of the inner item -/
-@[rust_fun
+@[expose, rust_fun
   "core::iter::adapters::map::{core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>}::next"]
 def core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next
   {B I F Item : Type}
@@ -163,7 +163,7 @@ def core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.size_hint
   (self : core.iter.adapters.map.Map I F) : Result (Usize × Option Usize) :=
   IteratorInst.size_hint self.iter
 
-@[reducible, rust_trait_impl
+@[expose, reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<core::iter::adapters::map::Map<@I, @F>, @B>"]
 def core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
   {B I F Item : Type}
@@ -187,7 +187,7 @@ def core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.fold
     (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator IteratorInst FnMutInst)
     GInst self init g
 
-@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::map"]
+@[expose, trait_default, rust_fun "core::iter::traits::iterator::Iterator::map"]
 def core.iter.traits.iterator.Iterator.map.default
   {Self B F Item : Type} [S : MapShape Self F]
   (_IteratorInst : core.iter.traits.iterator.Iterator Self Item)
@@ -351,7 +351,7 @@ structure core.iter.adapters.chain.Chain (A : Type u) (B : Type v) where
   b : Option B
 
 /-- `a`'s next item, then (once `a` is exhausted and dropped) `b`'s -/
-@[rust_fun
+@[expose, rust_fun
   "core::iter::adapters::chain::{core::iter::traits::iterator::Iterator<core::iter::adapters::chain::Chain<@A, @B>, @Clause0_Item>}::next"]
 def core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next
   {A B Item : Type}
@@ -395,7 +395,7 @@ def core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.size_hin
   | none, some b => IB.size_hint b
   | none, none => ok (0#usize, some 0#usize)
 
-@[reducible, rust_trait_impl
+@[expose, reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<core::iter::adapters::chain::Chain<@A, @B>, @Clause0_Item>"]
 def core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator
   {A B Item : Type}
@@ -449,7 +449,7 @@ structure core.iter.adapters.flatten.FlatMap (I : Type u) (U : Type v) (F : Type
 
 /-- `FlattenCompat::next`: drain `frontiter`; when it ends, refill it from the inner iterator
 (fused: `iter` is dropped once exhausted), finally drain `backiter` -/
-@[rust_fun
+@[expose, rust_fun
   "core::iter::adapters::flatten::{core::iter::traits::iterator::Iterator<core::iter::adapters::flatten::FlatMap<@I, @U, @F, @Clause1_Item, @Clause1_IntoIter>, @Clause1_Item>}::next"]
 def core.iter.adapters.flatten.FlatMap.Insts.CoreIterTraitsIteratorIterator.next
   {I U F Item0 Item IntoIter : Type}
@@ -512,7 +512,7 @@ def core.iter.adapters.flatten.FlatMap.Insts.CoreIterTraitsIteratorIterator.size
     else ok (lo, none)
   | _, _, _ => ok (lo, none)
 
-@[reducible, rust_trait_impl
+@[expose, reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<core::iter::adapters::flatten::FlatMap<@I, @U, @F, @Clause1_Item, @Clause1_IntoIter>, @Clause1_Item>"]
 def core.iter.adapters.flatten.FlatMap.Insts.CoreIterTraitsIteratorIterator
   {I U F Item0 Item IntoIter : Type}
@@ -540,7 +540,7 @@ def core.iter.adapters.flatten.FlatMap.Insts.CoreIterTraitsIteratorIterator.fold
       IteratorInst IntoIteratorInst FnMutInst)
     FoldInst self init fold
 
-@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::flat_map"]
+@[expose, trait_default, rust_fun "core::iter::traits::iterator::Iterator::flat_map"]
 def core.iter.traits.iterator.Iterator.flat_map.default
   {Self U F Item0 Item IntoIter : Type}
   (_IteratorInst : core.iter.traits.iterator.Iterator Self Item0)

@@ -29,3 +29,4 @@ public import Aeneas.Std.VecIter
 public import Aeneas.Data.Tuples
 public import Aeneas.Std.RangeIter
 public import Aeneas.Std.IterSpecs
+public import Aeneas.Std.CollectionsSpecs

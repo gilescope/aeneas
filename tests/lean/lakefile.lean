@@ -38,6 +38,7 @@ package «tests» {}
 @[default_target] lean_lib ClosureOutputBorrows
 @[default_target] lean_lib Closures
 @[default_target] lean_lib CollectionsExtra
+@[default_target] lean_lib CollectionsSpecs
 @[default_target] lean_lib Constants
 @[default_target] lean_lib ConstantsLean
 @[default_target] lean_lib ConstShadow
@@ -159,6 +160,7 @@ package «tests» {}
 @[default_target] lean_lib StepOverflowing
 @[default_target] lean_lib StringChars
 @[default_target] lean_lib StringOps
+@[default_target] lean_lib StrLiteralAxioms
 @[default_target] lean_lib StrUnicode
 @[default_target] lean_lib SwitchTest
 @[default_target] lean_lib TargetFeatures

@@ -28,7 +28,7 @@ def alloc.alloc.Global.Insts.CoreAllocAllocatorClone : core.alloc.AllocatorClone
 structure core.borrow.Borrow (Self : Type) (Borrowed : Type) where
   borrow : Self → Result Borrowed
 
-@[reducible, rust_trait_impl "core::borrow::Borrow<@T, @T>"]
+@[expose, reducible, rust_trait_impl "core::borrow::Borrow<@T, @T>"]
 def core.borrow.Borrow.Blanket (T : Type) : core.borrow.Borrow T T where
   borrow := core.borrow.Borrow.Blanket.borrow
 
@@ -54,13 +54,32 @@ def alloc.collections.btree.map.BTreeMap.lookup {K V Q : Type}
     | .eq => ok (some v)
     | _ => alloc.collections.btree.map.BTreeMap.lookup BorrowInst OrdQInst es q
 
-@[rust_fun
+@[expose, rust_fun
   "alloc::collections::btree::map::{alloc::collections::btree::map::BTreeMap<@K, @V, @A>}::get"]
 def alloc.collections.btree.map.BTreeMap.get {K V A Q : Type}
   (_AllocInst : core.alloc.AllocatorClone A) (BorrowInst : core.borrow.Borrow K Q)
   (_OrdInst : core.cmp.Ord K) (OrdQInst : core.cmp.Ord Q)
   (m : alloc.collections.btree.map.BTreeMap K V A) (q : Q) : Result (Option V) :=
   alloc.collections.btree.map.BTreeMap.lookup BorrowInst OrdQInst m.entries q
+
+open Classical in
+/-- With keys borrowed as themselves, `lookup` finds the first entry whose key `cmp`s equal to
+`q`; `hcmp` asks that be exactly the key `q` (true of a lawful derived `Ord`). -/
+theorem alloc.collections.btree.map.BTreeMap.lookup_eq {K V : Type} (OrdInst : core.cmp.Ord K)
+    (q : K) (hcmp : ∀ k, ∃ o, OrdInst.cmp q k = ok o ∧ (o = .eq ↔ k = q)) :
+    ∀ es : List (K × V), alloc.collections.btree.map.BTreeMap.lookup
+      (core.borrow.Borrow.Blanket K) OrdInst es q = ok ((es.find? fun e => decide (e.1 = q)).map (·.2))
+  | [] => rfl
+  | (k, v) :: es => by
+    obtain ⟨o, ho, hiff⟩ := hcmp k
+    simp only [alloc.collections.btree.map.BTreeMap.lookup, core.borrow.Borrow.Blanket,
+      core.borrow.Borrow.Blanket.borrow, bind_tc_ok, ho]
+    by_cases hk : k = q
+    · have : o = .eq := hiff.mpr hk
+      subst this; simp [hk]
+    · have : o ≠ .eq := fun h => hk (hiff.mp h)
+      rw [alloc.collections.btree.map.BTreeMap.lookup_eq OrdInst q hcmp es]
+      cases o <;> simp_all
 
 /-- `map[&q]`: panics if absent -/
 @[rust_fun
@@ -75,6 +94,7 @@ def alloc.collections.btree.map.BTreeMap.Insts.CoreOpsIndexIndexShared0QV.index 
 
 /-- Insert in order; an equal key keeps its old key and gets the new value, and the old value
 is returned (`BTreeMap::insert`) -/
+@[expose]
 def alloc.collections.btree.map.BTreeMap.insertList {K V : Type} (OrdInst : core.cmp.Ord K) :
   List (K × V) → K → V → Result ((Option V) × List (K × V))
   | [], k, v => ok (none, [(k, v)])
@@ -86,7 +106,7 @@ def alloc.collections.btree.map.BTreeMap.insertList {K V : Type} (OrdInst : core
       let (old, es) ← alloc.collections.btree.map.BTreeMap.insertList OrdInst es k v
       ok (old, (k', v') :: es)
 
-@[rust_fun
+@[expose, rust_fun
   "alloc::collections::btree::map::{alloc::collections::btree::map::BTreeMap<@K, @V, @A>}::insert"]
 def alloc.collections.btree.map.BTreeMap.insert {K V A : Type}
   (_AllocInst : core.alloc.AllocatorClone A) (OrdInst : core.cmp.Ord K)
@@ -113,7 +133,7 @@ structure alloc.collections.btree.map.entry.VacantEntry (K : Type u) (V : Type v
   entry : alloc.collections.btree.map.entry.Entry K V A
 
 /-- The entry, and giving it back gives back the map -/
-@[rust_fun
+@[expose, rust_fun
   "alloc::collections::btree::map::{alloc::collections::btree::map::BTreeMap<@K, @V, @A>}::entry"]
 def alloc.collections.btree.map.BTreeMap.entry {K V A : Type}
   (_AllocInst : core.alloc.AllocatorClone A) (_OrdInst : core.cmp.Ord K)
@@ -123,6 +143,7 @@ def alloc.collections.btree.map.BTreeMap.entry {K V A : Type}
   ok ({ map := m, key }, fun e => e.map)
 
 /-- The position and value of the first entry whose key equals `k` -/
+@[expose]
 def alloc.collections.btree.map.BTreeMap.position {K V : Type} (OrdInst : core.cmp.Ord K) :
   List (K × V) → K → Result (Option (Nat × V))
   | [], _ => ok none
@@ -135,6 +156,7 @@ def alloc.collections.btree.map.BTreeMap.position {K V : Type} (OrdInst : core.c
       | none => ok none
 
 /-- The entries with the value at position `i` replaced -/
+@[expose]
 def alloc.collections.btree.map.BTreeMap.setVal {K V : Type} : List (K × V) → Nat → V → List (K × V)
   | [], _, _ => []
   | (k, _) :: es, 0, v => (k, v) :: es
@@ -142,7 +164,7 @@ def alloc.collections.btree.map.BTreeMap.setVal {K V : Type} : List (K × V) →
 
 /-- The value at the key, inserting `default` if absent; writing through the returned `&mut V`
 replaces that entry's value -/
-@[rust_fun
+@[expose, rust_fun
   "alloc::collections::btree::map::entry::{alloc::collections::btree::map::entry::Entry<'a, @K, @V, @A>}::or_insert"]
 def alloc.collections.btree.map.entry.Entry.or_insert {K V A : Type}
   (OrdInst : core.cmp.Ord K) (_AllocInst : core.alloc.AllocatorClone A)

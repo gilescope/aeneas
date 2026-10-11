@@ -23,6 +23,7 @@ structure std.collections.hash.map.HashMap (K : Type u) (V : Type v) (S : Type w
   entries : List (K × V)
 
 /-- The value of the entry whose key, borrowed as `Q`, equals `q` -/
+@[expose]
 def std.collections.hash.map.HashMap.lookup {K V Q : Type}
   (BorrowInst : core.borrow.Borrow K Q) (EqQInst : core.cmp.Eq Q) :
   List (K × V) → Q → Result (Option V)
@@ -45,6 +46,7 @@ def std.collections.hash.map.HashMap.Insts.CoreOpsIndexIndexShared0QV.index
 
 /-- Insert: an equal key keeps its place (and its old key, as std does) and gets the new value;
 a new key goes last -/
+@[expose]
 def std.collections.hash.map.HashMap.insertList {K V : Type} (EqInst : core.cmp.Eq K) :
   List (K × V) → K → V → Result (List (K × V))
   | [], k, v => ok [(k, v)]
