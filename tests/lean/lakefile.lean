@@ -101,6 +101,7 @@ package «tests» {}
 @[default_target] lean_lib IteratorsScalar
 @[default_target] lean_lib IterExtra
 @[default_target] lean_lib IterRevDefault
+@[default_target] lean_lib IterSpecs
 @[default_target] lean_lib IterStdOverrides
 @[default_target] lean_lib JoinDuplicate
 @[default_target] lean_lib Joins

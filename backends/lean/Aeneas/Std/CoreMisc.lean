@@ -92,6 +92,30 @@ def core.num.I32.abs (x : I32) : Result I32 := IScalar.tryMk .I32 x.val.natAbs
 @[expose, rust_fun "core::num::{i64}::unsigned_abs"]
 def core.num.I64.unsigned_abs (x : I64) : Result U64 := UScalar.tryMk .U64 x.val.natAbs
 
+theorem UScalar.tryMk_spec (ty : UScalarTy) (x : ℕ) (h : x ≤ UScalar.max ty) :
+    UScalar.tryMk ty x ⦃ y => y.val = x ⦄ := by
+  have hb : UScalar.check_bounds ty x := by
+    rw [UScalar.max_def] at h
+    have : 0 < 2 ^ ty.numBits := by positivity
+    simp only [UScalar.check_bounds, decide_eq_true_eq]; omega
+  simp [UScalar.tryMk, UScalar.tryMkOpt, hb, Result.ofOption]
+
+theorem IScalar.tryMk_spec (ty : IScalarTy) (x : ℤ) (h : IScalar.min ty ≤ x ∧ x ≤ IScalar.max ty) :
+    IScalar.tryMk ty x ⦃ y => y.val = x ⦄ := by
+  have hb : IScalar.check_bounds ty x := by
+    rw [IScalar.min_def, IScalar.max_def] at h
+    simp only [IScalar.check_bounds, decide_eq_true_eq]; omega
+  simp [IScalar.tryMk, IScalar.tryMkOpt, hb, Result.ofOption]
+
+/-- `i32::abs` overflows only on `i32::MIN`. -/
+@[step] theorem core.num.I32.abs_spec (x : I32) (h : I32.min < x.val) :
+    core.num.I32.abs x ⦃ y => y.val = x.val.natAbs ⦄ :=
+  IScalar.tryMk_spec _ _ (by scalar_tac)
+
+@[step] theorem core.num.I64.unsigned_abs_spec (x : I64) :
+    core.num.I64.unsigned_abs x ⦃ y => y.val = x.val.natAbs ⦄ :=
+  UScalar.tryMk_spec _ _ (by scalar_tac)
+
 /-- The smallest power of two `≥ x` (so `1` for `0`) -/
 @[expose, rust_fun "core::num::{usize}::next_power_of_two"]
 def core.num.Usize.next_power_of_two (x : Usize) : Result Usize :=
