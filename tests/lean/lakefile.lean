@@ -40,6 +40,7 @@ package «tests» {}
 @[default_target] lean_lib Constants
 @[default_target] lean_lib ConstantsLean
 @[default_target] lean_lib ConstShadow
+@[default_target] lean_lib CtorClosureAdapter
 @[default_target] lean_lib CtorClosures
 @[default_target] lean_lib Curve25519
 @[default_target] lean_lib Default
@@ -47,6 +48,7 @@ package «tests» {}
 @[default_target] lean_lib Demo
 @[default_target] lean_lib Deref
 @[default_target] lean_lib Derive
+@[default_target] lean_lib DeriveDebugRecursive
 @[default_target] lean_lib Differential
 @[default_target] lean_lib Discriminant
 @[default_target] lean_lib Drop
@@ -54,7 +56,9 @@ package «tests» {}
 @[default_target] lean_lib DuplicateParentClauseNames
 @[default_target] lean_lib Dyn
 @[default_target] lean_lib DynamicSize
+@[default_target] lean_lib EnumCyclicTraitParam
 @[default_target] lean_lib ExcludedTraitMethod
+@[default_target] lean_lib FnItemHigherRanked
 @[default_target] lean_lib FromTo
 @[default_target] lean_lib GenericIterZip
 @[default_target] lean_lib GenericUnitOutput
@@ -94,6 +98,7 @@ package «tests» {}
 @[default_target] lean_lib Iterators
 @[default_target] lean_lib IteratorsArray
 @[default_target] lean_lib IteratorsScalar
+@[default_target] lean_lib IterExtra
 @[default_target] lean_lib IterRevDefault
 @[default_target] lean_lib IterStdOverrides
 @[default_target] lean_lib JoinDuplicate
@@ -101,6 +106,7 @@ package «tests» {}
 @[default_target] lean_lib LeanKeywords
 @[default_target] lean_lib LeanKeywordsClash
 @[default_target] lean_lib ListBorrows
+@[default_target] lean_lib LoopAfterMapFnItem
 @[default_target] lean_lib LoopGenericIntoIter
 @[default_target] lean_lib LoopIterMutNestedIndex
 @[default_target] lean_lib LoopPushSharedRefsFromMap
@@ -115,7 +121,9 @@ package «tests» {}
 @[default_target] lean_lib LoopsNestedRec
 @[default_target] lean_lib LoopsRec
 @[default_target] lean_lib LoopsSequences
+@[default_target] lean_lib MapFnItemMax
 @[default_target] lean_lib MiniTree
+@[default_target] lean_lib MiscExtra
 @[default_target] lean_lib MultiTarget
 @[default_target] lean_lib MutBorrowInSharedBorrow
 @[default_target] lean_lib Names
@@ -149,10 +157,12 @@ package «tests» {}
 @[default_target] lean_lib StepOverflowing
 @[default_target] lean_lib StringChars
 @[default_target] lean_lib StringOps
+@[default_target] lean_lib StrUnicode
 @[default_target] lean_lib SwitchTest
 @[default_target] lean_lib TargetFeatures
 @[default_target] lean_lib Traits
 @[default_target] lean_lib Tutorial
 @[default_target] lean_lib Vec
+@[default_target] lean_lib VecExtra
 @[default_target] lean_lib VecIter
 @[default_target] lean_lib ZipIterMut
