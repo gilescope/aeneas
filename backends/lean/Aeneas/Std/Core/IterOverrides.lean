@@ -144,7 +144,7 @@ def core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.size_hin
     | none, none => none
   ok (min alo blo, hi)
 
-@[reducible, rust_trait_impl
+@[expose, reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<core::iter::adapters::zip::Zip<@A, @B>, (@Clause0_Item, @Clause1_Item)>"]
 def core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair
   {A B ItemA ItemB : Type}
@@ -254,13 +254,13 @@ structure core.slice.iter.Chunks (T : Type) where
   chunk_size : Usize
 
 /-- Panics on `0` -/
-@[rust_fun "core::slice::{[@T]}::chunks"]
+@[expose, rust_fun "core::slice::{[@T]}::chunks"]
 def core.slice.Slice.chunks {T : Type} (s : Slice T) (chunk_size : Usize) :
   Result (core.slice.iter.Chunks T) :=
   if chunk_size.val = 0 then fail .panic else ok { v := s, chunk_size }
 
 /-- The next `chunk_size` items, or fewer at the end -/
-@[rust_fun
+@[expose, rust_fun
   "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Chunks<'a, @T>, &'a [@T]>}::next"]
 def core.slice.iter.Chunks.Insts.CoreIterTraitsIteratorIteratorSharedASlice.next {T : Type}
   (it : core.slice.iter.Chunks T) : Result ((Option (Slice T)) × (core.slice.iter.Chunks T)) :=
@@ -279,7 +279,7 @@ def core.slice.iter.Chunks.Insts.CoreIterTraitsIteratorIteratorSharedASlice.size
   let n ← UScalar.tryMk .Usize ((it.v.val.length + it.chunk_size.val - 1) / it.chunk_size.val)
   ok (n, some n)
 
-@[reducible, rust_trait_impl
+@[expose, reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<core::slice::iter::Chunks<'a, @T>, &'a [@T]>"]
 def core.slice.iter.Chunks.Insts.CoreIterTraitsIteratorIteratorSharedASlice (T : Type) :
   core.iter.traits.iterator.Iterator (core.slice.iter.Chunks T) (Slice T) where

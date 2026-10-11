@@ -28,7 +28,7 @@ def core.iter.traits.iterator.Iterator.cloned.default {Self T Item : Type}
   ok ⟨self⟩
 
 /-- The inner iterator's next item, cloned -/
-@[rust_fun
+@[expose, rust_fun
   "core::iter::adapters::cloned::{core::iter::traits::iterator::Iterator<core::iter::adapters::cloned::Cloned<@I>, @T>}::next"]
 def core.iter.adapters.cloned.Cloned.Insts.CoreIterTraitsIteratorIterator.next {I T : Type}
     (IteratorInst : core.iter.traits.iterator.Iterator I T) (CloneInst : core.clone.Clone T)
@@ -46,7 +46,7 @@ def core.iter.adapters.cloned.Cloned.Insts.CoreIterTraitsIteratorIterator.size_h
     (self : core.iter.adapters.cloned.Cloned I) : Result (Usize × Option Usize) :=
   IteratorInst.size_hint self.it
 
-@[reducible, rust_trait_impl
+@[expose, reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<core::iter::adapters::cloned::Cloned<@I>, @T>"]
 def core.iter.adapters.cloned.Cloned.Insts.CoreIterTraitsIteratorIterator {I T : Type}
     (IteratorInst : core.iter.traits.iterator.Iterator I T) (CloneInst : core.clone.Clone T) :

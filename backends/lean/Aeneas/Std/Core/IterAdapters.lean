@@ -607,7 +607,7 @@ def core.iter.sources.empty.Empty.Insts.CoreIterTraitsIteratorIterator (T : Type
 
 /-- `position`: the index of the first item the predicate accepts (the count overflowing
 fails, as with `#[rustc_inherit_overflow_checks]`) -/
-@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::position"]
+@[expose, trait_default, rust_fun "core::iter::traits::iterator::Iterator::position"]
 def core.iter.traits.iterator.Iterator.position.default
   {Self P Item : Type}
   (IteratorInst : core.iter.traits.iterator.Iterator Self Item)

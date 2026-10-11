@@ -55,7 +55,8 @@ def std.collections.hash.map.HashMap.insertList {K V : Type} (EqInst : core.cmp.
     else ok ((k', v') :: (← std.collections.hash.map.HashMap.insertList EqInst es k v))
 
 /-- Each pair inserted in turn, so the last value of a key wins -/
-@[rust_fun
+@[expose,
+  rust_fun
   "std::collections::hash::map::{core::iter::traits::collect::FromIterator<std::collections::hash::map::HashMap<@K, @V, @S, alloc::alloc::Global>, (@K, @V)>}::from_iter"]
 def std.collections.hash.map.HashMapKVSGlobal.Insts.CoreIterTraitsCollectFromIteratorPair.from_iter
   {K V S I Hasher IntoIter : Type} (EqInst : core.cmp.Eq K) (_HashInst : core.hash.Hash K)

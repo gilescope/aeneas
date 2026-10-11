@@ -38,7 +38,7 @@ def core.borrow.Borrow.Blanket (T : Type) : core.borrow.Borrow T T where
 structure alloc.collections.btree.map.BTreeMap (K : Type u) (V : Type v) (A : Type w) where
   entries : List (K × V)
 
-@[rust_fun
+@[expose, rust_fun
   "alloc::collections::btree::map::{alloc::collections::btree::map::BTreeMap<@K, @V, alloc::alloc::Global>}::new"]
 def alloc.collections.btree.map.BTreeMapKVGlobal.new (K : Type) (V : Type) :
   Result (alloc.collections.btree.map.BTreeMap K V Global) :=
@@ -186,14 +186,14 @@ def alloc.collections.btree.map.entry.Entry.or_insert {K V A : Type}
 structure alloc.collections.btree.map.Iter (K : Type u) (V : Type v) where
   items : List (K × V)
 
-@[rust_fun
+@[expose, rust_fun
   "alloc::collections::btree::map::{alloc::collections::btree::map::BTreeMap<@K, @V, @A>}::iter"]
 def alloc.collections.btree.map.BTreeMap.iter {K V A : Type}
   (_AllocInst : core.alloc.AllocatorClone A) (m : alloc.collections.btree.map.BTreeMap K V A) :
   Result (alloc.collections.btree.map.Iter K V) :=
   ok { items := m.entries }
 
-@[rust_fun
+@[expose, rust_fun
   "alloc::collections::btree::map::{core::iter::traits::iterator::Iterator<alloc::collections::btree::map::Iter<'a, @K, @V>, (&'a @K, &'a @V)>}::next"]
 def alloc.collections.btree.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV.next
   {K V : Type} (it : alloc.collections.btree.map.Iter K V) :
@@ -218,7 +218,7 @@ def alloc.collections.btree.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSha
   Result (Option (K × V)) :=
   ok it.items.getLast?
 
-@[reducible, rust_trait_impl
+@[expose, reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<alloc::collections::btree::map::Iter<'a, @K, @V>, (&'a @K, &'a @V)>"]
 def alloc.collections.btree.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV
   (K : Type) (V : Type) :
@@ -279,22 +279,33 @@ def alloc.collections.btree.map.BTreeMap.Insts.CoreIterTraitsCollectIntoIterator
 
 /-! ### `collect` -/
 
+/-- Insert `x` into a sorted list `sorted`, keeping the sort order.  `x` goes
+    before every element that compares `≥ x` (so equal elements from earlier
+    inputs stay in front: stable sort).  Extracted from `sortBy`'s inner `ins`
+    so that proofs in `SetSpecs.lean` can unfold it. -/
+@[expose]
+def alloc.collections.btree.sortBy_ins {T K : Type} (OrdInst : core.cmp.Ord K) (key : T → K)
+    (x : T) : List T → Result (List T)
+  | [] => ok [x]
+  | y :: ys => do
+    let o ← OrdInst.cmp (key x) (key y)
+    match o with
+    | .gt => do
+      let ys' ← alloc.collections.btree.sortBy_ins OrdInst key x ys
+      ok (y :: ys')
+    | _ => ok (x :: y :: ys)
+
 /-- A stable insertion sort by `cmp` on `key` (core sorts the input with a stable sort) -/
+@[expose]
 def alloc.collections.btree.sortBy {T K : Type} (OrdInst : core.cmp.Ord K) (key : T → K) :
   List T → Result (List T)
   | [] => ok []
   | x :: xs => do
     let sorted ← alloc.collections.btree.sortBy OrdInst key xs
-    -- `x` came first, so it goes before every equal element
-    let rec ins : List T → Result (List T)
-      | [] => ok [x]
-      | y :: ys => do
-        match ← OrdInst.cmp (key x) (key y) with
-        | .gt => ok (y :: (← ins ys))
-        | _ => ok (x :: y :: ys)
-    ins sorted
+    alloc.collections.btree.sortBy_ins OrdInst key x sorted
 
 /-- Of each run of equal keys, the last (core's `DedupSortedIter`) -/
+@[expose]
 def alloc.collections.btree.dedupLast {T K : Type} (OrdInst : core.cmp.Ord K) (key : T → K) :
   List T → Result (List T)
   | [] => ok []
@@ -305,6 +316,7 @@ def alloc.collections.btree.dedupLast {T K : Type} (OrdInst : core.cmp.Ord K) (k
     | _ => ok (x :: (← alloc.collections.btree.dedupLast OrdInst key (y :: ys)))
 
 /-- Every item, in order -/
+@[expose]
 def alloc.collections.btree.toList {I T : Type}
   (IteratorInst : core.iter.traits.iterator.Iterator I T) (it : I) : Result (List T) := do
   let rev ← loop (fun ((it, acc) : I × List T) => do
@@ -346,7 +358,7 @@ structure alloc.collections.btree.set.IntoIter (T : Type u) (A : Type v) where
   items : List T
 
 /-- Sort stably, then keep the last of equal items -/
-@[rust_fun
+@[expose, rust_fun
   "alloc::collections::btree::set::{core::iter::traits::collect::FromIterator<alloc::collections::btree::set::BTreeSet<@T, alloc::alloc::Global>, @T>}::from_iter"]
 def alloc.collections.btree.set.BTreeSetTGlobal.Insts.CoreIterTraitsCollectFromIterator.from_iter
   {T I IntoIter : Type} (OrdInst : core.cmp.Ord T)

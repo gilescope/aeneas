@@ -204,7 +204,7 @@ def SharedArray.Insts.CoreIterTraitsCollectIntoIteratorSharedIter
 
 /-- Model for `IntoIterator::into_iter` for `&[T]`.
 Mirrors Rust: `(&[T]).into_iter()` returns an `Iter<T>` starting at index 0. -/
-@[rust_fun
+@[expose, rust_fun
   "core::slice::iter::{core::iter::traits::collect::IntoIterator<&'a [@T], &'a @T, core::slice::iter::Iter<'a, @T>>}::into_iter"]
 def SharedSlice.Insts.CoreIterTraitsCollectIntoIteratorSharedIter.into_iter
     {T : Type} (s : Slice T) : Result (core.slice.iter.Iter T) :=

@@ -20,13 +20,13 @@ visited once, but no particular order. -/
 opaque std.collections.hash.hashOrder {α : Type} : (l : List α) → {l' : List α // l'.Perm l} :=
   fun l => ⟨l, List.Perm.refl l⟩
 
-@[rust_fun
+@[expose, rust_fun
   "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, std::hash::random::RandomState, alloc::alloc::Global>}::new"]
 def std.collections.hash.map.HashMapKVRandomStateGlobal.new (K V : Type) :
     Result (std.collections.hash.map.HashMap K V std.hash.random.RandomState Global) :=
   ok { entries := [] }
 
-@[rust_fun
+@[expose, rust_fun
   "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::len"]
 def std.collections.hash.map.HashMap.len {K V S A : Type}
     (m : std.collections.hash.map.HashMap K V S A) : Result Usize :=
@@ -45,13 +45,13 @@ def std.collections.hash.map.HashMap.get {K V S A Q Hasher : Type}
 structure std.collections.hash.map.Iter (K V : Type) where
   items : List (K × V)
 
-@[rust_fun
+@[expose, rust_fun
   "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::iter"]
 def std.collections.hash.map.HashMap.iter {K V S A : Type}
     (m : std.collections.hash.map.HashMap K V S A) : Result (std.collections.hash.map.Iter K V) :=
   ok { items := (std.collections.hash.hashOrder m.entries).val }
 
-@[rust_fun
+@[expose, rust_fun
   "std::collections::hash::map::{core::iter::traits::iterator::Iterator<std::collections::hash::map::Iter<'a, @K, @V>, (&'a @K, &'a @V)>}::next"]
 def std.collections.hash.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV.next
     {K V : Type} (it : std.collections.hash.map.Iter K V) :
@@ -68,7 +68,7 @@ def std.collections.hash.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairShared
   let n ← UScalar.tryMk .Usize it.items.length
   ok (n, some n)
 
-@[reducible, rust_trait_impl
+@[expose, reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<std::collections::hash::map::Iter<'a, @K, @V>, (&'a @K, &'a @V)>"]
 def std.collections.hash.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV
     (K V : Type) :
@@ -175,7 +175,7 @@ def std.collections.hash.set.HashSet.insert {T S A Hasher : Type} (EqInst : core
 
 /-! ## `BTreeMap` -/
 
-@[rust_fun
+@[expose, rust_fun
   "alloc::collections::btree::map::{alloc::collections::btree::map::BTreeMap<@K, @V, @A>}::len"]
 def alloc.collections.btree.map.BTreeMap.len {K V A : Type}
     (_AllocInst : core.alloc.AllocatorClone A) (m : alloc.collections.btree.map.BTreeMap K V A) :
@@ -191,7 +191,7 @@ def alloc.collections.btree.set.BTreeSet.is_empty {T A : Type}
     Result Bool :=
   ok s.items.isEmpty
 
-@[rust_fun
+@[expose, rust_fun
   "alloc::collections::btree::set::{core::clone::Clone<alloc::collections::btree::set::BTreeSet<@T, @A>>}::clone"]
 def alloc.collections.btree.set.BTreeSet.Insts.CoreCloneClone.clone {T A : Type}
     (CloneInst : core.clone.Clone T) (_AllocInst : core.alloc.AllocatorClone A)
@@ -228,7 +228,7 @@ def alloc.collections.btree.set.BTreeSet.Insts.CoreCmpPartialOrdBTreeSet.partial
     (s t : alloc.collections.btree.set.BTreeSet T A) : Result (Option Ordering) :=
   List.lexPartialCmpM PartialOrdInst.partial_cmp s.items t.items
 
-@[rust_fun
+@[expose, rust_fun
   "alloc::collections::btree::set::{core::cmp::Ord<alloc::collections::btree::set::BTreeSet<@T, @A>>}::cmp"]
 def alloc.collections.btree.set.BTreeSet.Insts.CoreCmpOrd.cmp {T A : Type}
     (OrdInst : core.cmp.Ord T) (_AllocInst : core.alloc.AllocatorClone A)
@@ -240,7 +240,7 @@ def alloc.collections.btree.set.BTreeSet.Insts.CoreCmpOrd.cmp {T A : Type}
 structure alloc.collections.btree.set.Iter (T : Type) where
   items : List T
 
-@[rust_fun
+@[expose, rust_fun
   "alloc::collections::btree::set::{alloc::collections::btree::set::BTreeSet<@T, @A>}::iter"]
 def alloc.collections.btree.set.BTreeSet.iter {T A : Type}
     (_AllocInst : core.alloc.AllocatorClone A) (s : alloc.collections.btree.set.BTreeSet T A) :
@@ -254,7 +254,7 @@ def SharedABTreeSet.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_ite
     Result (alloc.collections.btree.set.Iter T) :=
   ok { items := s.items }
 
-@[rust_fun
+@[expose, rust_fun
   "alloc::collections::btree::set::{core::iter::traits::iterator::Iterator<alloc::collections::btree::set::Iter<'a, @T>, &'a @T>}::next"]
 def alloc.collections.btree.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next {T : Type}
     (it : alloc.collections.btree.set.Iter T) :
@@ -278,7 +278,7 @@ def alloc.collections.btree.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedA
     (_OrdInst : core.cmp.Ord T) (it : alloc.collections.btree.set.Iter T) : Result (Option T) :=
   ok it.items.getLast?
 
-@[reducible, rust_trait_impl
+@[expose, reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<alloc::collections::btree::set::Iter<'a, @T>, &'a @T>"]
 def alloc.collections.btree.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT (T : Type) :
     core.iter.traits.iterator.Iterator (alloc.collections.btree.set.Iter T) T where
