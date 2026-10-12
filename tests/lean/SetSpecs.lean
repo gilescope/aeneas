@@ -215,3 +215,29 @@ example (xs : List Usize) (hxs : xs.length ≤ Usize.max) :
 
 -- mapState with unit state is just a map.
 #check @mapState_unit
+
+/-! ## Lifted from the plonk proofs -/
+
+-- `Option<usize>`'s `Ord` (the instance is generated per crate) is `WithBot`'s order: `None` least
+example (O : core.cmp.Ord (Option Usize))
+    (hO : O.cmp = core.option.Option.Insts.CoreCmpOrd.cmp core.cmp.OrdUsize) :
+    OrdLawful (T := WithBot Usize) O :=
+  OrdOption_lawful OrdUsize_lawful O hO
+
+-- summing a key's indicator over distinct-key entries is the lookup
+example : ([(1, 10), (2, 20)].map (fun e : ℕ × ℕ => if e.1 = 2 then e.2 else 0)).sum =
+    (lookupL [(1, 10), (2, 20)] 2).elim 0 id :=
+  sum_ite_key_eq_lookupL id _ (by decide) 2
+
+-- `xs.chunks(2)`
+example : chunksOf 2 [1, 2, 3] = [[1, 2], [3]] := by simp [chunksOf]
+
+example (xs : List ℕ) : (chunksOf 3 xs).length ≤ xs.length := chunksOf_length_le 3 (by decide) xs
+
+example (xs c : List ℕ) (y : ℕ) (hc : c ∈ chunksOf 3 xs) (hy : y ∈ c) : y ∈ xs :=
+  mem_of_mem_chunksOf 3 xs hc hy
+
+-- the `Chunks` iterator's slices are `chunksOf`
+example (xs : List ℕ) (h : xs.length ≤ Usize.max) :
+    (toSliceChunks 3 (by decide) xs h).map (·.val) = chunksOf 3 xs :=
+  toSliceChunks_val 3 _ xs h

@@ -208,6 +208,25 @@ theorem hcmp_of_lawful {T : Type} [Ord T] {OrdInst : core.cmp.Ord T} (h : OrdLaw
 theorem compare_eq_iff {T : Type} [LinearOrder T] {a b : T} :
     compare a b = Ordering.eq ↔ a = b := compare_eq_iff_eq
 
+/-- `Option<T>`'s `Ord` (`None` least) is lawful for `WithBot T` when `T`'s is. The trait instance
+is generated per crate, so it is taken as any `O` whose `cmp` is the model's. -/
+theorem OrdOption_lawful {T : Type} [LinearOrder T] {OrdInst : core.cmp.Ord T}
+    (h : OrdLawful OrdInst) (O : core.cmp.Ord (Option T))
+    (hO : O.cmp = core.option.Option.Insts.CoreCmpOrd.cmp OrdInst) :
+    OrdLawful (T := WithBot T) O := by
+  intro a b
+  rw [hO]
+  cases a <;> cases b <;> simp only [core.option.Option.Insts.CoreCmpOrd.cmp]
+  · exact congrArg ok (compare_eq_iff_eq.mpr rfl).symm
+  · exact congrArg ok (compare_lt_iff_lt.mpr (WithBot.bot_lt_coe _)).symm
+  · exact congrArg ok (compare_gt_iff_gt.mpr (WithBot.bot_lt_coe _)).symm
+  · rename_i x y
+    refine (h x y).trans (congrArg ok ?_)
+    rcases lt_trichotomy x y with hxy | rfl | hxy
+    · rw [compare_lt_iff_lt.mpr hxy, compare_lt_iff_lt.mpr (WithBot.coe_lt_coe.mpr hxy)]
+    · rw [compare_eq_iff_eq.mpr rfl, compare_eq_iff_eq.mpr rfl]
+    · rw [compare_gt_iff_gt.mpr hxy, compare_gt_iff_gt.mpr (WithBot.coe_lt_coe.mpr hxy)]
+
 /-! ## 5. `BTreeSet::from_iter` -/
 
 /-- The loop body used by `alloc.collections.btree.toList`. -/
@@ -771,6 +790,61 @@ decreasing_by
     apply Nat.lt_min.mpr; exact ⟨hpos, hn⟩
   omega
 
+/-- `xs.chunks(n)` as lists: consecutive pieces of `n`, the last possibly shorter (`[]` for
+`n = 0`, where Rust panics). -/
+@[expose] def chunksOf {α : Type} (n : ℕ) (xs : List α) : List (List α) :=
+  if _h : n = 0 ∨ xs = [] then [] else xs.take n :: chunksOf n (xs.drop n)
+termination_by xs.length
+decreasing_by
+  simp only [not_or] at _h
+  have : xs.length ≠ 0 := by simpa using _h.2
+  simp only [List.length_drop]; omega
+
+/-- The slices `Chunks` yields (`toSliceChunks`) hold `chunksOf`. -/
+theorem toSliceChunks_val {T : Type} (n : ℕ) (hn : 0 < n) :
+    ∀ (xs : List T) (hxs : xs.length ≤ Usize.max),
+      (toSliceChunks n hn xs hxs).map (·.val) = chunksOf n xs
+  | [], _ => by simp [toSliceChunks, chunksOf]
+  | x :: xs, hxs => by
+    rw [toSliceChunks, chunksOf]
+    simp only [show (n = 0 ∨ x :: xs = []) = False by simp; omega, _root_.dite_false]
+    simp only [List.map_cons, Slice.from_val]
+    rw [toSliceChunks_val n hn _]
+    have : min (x :: xs).length n = n ∨ (x :: xs).length ≤ n := by omega
+    rcases this with h | h
+    · rw [h]
+    · rw [Nat.min_eq_left h]
+      simp [List.take_of_length_le h, List.drop_of_length_le h]
+termination_by xs => xs.length
+decreasing_by simp only [List.length_drop, List.length_cons]; omega
+
+/-- `xs.chunks(n)` has at most `xs.len()` pieces. -/
+theorem chunksOf_length_le {α : Type} (n : ℕ) (hn : 0 < n) :
+    ∀ xs : List α, (chunksOf n xs).length ≤ xs.length
+  | [] => by simp [chunksOf]
+  | x :: xs => by
+    rw [chunksOf]
+    simp only [show (n = 0 ∨ x :: xs = []) = False by simp; omega, _root_.dite_false,
+      List.length_cons]
+    have := chunksOf_length_le n hn ((x :: xs).drop n)
+    simp only [List.length_drop, List.length_cons] at this ⊢; omega
+termination_by xs => xs.length
+decreasing_by simp only [List.length_drop, List.length_cons]; omega
+
+/-- An item of a piece of `xs.chunks(n)` is an item of `xs`. -/
+theorem mem_of_mem_chunksOf {α : Type} (n : ℕ) :
+    ∀ (xs : List α) {c : List α} {y : α}, c ∈ chunksOf n xs → y ∈ c → y ∈ xs
+  | [], c, y, hc, _ => by simp [chunksOf] at hc
+  | x :: xs, c, y, hc, hy => by
+    rw [chunksOf] at hc
+    split at hc
+    · simp at hc
+    · rcases List.mem_cons.1 hc with rfl | hc'
+      · exact List.mem_of_mem_take hy
+      · exact List.mem_of_mem_drop (mem_of_mem_chunksOf n _ hc' hy)
+termination_by xs => xs.length
+decreasing_by simp only [List.length_drop, List.length_cons]; omega
+
 /-- `Zip` of two iterators yielding `as` and `bs` yields `as.zip bs`.
     When A exhausts first B is *not* advanced (per model `nextPlain`). -/
 theorem core.iter.adapters.zip.Zip.yields {A B ItemA ItemB : Type}
@@ -1098,6 +1172,24 @@ theorem alloc.collections.btree.map.BTreeMap.sorted_keys_nodup {K V : Type} [Lin
     (es.map Prod.fst).Nodup := by
   rw [List.nodup_iff_pairwise_ne, List.pairwise_map]
   exact h.imp fun hab => ne_of_lt hab
+
+/-- Over distinct keys, summing `σ v` for the entries keyed `k` is `σ` of `k`'s lookup (0 if
+absent): a `BTreeMap` accumulator read back by key. -/
+theorem sum_ite_key_eq_lookupL {K V M : Type} [DecidableEq K] [AddCommMonoid M] (σ : V → M) :
+    ∀ (es : List (K × V)), (es.map (·.1)).Nodup → ∀ k,
+    (es.map (fun e => if e.1 = k then σ e.2 else 0)).sum = (lookupL es k).elim 0 σ
+  | [], _, k => by simp [lookupL]
+  | (k', v) :: es, hnd, k => by
+    rw [List.map_cons, List.nodup_cons] at hnd
+    rw [List.map_cons, List.sum_cons, lookupL_cons, sum_ite_key_eq_lookupL σ es hnd.2 k]
+    by_cases h : k' = k
+    · subst h
+      have : lookupL es k' = none := by
+        cases hl : lookupL es k' with
+        | none => rfl
+        | some w => exact absurd (List.mem_map_of_mem (f := (·.1)) (lookupL_mem hl)) hnd.1
+      simp [this]
+    · simp [h]
 
 /-- `setVal` preserves the keys list. -/
 private theorem BTreeMap.setVal_keys_eq {K V : Type} (es : List (K × V)) (i : Nat) (v : V) :

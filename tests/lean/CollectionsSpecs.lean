@@ -36,3 +36,12 @@ example {K V S A Hasher : Type} (EqInst : core.cmp.Eq K)
     (std.collections.hash.map.Entry.or_insert_spec (A := A) ⟨m.entries, k, m.entries.findIdx? fun x => decide (x.1 = k)⟩ rfl d)
   simp only [std.collections.hash.map.HashMap.entry_eq EqInst hEq, Std.bind_ok, h,
     std.collections.hash.map.HashMap.get_eq EqInst hEq, hset, ↓reduceIte, hv]
+
+-- `v.clone()` with an identity element clone returns `v`
+example {T : Type} (c : core.clone.Clone T) (hc : ∀ x, c.clone x = ok x) (v : alloc.vec.Vec T) :
+    alloc.vec.CloneVec.clone c v = ok v :=
+  alloc.vec.CloneVec.clone_eq_of_forall c v (fun x _ => hc x)
+
+-- an element of a `ListN` is smaller than it (nested recursion through `Vec`)
+example (l : Data.ListN.ListN ℕ 2) (x : ℕ) (hx : x ∈ l.toList) : sizeOf x < sizeOf l :=
+  l.sizeOf_lt_of_mem hx

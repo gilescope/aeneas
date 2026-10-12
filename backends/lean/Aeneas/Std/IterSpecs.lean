@@ -21,6 +21,21 @@ theorem spec_eq_ok {α : Type} {m : Result α} {P : α → Prop} (h : m ⦃ x =>
   | vis i k => exact absurd h (by simp)
   | div => exact absurd h (by simp)
 
+/-- A spec's post holds of the value an accepted run returns. -/
+theorem spec_of_eq_ok {α : Type} {m : Result α} {P : α → Prop} {x : α} (hs : m ⦃ v => P v ⦄)
+    (h : m = ok x) : P x := by
+  obtain ⟨v, hv, hp⟩ := spec_eq_ok hs
+  rw [h, Result.ok.injEq] at hv
+  exact hv ▸ hp
+
+/-- An accepted bind ran its first step to a value: `?` succeeded. -/
+theorem bind_eq_ok_inv {α β : Type} {m : Result α} {f : α → Result β} {y : β}
+    (h : Std.bind m f = ok y) : ∃ x, m = ok x ∧ f x = ok y := by
+  cases m using Result.cases with
+  | ret r => exact ⟨r, rfl, by simpa using h⟩
+  | vis i k => simp at h
+  | div => simp at h
+
 /-! ## `foldlM` -/
 
 /-- A fold whose step takes `P i` to `P (i+1)` ends in `P l.length`. -/
@@ -359,6 +374,67 @@ theorem core.iter.traits.iterator.Iterator.fold.default_yields_spec
   change ok acc ⦃ r => σB r = (xs.map σItem).foldl step (σB init) ⦄
   simp [hacc, spec_ok]
 
+/-- `fold.default`'s loop over an iterator yielding `xs`, by an invariant `P done acc g` over the
+prefix `done` of `all` already folded. -/
+private theorem fold_loop_inv
+    {I G B Item : Type}
+    (IA : core.iter.traits.iterator.Iterator I Item)
+    (GI : core.ops.function.FnMut G (B × Item) B)
+    (all : List Item) (P : List Item → B → G → Prop)
+    (hstep : ∀ done x rest acc g, all = done ++ x :: rest → P done acc g →
+      GI.call_mut g (acc, x) ⦃ r g' => P (done ++ [x]) r g' ⦄) :
+    ∀ (xs done : List Item) (it : I) (acc : B) (g : G),
+    all = done ++ xs → Yields IA it xs → P done acc g →
+    loop (fun ((it, acc, g) : I × B × G) => do
+      let (o, it) ← IA.next it
+      match o with
+      | none => ok (.done (acc, g))
+      | some x =>
+        let (acc, g) ← GI.call_mut g (acc, x)
+        ok (.cont (it, acc, g))) (it, acc, g)
+    ⦃ (acc', g') => P all acc' g' ⦄ := by
+  intro xs
+  induction xs with
+  | nil =>
+    intro done it acc g hall hy hP
+    simp only [Yields] at hy
+    obtain ⟨⟨o, it'⟩, hnext, ho⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at ho; subst ho
+    rw [loop]; simp only [hnext, Std.bind_ok]
+    simpa [spec_ok, hall] using hP
+  | cons x xs' ih =>
+    intro done it acc g hall hy hP
+    simp only [Yields] at hy
+    obtain ⟨⟨o, it'⟩, hnext, hpost⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at hpost
+    obtain ⟨rfl, hys'⟩ := hpost
+    obtain ⟨⟨v, g'⟩, hcall, hvg⟩ := spec_eq_ok (hstep done x xs' acc g hall hP)
+    simp only [uncurry'_pair] at hvg
+    rw [loop]
+    apply WP.spec_bind (Pₘ := fun r => r = ControlFlow.cont (it', v, g'))
+    · simp [hnext, hcall, Std.bind_ok, spec_ok]
+    · intro r hr; rw [hr]
+      exact ih (done ++ [x]) it' v g' (by simp [hall]) hys' hvg
+
+/-- `fold(init, f)` with a closure that may change its state, by an invariant `P done acc g` over
+the prefix `done` of `xs` already folded. -/
+theorem core.iter.traits.iterator.Iterator.fold.default_inv_spec
+    {I G B Item Out : Type} [S : FoldShape B G Out]
+    (IA : core.iter.traits.iterator.Iterator I Item)
+    (GI : core.ops.function.FnMut G (B × Item) B)
+    (xs : List Item) (P : List Item → B → G → Prop)
+    (hstep : ∀ done x rest acc g, xs = done ++ x :: rest → P done acc g →
+      GI.call_mut g (acc, x) ⦃ r g' => P (done ++ [x]) r g' ⦄)
+    (it : I) (init : B) (g : G)
+    (hy : Yields IA it xs) (h0 : P [] init g) :
+    core.iter.traits.iterator.Iterator.fold.default (S := S) IA GI it init g
+    ⦃ o => ∃ acc g', P xs acc g' ∧ o = S.ofFold acc g' ⦄ := by
+  simp only [core.iter.traits.iterator.Iterator.fold.default, bind_tc_eq]
+  apply spec_bind (fold_loop_inv IA GI xs P hstep xs [] it init g rfl hy h0)
+  rintro ⟨acc, g'⟩ hP
+  simp only [spec_ok]
+  exact ⟨acc, g', hP, rfl⟩
+
 /-- Threads a state through `g` over `xs`, listing the outputs. -/
 @[expose] def _root_.List.mapState {S A B : Type} (g : S → A → B × S) : S → List A → List B
   | _, [] => []
@@ -392,6 +468,22 @@ theorem core.iter.adapters.map.Map.yields {I F Item B : Type}
     subst ho
     simp only [hc, bind_tc_ok, spec_ok]
     exact ⟨rfl, core.iter.adapters.map.Map.yields IA FI g P hg xs it' (g f x).2 hy' hP'⟩
+
+/-- `map(f)` with a closure that is a pure function `h` and keeps its state yields `xs.map h`. -/
+theorem core.iter.adapters.map.Map.yields_of_pure {I F Item B : Type}
+    (IA : core.iter.traits.iterator.Iterator I Item) (FI : core.ops.function.FnMut F Item B)
+    (f : F) (h : Item → B) (hc : ∀ x, FI.call_mut f x = ok (h x, f)) :
+    ∀ (xs : List Item) (it : I), Yields IA it xs →
+    Yields (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator IA FI) ⟨it, f⟩
+      (xs.map h) := by
+  intro xs it hy
+  have hY := core.iter.adapters.map.Map.yields IA FI (fun c x => (h x, c)) (fun _ c => c = f)
+    (fun x _ c hc' => by subst hc'; exact ⟨hc x, rfl⟩) xs it f hy rfl
+  have hms : ∀ ys : List Item, List.mapState (fun c x => (h x, c)) f ys = ys.map h := by
+    intro ys; induction ys with
+    | nil => rfl
+    | cons y ys ih => simp [List.mapState, ih]
+  rwa [hms] at hY
 
 /-- `map(f)` over an iterator yielding `xs`, when `f`'s calls are known only by a spec: it yields
 some `ys` as long as `xs` with `R j ys[j]`; `P j f` is the closure's invariant before item `j`. -/

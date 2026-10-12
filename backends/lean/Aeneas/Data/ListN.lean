@@ -70,6 +70,18 @@ theorem ListN.to_from_inverse {α n} {l : ListN α n}
 theorem ListN.toList_inj {α n} (l1 l2 : ListN α n) (h : l1.toList = l2.toList) : l1 = l2 := by
   induction l1 <;> cases l2 <;> grind [ListN.toList]
 
+/-- An element of a `ListN` is smaller than it: the `decreasing_by` step for nested recursion
+through a `Slice`/`Vec` (e.g. a derived `Clone` on a recursive type). -/
+theorem ListN.sizeOf_lt_of_mem {α} [SizeOf α] {n : Nat} (l : ListN α n) {x : α}
+    (hx : x ∈ l.toList) : sizeOf x < sizeOf l := by
+  induction l with
+  | nil => simp [ListN.toList] at hx
+  | cons a l ih =>
+    simp only [ListN.toList, List.mem_cons] at hx
+    rcases hx with rfl | hx
+    · simp; omega
+    · have := ih hx; simp; omega
+
 /-!
 ## Positivity test
 

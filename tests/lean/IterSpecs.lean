@@ -148,3 +148,36 @@ example (s : Slice ℕ) (FI : core.ops.function.FnMut Counter ℕ ℕ)
       simp_all [List.getD_eq_getElem?_getD])) ?_
   rintro ⟨v, back⟩ ⟨ys, hv, hl, -, hb⟩
   exact ⟨hv ▸ hl, hb⟩
+
+-- an accepted bind ran its first step to a value
+example (h : Std.bind (ok (2 : ℕ)) (fun x => (ok (x + 1) : Result ℕ)) = ok 3) :
+    ∃ x, (ok 2 : Result ℕ) = ok x ∧ (ok (x + 1) : Result ℕ) = ok 3 :=
+  bind_eq_ok_inv h
+
+-- a spec's post holds of the value a run returns
+example (m : Result ℕ) (x : ℕ) (hs : m ⦃ v => v % 2 = 0 ⦄) (h : m = ok x) : x % 2 = 0 :=
+  spec_of_eq_ok (P := fun v => v % 2 = 0) hs h
+
+-- `iter().fold(0, |acc, x| { calls += 1; acc + x })`: the sum, the closure counting every call
+example (s : Slice ℕ) (FI : core.ops.function.FnMut ℕ (ℕ × ℕ) ℕ)
+    (hFI : ∀ n acc x, FI.call_mut n (acc, x) = ok (acc + x, n + 1)) :
+    core.iter.traits.iterator.Iterator.fold.default (S := inferInstance)
+      (core.iter.traits.iterator.IteratorSliceIter ℕ) FI (⟨s, 0⟩ : core.slice.iter.Iter ℕ) 0 0
+    ⦃ r => r = s.val.sum ⦄ := by
+  refine WP.spec_mono (core.iter.traits.iterator.Iterator.fold.default_inv_spec _ FI s.val
+    (fun done acc n => acc = done.sum ∧ n = done.length)
+    (fun done x _ acc n _ ⟨ha, hn⟩ => by rw [hFI]; simp [WP.spec_ok, ha, hn]) _ 0 0
+    (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨s, 0⟩ : core.slice.iter.Iter ℕ) rfl)
+    ⟨rfl, rfl⟩) ?_
+  rintro r ⟨acc, n, ⟨ha, -⟩, hr⟩
+  rw [hr]; exact ha
+
+-- `iter().map(|x| (None, x))`: a stateless closure yields its outputs
+example (s : Slice ℕ) (FI : core.ops.function.FnMut Unit ℕ (Option ℕ × ℕ))
+    (hFI : ∀ x, FI.call_mut () x = ok ((none, x), ())) :
+    Yields (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
+      (core.iter.traits.iterator.IteratorSliceIter ℕ) FI)
+      ({ iter := ⟨s, 0⟩, f := () } : core.iter.adapters.map.Map (core.slice.iter.Iter ℕ) Unit)
+      (s.val.map (none, ·)) :=
+  core.iter.adapters.map.Map.yields_of_pure _ FI () (fun x => (none, x)) hFI s.val _
+    (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨s, 0⟩ : core.slice.iter.Iter ℕ) rfl)

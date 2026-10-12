@@ -146,6 +146,16 @@ theorem mapState_unit {A B : Type} (g : Unit → A → B × Unit) :
   | [] => rfl
   | x :: xs => by simp [List.mapState, mapState_unit g xs]
 
+/-! ## `Vec::clone` -/
+
+/-- `Vec::clone` returns `v` when `T::clone` is the identity on `v`'s elements (derived `Clone`
+on plain data). -/
+theorem alloc.vec.CloneVec.clone_eq_of_forall {T : Type} (c : core.clone.Clone T)
+    (v : alloc.vec.Vec T) (h : ∀ x ∈ v.val, c.clone x = ok x) :
+    alloc.vec.CloneVec.clone c v = ok v := by
+  obtain ⟨s', hs', he⟩ := spec_eq_ok (Slice.clone_spec (clone := c.clone) (s := v.slice) h)
+  rw [alloc.vec.CloneVec.clone, hs', bind_tc_ok, ← he]
+
 /-! ## `HashMap`, keys compared by `Eq` -/
 
 section HashMap
