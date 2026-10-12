@@ -241,3 +241,86 @@ example (xs c : List ℕ) (y : ℕ) (hc : c ∈ chunksOf 3 xs) (hy : y ∈ c) : 
 example (xs : List ℕ) (h : xs.length ≤ Usize.max) :
     (toSliceChunks 3 (by decide) xs h).map (·.val) = chunksOf 3 xs :=
   toSliceChunks_val 3 _ xs h
+
+-- `s.iter().zip(n..)` against an unbounded counter: one pair per item of `s`
+def counter : core.iter.traits.iterator.Iterator ℕ ℕ where
+  next n := ok (some n, n + 1)
+  size_hint _ := ok (0#usize, none)
+
+example (s : Slice ℕ) (h : s.val.length = 2) :
+    Yields (core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair
+      (core.iter.traits.iterator.IteratorSliceIter ℕ) counter) ⟨⟨s, 0⟩, 5⟩ (s.val.zip [5, 6]) :=
+  core.iter.adapters.zip.Zip.yields_atLeast _ counter s.val [5, 6] _ 5 (by simp [h])
+    (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨s, 0⟩ : core.slice.iter.Iter ℕ) rfl)
+    (by simp [YieldsAtLeast, counter, WP.spec_ok])
+
+/-! ## BTree sort, dedup and insert on accepted runs -/
+
+-- an accepted `sortBy`/`sortBy_ins`/`dedupLast` invents no items
+example {T K : Type} (O : core.cmp.Ord K) (key : T → K) (l l' : List T)
+    (h : alloc.collections.btree.sortBy O key l = ok l') (e : T) (he : e ∈ l') : e ∈ l :=
+  alloc.collections.btree.sortBy_ok_mem O key l l' h e he
+
+example {T K : Type} (O : core.cmp.Ord K) (key : T → K) (x : T) (l l' : List T)
+    (h : alloc.collections.btree.sortBy_ins O key x l = ok l') (e : T) (he : e ∈ l') :
+    e = x ∨ e ∈ l :=
+  alloc.collections.btree.sortBy_ins_ok_mem O key x l l' h e he
+
+example {T K : Type} (O : core.cmp.Ord K) (key : T → K) (l l' : List T)
+    (h : alloc.collections.btree.dedupLast O key l = ok l') (e : T) (he : e ∈ l') : e ∈ l :=
+  alloc.collections.btree.dedupLast_ok_mem O key l l' h e he
+
+-- a key below every key is absent
+example : lookupL [(2, "a"), (3, "b")] 1 = none :=
+  lookupL_eq_none_of_lt 1 _ (by decide)
+
+-- `BTreeMap::insert` returns the old value at the key
+open Classical in
+example (es es' : List (Usize × ℕ)) (k : Usize) (d : ℕ) (old : Option ℕ)
+    (hs : es.Pairwise (fun a b => a.1 < b.1))
+    (h : alloc.collections.btree.map.BTreeMap.insertList core.cmp.OrdUsize es k d = ok (old, es')) :
+    old = lookupL es k :=
+  alloc.collections.btree.map.BTreeMap.insertList_old OrdUsize_lawful es k d old es' hs h
+
+-- `(usize, usize)`'s `cmp` is the lexicographic order
+example : Pair.Insts.CoreCmpOrd.cmp core.cmp.OrdUsize core.cmp.OrdUsize (1#usize, 5#usize)
+    (1#usize, 7#usize) = ok .lt := by
+  rw [Pair.Insts.CoreCmpOrd.cmp_lawful OrdUsize_lawful OrdUsize_lawful]
+  exact congrArg ok (compare_lt_iff_lt.mpr (Prod.Lex.toLex_lt_toLex.2 (Or.inr ⟨rfl, by decide⟩)))
+
+example (a b : Usize) : core.cmp.impls.OrdUsize.cmp a b = compare a b :=
+  core.cmp.impls.OrdUsize.cmp_eq a b
+
+-- an accepted push-fold appends; an accepted `v.extend(w)` appends `w`
+example (xs : List ℕ) (v r : alloc.vec.Vec ℕ) (h : xs.foldlM alloc.vec.Vec.push v = ok r) :
+    r.val = v.val ++ xs := alloc.vec.Vec.foldlM_push_ok xs v r h
+
+example (v w r : alloc.vec.Vec ℕ)
+    (h : alloc.vec.Vec.Insts.CoreIterTraitsCollectExtend.extend
+      (core.iter.traits.collect.IntoIteratorVec ℕ) v w = ok r) : r.val = v.val ++ w.val :=
+  alloc.vec.Vec.Insts.CoreIterTraitsCollectExtend.extend_ok _ v w w.val rfl
+    (alloc.vec.into_iter.IntoIter.yields _ w rfl) h
+
+/-! ## Lexicographic order and bytes -/
+
+example : List.lexCompare [1, 2] [1, 3] = .lt := by
+  rw [List.lexCompare_cons, List.lexCompare_cons, List.lexCompare_nil_nil]; decide
+
+example : List.lexCompare ([] : List ℕ) [0] = .lt := List.lexCompare_nil_cons 0 []
+
+example : List.lexCompare [0] ([] : List ℕ) = .gt := List.lexCompare_cons_nil 0 []
+
+example (a b : UInt8) : compare (a.toNat + 1) (b.toNat + 1) = compare a b :=
+  UInt8.compare_toNat_succ a b
+
+-- `String`'s byte comparison is the `encBytes` order, and `Equal` only on equal bytes
+example (xs ys : List UInt8) :
+    ∃ o, List.lexCmpM (fun x y : UInt8 => ok (compare x y)) xs ys = ok o ∧
+      List.lexCompare (encBytes xs) (encBytes ys) = o ∧ (o = .eq → xs = ys) := by
+  obtain ⟨o, h, he, hq⟩ := encBytes_spec xs ys
+  exact ⟨o, h, by simpa [List.lexCompare_nil_nil] using he [] [], hq⟩
+
+example (bs : ByteArray) : bs.toList = bs.data.toList := ByteArray.toList_eq_data_toList bs
+
+example (a b : String) (h : a.toByteArray.toList = b.toByteArray.toList) : a = b :=
+  String.eq_of_toByteArray_toList_eq h

@@ -181,3 +181,137 @@ example (s : Slice ℕ) (FI : core.ops.function.FnMut Unit ℕ (Option ℕ × �
       (s.val.map (none, ·)) :=
   core.iter.adapters.map.Map.yields_of_pure _ FI () (fun x => (none, x)) hFI s.val _
     (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨s, 0⟩ : core.slice.iter.Iter ℕ) rfl)
+
+/-! ## `YieldsAtLeast` -/
+
+-- a finite `Yields` is a `YieldsAtLeast` of the same list
+example (s : Slice ℕ) :
+    YieldsAtLeast (core.iter.traits.iterator.IteratorSliceIter ℕ) (⟨s, 0⟩ : core.slice.iter.Iter ℕ)
+      s.val :=
+  YieldsAtLeast.of_yields _ _ _
+    (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨s, 0⟩ : core.slice.iter.Iter ℕ) rfl)
+
+-- `(0..).take(3)` over an unbounded counter yields `0, 1, 2`
+def counter : core.iter.traits.iterator.Iterator ℕ ℕ where
+  next n := ok (some n, n + 1)
+  size_hint _ := ok (0#usize, none)
+
+example : Yields (core.iter.traits.iterator.IteratorTake counter) ⟨0, 3#usize⟩ [0, 1, 2] :=
+  core.iter.adapters.take.Take.yields_atLeast counter [0, 1, 2] 0 3#usize rfl
+    (by simp [YieldsAtLeast, counter, WP.spec_ok])
+
+/-! ## Unsigned ranges, Ok-conditional `collect`, `OkYields` -/
+
+-- `2..5` over `usize` yields `2, 3, 4`
+example : ∃ rs : List Usize, rs.map (·.val) = [2, 3, 4] ∧
+    Yields (core.iter.traits.iterator.IteratorRange core.iter.range.StepUsize) ⟨2#usize, 5#usize⟩ rs := by
+  obtain ⟨rs, h, hy⟩ := core.iter.range.IteratorRange.yields_Usize ⟨2#usize, 5#usize⟩
+  exact ⟨rs, by rw [h]; decide, hy⟩
+
+-- an accepted `iter().map(f).collect()` relates input and output item by item
+example (s : Slice ℕ) (FI : core.ops.function.FnMut Unit ℕ ℕ)
+    (hst : ∀ x y f', FI.call_mut () x = ok (y, f') → f' = ()) (v : alloc.vec.Vec ℕ)
+    (h : core.iter.traits.iterator.Iterator.collect.default (S := instCollectShape)
+      (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
+        (core.iter.traits.iterator.IteratorSliceIter ℕ) FI)
+      (core.iter.traits.collect.FromIteratorVec ℕ) ⟨⟨s, 0⟩, ()⟩ = ok v) :
+    List.Forall₂ (fun x y => FI.call_mut () x = ok (y, ())) s.val v.val :=
+  core.iter.traits.iterator.Iterator.collect_vec_map_ok _ FI () hst s.val _
+    (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨s, 0⟩ : core.slice.iter.Iter ℕ) rfl) v h
+
+-- the same through `iterToList`, from a non-empty accumulator
+example (s : Slice ℕ) (FI : core.ops.function.FnMut Unit ℕ ℕ)
+    (hst : ∀ x y f', FI.call_mut () x = ok (y, f') → f' = ()) (l : List ℕ)
+    (h : alloc.vec.FromIteratorVec.iterToList
+      (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
+        (core.iter.traits.iterator.IteratorSliceIter ℕ) FI) ⟨⟨s, 0⟩, ()⟩ [7] = ok l) :
+    ∃ ys, l = 7 :: ys ∧ List.Forall₂ (fun x y => FI.call_mut () x = ok (y, ())) s.val ys := by
+  simpa using alloc.vec.FromIteratorVec.iterToList_map_ok _ FI () hst s.val _ [7] l
+    (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨s, 0⟩ : core.slice.iter.Iter ℕ) rfl) h
+
+-- `Yields` is `OkYields`; `a.chain(b)` Ok-yields both; an accepted `collect` is the list
+example (s t : Slice ℕ) (v : alloc.vec.Vec ℕ)
+    (h : core.iter.traits.iterator.Iterator.collect.default (S := instCollectShape)
+      (core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator
+        (core.iter.traits.iterator.IteratorSliceIter ℕ) (core.iter.traits.iterator.IteratorSliceIter ℕ))
+      (core.iter.traits.collect.FromIteratorVec ℕ) ⟨some ⟨s, 0⟩, some ⟨t, 0⟩⟩ = ok v) :
+    v.val = s.val ++ t.val := by
+  have ys := fun u : Slice ℕ => OkYields.of_yields _ _ _
+    (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨u, 0⟩ : core.slice.iter.Iter ℕ) rfl)
+  exact core.iter.traits.iterator.Iterator.collect_vec_okYields _ _ _
+    (core.iter.adapters.chain.Chain.okYields _ _ _ _ (ys t) _ _ (ys s)) v h
+
+-- the second half of a chain alone
+example (t : Slice ℕ) :
+    OkYields (core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator
+      (core.iter.traits.iterator.IteratorSliceIter ℕ) (core.iter.traits.iterator.IteratorSliceIter ℕ))
+      ⟨none, some ⟨t, 0⟩⟩ t.val :=
+  core.iter.adapters.chain.Chain.okYields_b _ _ _ _ (OkYields.of_yields _ _ _
+    (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨t, 0⟩ : core.slice.iter.Iter ℕ) rfl))
+
+-- `OkYields` through `iterToList`
+example (s : Slice ℕ) (l : List ℕ)
+    (h : alloc.vec.FromIteratorVec.iterToList (core.iter.traits.iterator.IteratorSliceIter ℕ)
+      ⟨s, 0⟩ [] = ok l) : l = s.val := by
+  simpa using alloc.vec.FromIteratorVec.iterToList_okYields _ s.val _ [] l (OkYields.of_yields _ _ _
+    (by simpa using core.slice.iter.IteratorSliceIter.yields _ (⟨s, 0⟩ : core.slice.iter.Iter ℕ) rfl)) h
+
+/-! ## Accepted scalar and `Vec` ops -/
+
+example (x y z : U32) (h : x + y = ok z) : z.val = x.val + y.val := UScalar.add_ok h
+
+example (x y z : Usize) (h : x - y = ok z) : y.val ≤ x.val ∧ z.val = x.val - y.val :=
+  UScalar.sub_ok h
+
+example (r : U8) (h : UScalar.tryMk .U8 7 = ok r) : r.val = 7 := UScalar.tryMk_ok h
+
+example (r : I16) (h : IScalar.tryMk .I16 (-7) = ok r) : r.val = -7 := IScalar.tryMk_ok h
+
+example (v r : alloc.vec.Vec ℕ) (h : v.push 3 = ok r) : r.val = v.val ++ [3] := alloc.vec.Vec.push_ok h
+
+example (v : alloc.vec.Vec ℕ) (i : Usize) (x : ℕ)
+    (h : alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice ℕ) v i = ok x) :
+    ∃ hi : i.val < v.val.length, x = v.val[i.val] := alloc.vec.Vec.index_ok h
+
+example (v : alloc.vec.Vec ℕ) (i : Usize) (x : ℕ) (back : ℕ → alloc.vec.Vec ℕ)
+    (h : alloc.vec.Vec.index_mut (core.slice.index.SliceIndexUsizeSlice ℕ) v i = ok (x, back)) :
+    ∃ hi : i.val < v.val.length, x = v.val[i.val] ∧ back = v.set i := alloc.vec.Vec.index_mut_ok h
+
+/-! ## `spec_bind_assoc`, list sums and folds -/
+
+-- a spec of the first two steps, then the third
+example : ((ok 1 : Result ℕ) >>= fun x => (ok (x + 1) : Result ℕ) >>= fun y => ok (y * 2))
+    ⦃ z => z = 4 ⦄ :=
+  spec_bind_assoc (P := fun y => y = 2) (by simp [WP.spec_ok]) (fun y hy => by simp [WP.spec_ok, hy])
+
+example (l1 l2 : List ℕ) (h : List.Forall₂ (fun a b => a = b + 1) l1 l2) :
+    ((l1.zipIdx 3).map fun p => p.1 * p.2).sum = ((l2.zipIdx 3).map fun p => (p.1 + 1) * p.2).sum :=
+  h.sum_map_zipIdx (fun a k => a * k) (fun b k => (b + 1) * k) (fun _ _ _ h => by rw [h]) 3
+
+example (l1 l2 : List ℕ) (h : List.Forall₂ (· ≤ ·) l1 l2) (b : ℕ) (hb : b ∈ l2) :
+    ∃ a ∈ l1, a ≤ b :=
+  h.exists_of_mem_right hb
+
+example (l : List ℕ) (hl : l.Nodup) (p : ℕ × ℕ) (hp : p ∈ l.zip l.tail) : p.1 ≠ p.2 :=
+  List.Nodup.ne_of_mem_zip_tail hl p hp
+
+example : [1, 2, 3].anyM (fun _ => (ok false : Result Bool)) = ok false :=
+  List.anyM_ok_false _ _ (fun _ _ => rfl)
+
+-- Horner from the back is a power-weighted sum
+example (x : ℚ) (t : ℕ → ℚ) (l : List ℕ) : l.reverse.foldl (fun k a => k * x + t a) 0 =
+    ((List.range l.length).map fun j => x ^ j * (l[j]?.elim 0 t)).sum :=
+  List.foldl_reverse_horner x t l
+
+example (l1 l2 : List ℕ) (h : l1.length = l2.length) :
+    l1.reverse.zip l2.reverse = (l1.zip l2).reverse := List.zip_reverse l1 l2 h
+
+-- an inner product against `xⁱ⁺ᵏ` is a `zipIdx` sum
+example (l ys : List ℚ) (x : ℚ) (hl : l.length ≤ ys.length)
+    (hy : ∀ i (h : i < ys.length), ys[i] = x ^ (i + 2)) :
+    (List.zipWith (fun c s => id s • id c) l ys).sum = ((l.zipIdx 2).map fun (c, m) => x ^ m • id c).sum :=
+  List.sum_zipWith_smul_pow id id x l ys 2 hl hy
+
+-- a `ListN`'s list is no larger than it
+example (l : Aeneas.Data.ListN.ListN ℕ 3) : sizeOf l.toList ≤ sizeOf l :=
+  Aeneas.Data.ListN.ListN.sizeOf_toList_le l

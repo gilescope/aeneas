@@ -198,6 +198,32 @@ theorem OrdUsize_lawful : OrdLawful core.cmp.OrdUsize := by
   simp only [liftFun2, core.cmp.impls.OrdUsize.cmp, compare, compareOfLessAndEq,
              UScalar.lt_equiv, UScalar.eq_equiv]
 
+theorem core.cmp.impls.OrdUsize.cmp_eq (a b : Usize) : core.cmp.impls.OrdUsize.cmp a b = compare a b := by
+  simpa [core.cmp.OrdUsize, liftFun2] using OrdUsize_lawful a b
+
+/-- `(U, T)`'s `cmp` is the lexicographic order when both fields' `cmp`s are lawful. -/
+theorem Pair.Insts.CoreCmpOrd.cmp_lawful {U T : Type} [LinearOrder U] [LinearOrder T]
+    {O0 : core.cmp.Ord U} {O1 : core.cmp.Ord T} (h0 : OrdLawful O0) (h1 : OrdLawful O1)
+    (a b : U × T) : Pair.Insts.CoreCmpOrd.cmp O0 O1 a b = ok (compare (toLex a) (toLex b)) := by
+  obtain ⟨a1, a2⟩ := a
+  obtain ⟨b1, b2⟩ := b
+  simp only [Pair.Insts.CoreCmpOrd.cmp, h0 a1 b1, h1 a2 b2, bind_tc_ok]
+  rcases lt_trichotomy a1 b1 with h | rfl | h
+  · rw [compare_lt_iff_lt.mpr h]
+    exact congrArg ok (compare_lt_iff_lt.mpr (Prod.Lex.toLex_lt_toLex.2 (Or.inl h))).symm
+  · rw [compare_eq_iff_eq.mpr (rfl : a1 = a1)]
+    rcases lt_trichotomy a2 b2 with h | rfl | h
+    · rw [compare_lt_iff_lt.mpr h]
+      exact congrArg ok (compare_lt_iff_lt.mpr
+        (Prod.Lex.toLex_lt_toLex.2 (Or.inr ⟨rfl, h⟩) : toLex (a1, a2) < toLex (a1, b2))).symm
+    · rw [compare_eq_iff_eq.mpr (rfl : a2 = a2)]
+      exact congrArg ok (compare_eq_iff_eq.mpr rfl).symm
+    · rw [compare_gt_iff_gt.mpr h]
+      exact congrArg ok (compare_gt_iff_gt.mpr
+        (Prod.Lex.toLex_lt_toLex.2 (Or.inr ⟨rfl, h⟩) : toLex (a1, b2) < toLex (a1, a2))).symm
+  · rw [compare_gt_iff_gt.mpr h]
+    exact congrArg ok (compare_gt_iff_gt.mpr (Prod.Lex.toLex_lt_toLex.2 (Or.inl h))).symm
+
 /-- A lawful `Ord` satisfies the CollectionsSpecs `hcmp` hypothesis. -/
 theorem hcmp_of_lawful {T : Type} [Ord T] {OrdInst : core.cmp.Ord T} (h : OrdLawful OrdInst)
     (heq : ∀ a b : T, compare a b = Ordering.eq ↔ a = b) :
@@ -271,6 +297,27 @@ theorem toList_spec {I T : Type} (IA : core.iter.traits.iterator.Iterator I T)
   rw [toList_eq_loop]
   rw [toListBody_loop_spec IA xs it [] h]
   simp
+
+/-- An accepted push-fold appends the items. -/
+theorem alloc.vec.Vec.foldlM_push_ok {T : Type} :
+    ∀ (xs : List T) (v r : alloc.vec.Vec T), xs.foldlM alloc.vec.Vec.push v = ok r →
+    r.val = v.val ++ xs
+  | [], v, r, h => by simp only [List.foldlM_nil, pure, ok.injEq] at h; subst h; simp
+  | x :: xs, v, r, h => by
+    simp only [List.foldlM_cons] at h
+    obtain ⟨w, hw, h⟩ := bind_eq_ok_inv h
+    simp [alloc.vec.Vec.foldlM_push_ok xs w r h, alloc.vec.Vec.push_ok hw]
+
+/-- An accepted `v.extend(items)` appends what `items` yields. -/
+theorem alloc.vec.Vec.Insts.CoreIterTraitsCollectExtend.extend_ok {T I IntoIter : Type}
+    (II : core.iter.traits.collect.IntoIterator I T IntoIter) (v : alloc.vec.Vec T) (items : I)
+    (xs : List T) {it : IntoIter} {r : alloc.vec.Vec T} (hi : II.into_iter items = ok it)
+    (hy : Yields II.iteratorInst it xs)
+    (h : alloc.vec.Vec.Insts.CoreIterTraitsCollectExtend.extend II v items = ok r) :
+    r.val = v.val ++ xs := by
+  unfold alloc.vec.Vec.Insts.CoreIterTraitsCollectExtend.extend at h
+  rw [hi, bind_tc_ok, toList_spec _ xs it hy, bind_tc_ok] at h
+  exact alloc.vec.Vec.foldlM_push_ok _ _ _ h
 
 /-- `sortBy_ins` returns a permutation of `x :: sorted`. -/
 private theorem sortBy_ins_perm {T K : Type} (OrdInst : core.cmp.Ord K) (key : T → K)
@@ -436,6 +483,62 @@ private theorem dedupLast_pairwise_lt {T : Type} [LinearOrder T]
         simp only [List.mem_cons, hzs_mem]; tauto
       · -- y < x: impossible (sorted input says x ≤ y)
         exact absurd ((List.pairwise_cons.mp hxs).1 y (List.mem_cons.mpr (Or.inl rfl))) (not_le.mpr hxy)
+
+/-- An accepted `sortBy_ins` adds only `x`. -/
+theorem alloc.collections.btree.sortBy_ins_ok_mem {T K : Type} (O : core.cmp.Ord K) (key : T → K)
+    (x : T) : ∀ (l l' : List T), alloc.collections.btree.sortBy_ins O key x l = ok l' →
+    ∀ e ∈ l', e = x ∨ e ∈ l
+  | [], l', h => by
+    simp only [alloc.collections.btree.sortBy_ins, ok.injEq] at h
+    subst h; simp
+  | y :: ys, l', h => by
+    rw [alloc.collections.btree.sortBy_ins] at h
+    obtain ⟨o, -, h⟩ := bind_eq_ok_inv h
+    intro e he
+    cases o with
+    | gt =>
+      obtain ⟨ys', hys, h⟩ := bind_eq_ok_inv h
+      simp only [ok.injEq] at h; subst h
+      rcases List.mem_cons.mp he with rfl | he
+      · exact Or.inr List.mem_cons_self
+      · exact (alloc.collections.btree.sortBy_ins_ok_mem O key x ys ys' hys e he).imp_right
+          (List.mem_cons_of_mem _)
+    | lt | eq =>
+      simp only [ok.injEq] at h; subst h
+      exact List.mem_cons.mp he
+
+/-- An accepted `sortBy` invents no items. -/
+theorem alloc.collections.btree.sortBy_ok_mem {T K : Type} (O : core.cmp.Ord K) (key : T → K) :
+    ∀ (l l' : List T), alloc.collections.btree.sortBy O key l = ok l' → ∀ e ∈ l', e ∈ l
+  | [], l', h => by
+    simp only [alloc.collections.btree.sortBy, ok.injEq] at h; subst h; simp
+  | x :: xs, l', h => by
+    rw [alloc.collections.btree.sortBy] at h
+    obtain ⟨s, hs, h⟩ := bind_eq_ok_inv h
+    intro e he
+    rcases alloc.collections.btree.sortBy_ins_ok_mem O key x s l' h e he with rfl | h1
+    · exact List.mem_cons_self
+    · exact List.mem_cons_of_mem _ (alloc.collections.btree.sortBy_ok_mem O key xs s hs e h1)
+
+/-- An accepted `dedupLast` invents no items. -/
+theorem alloc.collections.btree.dedupLast_ok_mem {T K : Type} (O : core.cmp.Ord K) (key : T → K) :
+    ∀ (l l' : List T), alloc.collections.btree.dedupLast O key l = ok l' → ∀ e ∈ l', e ∈ l
+  | [], l', h => by
+    simp only [alloc.collections.btree.dedupLast, ok.injEq] at h; subst h; simp
+  | [x], l', h => by
+    simp only [alloc.collections.btree.dedupLast, ok.injEq] at h; subst h; simp
+  | x :: y :: ys, l', h => by
+    rw [alloc.collections.btree.dedupLast] at h
+    obtain ⟨o, -, h⟩ := bind_eq_ok_inv h
+    intro e he
+    cases o with
+    | eq => exact List.mem_cons_of_mem _ (alloc.collections.btree.dedupLast_ok_mem O key _ l' h e he)
+    | lt | gt =>
+      obtain ⟨r, hr, h⟩ := bind_eq_ok_inv h
+      simp only [ok.injEq] at h; subst h
+      rcases List.mem_cons.mp he with rfl | he
+      · exact List.mem_cons_self
+      · exact List.mem_cons_of_mem _ (alloc.collections.btree.dedupLast_ok_mem O key _ r hr e he)
 
 /-- `BTreeSet::from_iter` produces a set whose membership equals the input list's membership.
 
@@ -880,6 +983,33 @@ theorem core.iter.adapters.zip.Zip.yields {A B ItemA ItemB : Type}
                uncurry'_pair]
     exact ⟨trivial, core.iter.adapters.zip.Zip.yields IA IB as' bs' a' b' ha' hb'⟩
 
+/-- `zip` of an iterator yielding `as` and one yielding at least as many items: `B` may be
+unbounded, as it is never polled past `as`. -/
+theorem core.iter.adapters.zip.Zip.yields_atLeast {A B ItemA ItemB : Type}
+    (IA : core.iter.traits.iterator.Iterator A ItemA)
+    (IB : core.iter.traits.iterator.Iterator B ItemB) :
+    ∀ (as : List ItemA) (bs : List ItemB) (a : A) (b : B), as.length ≤ bs.length →
+    Yields IA a as → YieldsAtLeast IB b bs →
+    Yields (core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair IA IB)
+      ⟨a, b⟩ (as.zip bs)
+  | [], _bs, a, _b, _, ha, _ => by
+    simp only [Yields, List.zip_nil_left] at ha ⊢
+    obtain ⟨⟨o, a'⟩, hnext_a, ho⟩ := spec_eq_ok ha
+    simp only [uncurry'_pair] at ho; subst ho
+    simp [core.iter.adapters.zip.Zip.nextPlain, hnext_a, bind_tc_ok, spec_ok, uncurry'_pair]
+  | _ :: _, [], _, _, hl, _, _ => by simp at hl
+  | a0 :: as', b0 :: bs', a, b, hl, ha, hb => by
+    simp only [Yields, YieldsAtLeast, List.zip_cons_cons] at ha hb ⊢
+    obtain ⟨⟨o_a, a'⟩, hnext_a, hpost_a⟩ := spec_eq_ok ha
+    simp only [uncurry'_pair] at hpost_a; obtain ⟨rfl, ha'⟩ := hpost_a
+    obtain ⟨⟨o_b, b'⟩, hnext_b, hpost_b⟩ := spec_eq_ok hb
+    simp only [uncurry'_pair] at hpost_b; obtain ⟨rfl, hb'⟩ := hpost_b
+    simp only [core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair,
+               core.iter.adapters.zip.Zip.nextPlain, hnext_a, hnext_b, bind_tc_ok, spec_ok,
+               uncurry'_pair]
+    exact ⟨trivial, core.iter.adapters.zip.Zip.yields_atLeast IA IB as' bs' a' b'
+      (by simpa using hl) ha' hb'⟩
+
 /-- Indexed pairs starting from `start`, bounded so each index fits in `Usize`. -/
 def usizeEnumFrom {Item : Type} :
     (start : Nat) → (xs : List Item) → start + xs.length ≤ Usize.max → List (Usize × Item)
@@ -1232,7 +1362,8 @@ private theorem BTreeMap.setVal_sorted {K V : Type} [LinearOrder K]
       rw [← hy_eq]
       exact (List.pairwise_cons.mp h).1 y hy_mem
 
-private theorem lookupL_none_of_gt {K V : Type} [LinearOrder K]
+/-- A key below every key is absent. -/
+theorem lookupL_eq_none_of_lt {K V : Type} [LinearOrder K]
     (k : K) (es : List (K × V)) (h : ∀ x ∈ es, k < x.1) :
     lookupL es k = none := by
   induction es with
@@ -1311,6 +1442,39 @@ theorem alloc.collections.btree.map.BTreeMap.insertList_sorted {K V : Type} [Lin
   spec_mono (BTreeMap.insertList_sorted_lb hlaw es k d hsorted)
     (fun _ ⟨hsorted', _, _⟩ => hsorted')
 
+open Classical in
+/-- On sorted keys, an accepted `insertList` returns the old value at the key. -/
+theorem alloc.collections.btree.map.BTreeMap.insertList_old {K V : Type} [LinearOrder K]
+    {O : core.cmp.Ord K} (hlaw : OrdLawful O) :
+    ∀ (es : List (K × V)) (k : K) (d : V) old es', es.Pairwise (fun a b => a.1 < b.1) →
+    alloc.collections.btree.map.BTreeMap.insertList O es k d = ok (old, es') → old = lookupL es k
+  | [], k, d, old, es', _, h => by
+    simp only [alloc.collections.btree.map.BTreeMap.insertList, ok.injEq, Prod.mk.injEq] at h
+    simp [h.1]
+  | (k', v) :: es, k, d, old, es', hs, h => by
+    rw [alloc.collections.btree.map.BTreeMap.insertList, hlaw k k'] at h
+    simp only [bind_tc_ok] at h
+    rw [List.pairwise_cons] at hs
+    rcases hc : compare k k' with _ | _ | _
+    · rw [hc] at h
+      have hlt : k < k' := compare_lt_iff_lt.mp hc
+      simp only [ok.injEq, Prod.mk.injEq] at h
+      rw [← h.1, lookupL_eq_none_of_lt k _ (fun x hx => by
+        rcases List.mem_cons.mp hx with rfl | hx
+        · exact hlt
+        · exact lt_trans hlt (hs.1 x hx))]
+    · rw [hc] at h
+      simp only [ok.injEq, Prod.mk.injEq] at h
+      rw [← h.1, lookupL_cons]
+      simp [compare_eq_iff_eq.mp hc]
+    · rw [hc] at h
+      have hgt : k' < k := compare_gt_iff_gt.mp hc
+      obtain ⟨⟨o2, es2⟩, hr, h⟩ := bind_eq_ok_inv h
+      simp only [ok.injEq, Prod.mk.injEq] at h
+      rw [← h.1, alloc.collections.btree.map.BTreeMap.insertList_old hlaw es k d o2 es2 hs.2 hr,
+        lookupL_cons]
+      simp [ne_of_lt hgt]
+
 /-- `insertList` with a fresh key grows the list by one; with an existing key keeps the length. -/
 theorem alloc.collections.btree.map.BTreeMap.insertList_length {K V : Type} [LinearOrder K]
     {OrdInst : core.cmp.Ord K} (hlaw : OrdLawful OrdInst)
@@ -1340,7 +1504,7 @@ theorem alloc.collections.btree.map.BTreeMap.insertList_length {K V : Type} [Lin
     simp only [alloc.collections.btree.map.BTreeMap.insertList, hlaw k k', bind_tc_ok]
     rcases lt_trichotomy k k' with hlt | heq | hgt
     · simp only [compare_lt_iff_lt.mpr hlt, spec_ok, lookupL_cons, if_neg (ne_of_gt hlt)]
-      exact ⟨(lookupL_none_of_gt k tl fun x hx => lt_trans hlt (htl_lb x hx)).symm, by simp⟩
+      exact ⟨(lookupL_eq_none_of_lt k tl fun x hx => lt_trans hlt (htl_lb x hx)).symm, by simp⟩
     · subst heq
       simp only [compare_eq_iff_eq.mpr rfl, spec_ok, lookupL_cons, ↓reduceIte]
       exact ⟨rfl, by simp⟩
@@ -1410,5 +1574,104 @@ theorem alloc.collections.btree.map.entry.Entry.or_insert_sorted_length {K V A :
     intro v'
     exact ⟨BTreeMap.setVal_sorted e.map.entries i v' hsorted,
            by simp [BTreeMap.setVal_length, hw]⟩
+
+/-! ## Lexicographic order on lists and bytes
+
+`String`'s `cmp` model is `List.lexCmpM` on its UTF-8 bytes. `encBytes` makes it a pull-back of
+Mathlib's list order, which composes with other fields' encodings (a derived `Ord`). -/
+
+/-- Mathlib's lexicographic `compare` on lists (plain `compare` finds core's `List.instOrd`). -/
+@[expose] abbrev _root_.List.lexCompare {α : Type} [LinearOrder α] (a b : List α) : Ordering :=
+  @compare (List α) LinearOrder.toOrd a b
+
+theorem _root_.List.lexCompare_nil_nil {α : Type} [LinearOrder α] :
+    List.lexCompare ([] : List α) [] = .eq := compare_eq_iff_eq.mpr rfl
+
+theorem _root_.List.lexCompare_nil_cons {α : Type} [LinearOrder α] (b : α) (l : List α) :
+    List.lexCompare [] (b :: l) = .lt := compare_lt_iff_lt.mpr List.Lex.nil
+
+theorem _root_.List.lexCompare_cons_nil {α : Type} [LinearOrder α] (a : α) (l : List α) :
+    List.lexCompare (a :: l) [] = .gt := compare_gt_iff_gt.mpr List.Lex.nil
+
+/-- The heads decide, else the tails. -/
+theorem _root_.List.lexCompare_cons {α : Type} [LinearOrder α] (a b : α) (l l' : List α) :
+    List.lexCompare (a :: l) (b :: l') = (compare a b).then (List.lexCompare l l') := by
+  rcases lt_trichotomy a b with h | rfl | h
+  · rw [compare_lt_iff_lt.mpr h]; exact compare_lt_iff_lt.mpr (List.Lex.rel h)
+  · rw [compare_eq_iff_eq.mpr rfl]
+    rcases lt_trichotomy (α := List α) l l' with h | rfl | h
+    · exact (compare_lt_iff_lt.mpr (List.Lex.cons h)).trans (compare_lt_iff_lt.mpr h).symm
+    · exact (compare_eq_iff_eq.mpr rfl).trans (compare_eq_iff_eq.mpr rfl).symm
+    · exact (compare_gt_iff_gt.mpr (List.Lex.cons h)).trans (compare_gt_iff_gt.mpr h).symm
+  · rw [compare_gt_iff_gt.mpr h]; exact compare_gt_iff_gt.mpr (List.Lex.rel h)
+
+theorem _root_.UInt8.compare_toNat_succ (a b : UInt8) :
+    compare (a.toNat + 1) (b.toNat + 1) = compare a b := by
+  simp only [compare, compareOfLessAndEq, UInt8.lt_iff_toNat_lt, ← UInt8.toNat_inj,
+    Nat.add_lt_add_iff_right, Nat.add_right_cancel_iff]
+
+/-- Self-delimiting byte encoding: each byte shifted up by one, then a `0` sentinel. -/
+@[expose] def encBytes : List UInt8 → List ℕ
+  | [] => [0]
+  | b :: bs => (b.toNat + 1) :: encBytes bs
+
+/-- Lexicographic byte comparison (`String`'s `cmp` model) is `encBytes`'s order, whatever
+follows, and is `Equal` only on equal bytes. -/
+theorem encBytes_spec (xs ys : List UInt8) :
+    ∃ o, List.lexCmpM (fun x y : UInt8 => ok (compare x y)) xs ys = ok o ∧
+      (∀ s t, List.lexCompare (encBytes xs ++ s) (encBytes ys ++ t) = o.then (List.lexCompare s t)) ∧
+      (o = .eq → xs = ys) := by
+  induction xs generalizing ys with
+  | nil =>
+    cases ys with
+    | nil => exact ⟨.eq, rfl, fun s t => by simp [encBytes, List.lexCompare_cons], fun _ => rfl⟩
+    | cons b ys =>
+      refine ⟨.lt, rfl, fun s t => ?_, by simp⟩
+      simp only [encBytes, List.cons_append, List.lexCompare_cons,
+        compare_lt_iff_lt.mpr (Nat.succ_pos b.toNat)]
+      rfl
+  | cons a xs ih =>
+    cases ys with
+    | nil =>
+      refine ⟨.gt, rfl, fun s t => ?_, by simp⟩
+      simp only [encBytes, List.cons_append, List.lexCompare_cons,
+        compare_gt_iff_gt.mpr (Nat.succ_pos a.toNat)]
+      rfl
+    | cons b ys =>
+      obtain ⟨o, ho, he, hq⟩ := ih ys
+      simp only [List.lexCmpM, bind_tc_ok, encBytes, List.cons_append, List.lexCompare_cons,
+        UInt8.compare_toNat_succ]
+      rcases hc : compare a b
+      · exact ⟨.lt, rfl, fun _ _ => rfl, by simp⟩
+      · refine ⟨o, ho, he, fun h => ?_⟩
+        rw [← UInt8.compare_toNat_succ, compare_eq_iff_eq, Nat.add_right_cancel_iff,
+          UInt8.toNat_inj] at hc
+        rw [hc, hq h]
+      · exact ⟨.gt, rfl, fun _ _ => rfl, by simp⟩
+
+theorem _root_.ByteArray.toList_loop_eq (bs : ByteArray) (i : ℕ) (r : List UInt8) :
+    ByteArray.toList.loop bs i r = r.reverse ++ bs.data.toList.drop i := by
+  rw [ByteArray.toList.loop]
+  split
+  · rename_i hi
+    rw [ByteArray.toList_loop_eq bs (i + 1)]
+    have hi' : i < bs.data.toList.length := by simpa using hi
+    rw [List.drop_eq_getElem_cons hi']
+    simp only [ByteArray.get!, List.reverse_cons, List.append_assoc, List.singleton_append,
+      Array.getElem_toList]
+    rw [getElem!_pos bs.data i hi]
+  · rename_i hi
+    have : bs.data.toList.length ≤ i := by rw [Array.length_toList]; exact Nat.le_of_not_lt hi
+    rw [List.drop_eq_nil_of_le this, List.append_nil]
+termination_by bs.size - i
+
+theorem _root_.ByteArray.toList_eq_data_toList (bs : ByteArray) : bs.toList = bs.data.toList := by
+  simp [ByteArray.toList, ByteArray.toList_loop_eq]
+
+/-- Strings with the same UTF-8 bytes are equal. -/
+theorem _root_.String.eq_of_toByteArray_toList_eq {a b : String}
+    (h : a.toByteArray.toList = b.toByteArray.toList) : a = b := by
+  rw [ByteArray.toList_eq_data_toList, ByteArray.toList_eq_data_toList, Array.toList_inj] at h
+  exact String.toByteArray_inj.mp (ByteArray.ext h)
 
 end Aeneas.Std

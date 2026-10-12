@@ -36,6 +36,91 @@ theorem bind_eq_ok_inv {α β : Type} {m : Result α} {f : α → Result β} {y 
   | vis i k => simp at h
   | div => simp at h
 
+/-- Re-associate a two-step bind to use a spec of the first two steps together. -/
+theorem spec_bind_assoc {α β γ : Type} {m : Result α} {f : α → Result β} {g : β → Result γ}
+    {P : β → Prop} {Q : γ → Prop} (h : (m >>= f) ⦃ y => P y ⦄)
+    (hg : ∀ y, P y → g y ⦃ z => Q z ⦄) : (m >>= fun x => f x >>= g) ⦃ z => Q z ⦄ := by
+  rw [← bind_assoc_eq]
+  exact WP.spec_bind h hg
+
+/-! ## Accepted scalar and `Vec` ops
+
+Ok-conditional inversions: what an accepted run of an op tells about its operands. -/
+
+theorem UScalar.add_ok {ty : UScalarTy} {x y z : UScalar ty} (h : x + y = ok z) :
+    z.val = x.val + y.val := by
+  have h' := UScalar.add_equiv x y
+  rw [h] at h'
+  exact h'.2.1
+
+theorem UScalar.sub_ok {ty : UScalarTy} {x y r : UScalar ty} (h : (x - y : Result _) = ok r) :
+    y.val ≤ x.val ∧ r.val = x.val - y.val := by
+  have hle : y.val ≤ x.val := by
+    have h' := h
+    change UScalar.sub x y = ok r at h'
+    unfold UScalar.sub at h'
+    split at h'
+    · simp at h'
+    · omega
+  exact ⟨hle, (spec_of_eq_ok (UScalar.sub_spec (x := x) (y := y) hle) h).1⟩
+
+theorem UScalar.tryMk_ok {ty : UScalarTy} {x : ℕ} {r : UScalar ty}
+    (h : UScalar.tryMk ty x = ok r) : r.val = x := by
+  have := UScalar.tryMk_eq ty x
+  rw [h] at this
+  exact this.1
+
+theorem IScalar.tryMk_ok {ty : IScalarTy} {x : ℤ} {r : IScalar ty}
+    (h : IScalar.tryMk ty x = ok r) : r.val = x := by
+  have := IScalar.tryMk_eq ty x
+  rw [h] at this
+  exact this.1
+
+theorem alloc.vec.Vec.push_ok {α : Type} {v r : alloc.vec.Vec α} {x : α} (h : v.push x = ok r) :
+    r.val = v.val ++ [x] := by
+  unfold alloc.vec.Vec.push at h
+  dsimp only at h
+  split at h
+  · simp only [ok.injEq] at h
+    subst h
+    simp
+  · simp at h
+
+/-- An accepted `v[i]` is in range and returns that item. -/
+theorem alloc.vec.Vec.index_ok {T : Type} {v : alloc.vec.Vec T} {i : Usize} {x : T}
+    (h : alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice T) v i = ok x) :
+    ∃ hi : i.val < v.val.length, x = v.val[i.val] := by
+  rw [alloc.vec.Vec.index_slice_index] at h
+  unfold alloc.vec.Vec.index_usize at h
+  split at h
+  · simp at h
+  · rename_i y hy
+    simp only [ok.injEq] at h
+    subst h
+    rw [alloc.vec.Vec.getElem?_Nat_eq] at hy
+    obtain ⟨hi, hv⟩ := List.getElem?_eq_some_iff.mp hy
+    exact ⟨hi, hv.symm⟩
+
+/-- An accepted `&mut v[i]` is in range, borrows that item, and writes back with `set`. -/
+theorem alloc.vec.Vec.index_mut_ok {T : Type} {v : alloc.vec.Vec T} {i : Usize} {x : T}
+    {back : T → alloc.vec.Vec T}
+    (h : alloc.vec.Vec.index_mut (core.slice.index.SliceIndexUsizeSlice T) v i = ok (x, back)) :
+    ∃ hi : i.val < v.val.length, x = v.val[i.val] ∧ back = v.set i := by
+  rw [alloc.vec.Vec.index_mut_slice_index] at h
+  unfold alloc.vec.Vec.index_mut_usize at h
+  obtain ⟨y, hy, h⟩ := bind_eq_ok_inv h
+  simp only [ok.injEq, Prod.mk.injEq] at h
+  obtain ⟨rfl, rfl⟩ := h
+  unfold alloc.vec.Vec.index_usize at hy
+  split at hy
+  · simp at hy
+  · rename_i z hz
+    simp only [ok.injEq] at hy
+    subst hy
+    rw [alloc.vec.Vec.getElem?_Nat_eq] at hz
+    obtain ⟨hi, hv⟩ := List.getElem?_eq_some_iff.mp hz
+    exact ⟨hi, hv.symm, rfl⟩
+
 /-! ## `foldlM` -/
 
 /-- A fold whose step takes `P i` to `P (i+1)` ends in `P l.length`. -/
@@ -60,16 +145,40 @@ against it once, and each instantiation proves it of its iterator. -/
   | it, [] => inst.next it ⦃ o _ => o = none ⦄
   | it, x :: xs => inst.next it ⦃ o it' => o = some x ∧ Yields inst it' xs ⦄
 
-/-- `YieldsPrefix inst it ss` - the iterator `it` starts by yielding exactly `ss`, then zero
-or more further items. Unbounded iterators (e.g. `std::iter::successors` streams) satisfy this
-for any finite prefix; the zip inside a bounded loop stops after `|ss|` items regardless. -/
-def YieldsPrefix {T I : Type} (inst : core.iter.traits.iterator.Iterator I T) (it : I) (ss : List T) : Prop :=
-  ∃ tail : List T, Yields inst it (ss ++ tail)
+/-- `next` yields `xs` in order, and nothing is claimed after: unlike `Yields`, an unbounded
+iterator (`successors`, `repeat`) satisfies it for every finite prefix. -/
+@[expose] def YieldsAtLeast {I Item : Type} (inst : core.iter.traits.iterator.Iterator I Item) :
+    I → List Item → Prop
+  | _, [] => True
+  | it, x :: xs => inst.next it ⦃ o it' => o = some x ∧ YieldsAtLeast inst it' xs ⦄
 
-/-- Every finite `Yields` is also a `YieldsPrefix` (with empty tail). -/
-theorem YieldsPrefix.of_yields {T I : Type} (inst : core.iter.traits.iterator.Iterator I T)
-    (it : I) (ss : List T) (h : Yields inst it ss) : YieldsPrefix inst it ss :=
-  ⟨[], by simpa using h⟩
+theorem YieldsAtLeast.of_yields {I Item : Type} (inst : core.iter.traits.iterator.Iterator I Item) :
+    ∀ (xs : List Item) (it : I), Yields inst it xs → YieldsAtLeast inst it xs
+  | [], _, _ => trivial
+  | x :: xs, it, h => by
+    simp only [Yields] at h
+    simp only [YieldsAtLeast]
+    exact spec_mono h (fun ⟨o, it'⟩ ⟨ho, hy⟩ => ⟨ho, YieldsAtLeast.of_yields inst xs it' hy⟩)
+
+/-- `take(n)` of an iterator yielding at least `n` items yields exactly those. -/
+theorem core.iter.adapters.take.Take.yields_atLeast {I Item : Type}
+    (IA : core.iter.traits.iterator.Iterator I Item) :
+    ∀ (xs : List Item) (it : I) (n : Usize), xs.length = n.val → YieldsAtLeast IA it xs →
+    Yields (core.iter.traits.iterator.IteratorTake IA) ⟨it, n⟩ xs
+  | [], it, n, hn, _ => by
+    simp only [Yields, core.iter.adapters.take.IteratorTake.next]
+    simp [show n.val = 0 by simpa using hn.symm, spec_ok]
+  | x :: xs, it, n, hn, h => by
+    simp only [YieldsAtLeast] at h
+    obtain ⟨⟨o, it'⟩, hnx, ho, hy⟩ := spec_eq_ok h
+    subst ho
+    simp only [Yields, core.iter.traits.iterator.IteratorTake,
+      core.iter.adapters.take.IteratorTake.next]
+    have hn0 : ¬ n.val = 0 := by simp at hn; omega
+    simp only [hn0, ↓reduceIte]
+    obtain ⟨n', hn', hn'v, -⟩ := spec_eq_ok (UScalar.sub_spec (x := n) (y := 1#usize) (by simp; omega))
+    simp only [hn', hnx, bind_tc_ok, spec_ok]
+    exact ⟨rfl, core.iter.adapters.take.Take.yields_atLeast IA xs it' n' (by simp at hn hn'v; omega) hy⟩
 
 /-- The integers in `[a, b)`. -/
 @[expose] def intRange (a b : ℤ) : List ℤ := (List.range (b - a).toNat).map fun j : ℕ => a + (j : ℤ)
@@ -250,6 +359,40 @@ theorem core.ops.range.RangeInclusive.yields_'S (r : core.ops.range.RangeInclusi
   core.ops.range.RangeInclusive.yields_IScalar (by intros; rfl)
     (by intros; simp [core.cmp.impls.PartialOrd'S.le])
     (by intros; simp [core.cmp.impls.PartialOrd'S.lt]) _ r hx rfl
+
+/-! ## Unsigned-integer ranges -/
+
+/-- `start..end` over `UScalar ty` yields `[start, end)`. -/
+theorem core.iter.range.IteratorRange.yields_UScalar {ty : UScalarTy}
+    {cloneInst : core.clone.Clone (UScalar ty)}
+    {partialOrdInst : core.cmp.PartialOrd (UScalar ty) (UScalar ty)}
+    (h_clone : ∀ x : UScalar ty, cloneInst.clone x = ok x)
+    (h_lt : ∀ a b : UScalar ty, partialOrdInst.lt a b = ok (decide (a.val < b.val))) :
+    ∀ (n : ℕ) (r : core.ops.range.Range (UScalar ty)), r.end.val - r.start.val = n →
+    ∃ rs : List (UScalar ty), rs.map (·.val) = List.range' r.start.val n ∧
+      Yields (core.iter.traits.iterator.IteratorRange
+        (core.iter.range.UScalarStep ty cloneInst partialOrdInst)) r rs
+  | 0, r, hn => ⟨[], by simp,
+      spec_mono (core.iter.range.IteratorRange.next_UScalar_none_spec h_lt r (by omega))
+        fun _ h => h.1⟩
+  | n + 1, r, hn => by
+    obtain ⟨⟨o, r'⟩, hnext, hpost⟩ := spec_eq_ok
+      (core.iter.range.IteratorRange.next_UScalar_some_spec h_clone h_lt r (by omega))
+    simp only [uncurry'_pair] at hpost
+    obtain ⟨rfl, hs', he'⟩ := hpost
+    obtain ⟨rs, hrs, hy⟩ := core.iter.range.IteratorRange.yields_UScalar h_clone h_lt n r'
+      (by rw [he', hs']; omega)
+    refine ⟨r.start :: rs, by simp [hrs, hs', List.range'_succ], ?_⟩
+    simp only [Yields, core.iter.traits.iterator.IteratorRange]
+    rw [hnext, spec_ok]
+    exact ⟨rfl, hy⟩
+
+-- Per-type `Yields` for every unsigned scalar.
+uscalar
+theorem core.iter.range.IteratorRange.yields_'S (r : core.ops.range.Range «%S») :
+    ∃ rs : List «%S», rs.map (·.val) = List.range' r.start.val (r.end.val - r.start.val) ∧
+      Yields (core.iter.traits.iterator.IteratorRange core.iter.range.Step'S) r rs :=
+  core.iter.range.IteratorRange.yields_UScalar (by simp) (by intros; rfl) _ r rfl
 
 /-! ## Slices, `map` and `collect` -/
 
@@ -590,6 +733,62 @@ theorem core.iter.traits.iterator.Iterator.collect_vec_back_spec {I T : Type} [G
   subst hl'
   simp [hl]
 
+/-- Ok-conditional `iterToList` over `map(f)`, for a closure that keeps its state: one output per
+input, each what the closure returned on it. Unlike `Map.yields_spec`, the closure may panic on
+inputs the run never reached. -/
+theorem alloc.vec.FromIteratorVec.iterToList_map_ok {I F Item B : Type}
+    (IA : core.iter.traits.iterator.Iterator I Item) (FI : core.ops.function.FnMut F Item B) (f : F)
+    (hst : ∀ x y f', FI.call_mut f x = ok (y, f') → f' = f) :
+    ∀ (xs : List Item) (it : I) (acc l : List B), Yields IA it xs →
+    alloc.vec.FromIteratorVec.iterToList
+      (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator IA FI) ⟨it, f⟩ acc = ok l →
+    ∃ ys, l = acc.reverse ++ ys ∧ List.Forall₂ (fun x y => FI.call_mut f x = ok (y, f)) xs ys
+  | [], it, acc, l, hy, h => by
+    simp only [Yields] at hy
+    obtain ⟨⟨o, it'⟩, hn, ho⟩ := spec_eq_ok hy
+    simp only [uncurry'_pair] at ho; subst ho
+    rw [alloc.vec.FromIteratorVec.iterToList] at h
+    simp only [core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator,
+      core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next, hn, bind_tc_ok,
+      ok.injEq] at h
+    exact ⟨[], by simp [h], .nil⟩
+  | x :: xs, it, acc, l, hy, h => by
+    simp only [Yields] at hy
+    obtain ⟨⟨o, it'⟩, hn, ho, hy'⟩ := spec_eq_ok hy
+    subst ho
+    rw [alloc.vec.FromIteratorVec.iterToList] at h
+    simp only [core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator,
+      core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next, hn, bind_tc_ok] at h
+    obtain ⟨⟨o', m'⟩, hm, h⟩ := bind_eq_ok_inv h
+    obtain ⟨⟨y, f'⟩, hc, hm2⟩ := bind_eq_ok_inv hm
+    have hf := hst _ _ _ hc
+    rw [hf] at hc hm2
+    simp only [ok.injEq, Prod.mk.injEq] at hm2
+    obtain ⟨rfl, rfl⟩ := hm2
+    obtain ⟨ys, rfl, h2⟩ :=
+      alloc.vec.FromIteratorVec.iterToList_map_ok IA FI f hst xs it' (y :: acc) l hy' h
+    exact ⟨y :: ys, by simp, .cons hc h2⟩
+
+/-- Ok-conditional `map(f).collect::<Vec<_>>()`, for a closure that keeps its state. -/
+theorem core.iter.traits.iterator.Iterator.collect_vec_map_ok {I F Item B : Type}
+    (IA : core.iter.traits.iterator.Iterator I Item) (FI : core.ops.function.FnMut F Item B) (f : F)
+    (hst : ∀ x y f', FI.call_mut f x = ok (y, f') → f' = f) (xs : List Item) (it : I)
+    (hy : Yields IA it xs) (v : alloc.vec.Vec B)
+    (h : core.iter.traits.iterator.Iterator.collect.default (S := instCollectShape)
+      (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator IA FI)
+      (core.iter.traits.collect.FromIteratorVec B) ⟨it, f⟩ = ok v) :
+    List.Forall₂ (fun x y => FI.call_mut f x = ok (y, f)) xs v.val := by
+  simp only [core.iter.traits.iterator.Iterator.collect.default, CollectShape.collect,
+    alloc.vec.FromIteratorVec.from_iter,
+    core.iter.traits.collect.IntoIterator.Blanket.into_iter, bind_tc_ok] at h
+  obtain ⟨l, hl, h⟩ := bind_eq_ok_inv h
+  obtain ⟨ys, rfl, h2⟩ := alloc.vec.FromIteratorVec.iterToList_map_ok IA FI f hst xs it [] l hy hl
+  split at h
+  · simp only [ok.injEq] at h
+    subst h
+    simpa using h2
+  · simp at h
+
 /-- `iterToListBack` over `map(f)`, `f` known by a spec as in `Map.yields_spec`: the list gained
 `ys` with `R j ys[j]`, and the given-back `Map`'s closure meets the invariant at the end. -/
 theorem alloc.vec.FromIteratorVec.iterToListBack_map_spec {I F Item B : Type}
@@ -810,6 +1009,102 @@ theorem core.iter.adapters.flatten.FlatMap.yields (f : F) (Q : Item0 → List It
 
 end FlatMap
 
+/-! ## `OkYields`: `Yields` for iterators that may panic -/
+
+/-- Ok-conditional `Yields`: whenever `next` succeeds it returns the next of `xs`, then `none`.
+A panicking `next` satisfies it, so it suits soundness (Ok-conditional) proofs. -/
+@[expose] def OkYields {I Item : Type} (inst : core.iter.traits.iterator.Iterator I Item) :
+    I → List Item → Prop
+  | it, [] => ∀ o it', inst.next it = ok (o, it') → o = none
+  | it, x :: xs => ∀ o it', inst.next it = ok (o, it') → o = some x ∧ OkYields inst it' xs
+
+theorem OkYields.of_yields {I Item : Type} (inst : core.iter.traits.iterator.Iterator I Item) :
+    ∀ (xs : List Item) (it : I), Yields inst it xs → OkYields inst it xs
+  | [], it, hy => fun o it' hn => by simpa using spec_of_eq_ok hy hn
+  | x :: xs, it, hy => fun o it' hn => by
+    have := spec_of_eq_ok hy hn
+    simp only [uncurry'_pair] at this
+    exact ⟨this.1, OkYields.of_yields inst xs it' this.2⟩
+
+/-- `chain`'s second half, once the first is dropped, Ok-yields what it Ok-yields. -/
+theorem core.iter.adapters.chain.Chain.okYields_b {A B Item : Type}
+    (IA : core.iter.traits.iterator.Iterator A Item) (IB : core.iter.traits.iterator.Iterator B Item) :
+    ∀ (ys : List Item) (b : B), OkYields IB b ys →
+    OkYields (core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator IA IB)
+      ⟨none, some b⟩ ys
+  | [], b, hy => fun o c hn => by
+    simp only [core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator,
+      core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next] at hn
+    obtain ⟨⟨o', b'⟩, hb, hn⟩ := bind_eq_ok_inv hn
+    simp only [ok.injEq, Prod.mk.injEq] at hn
+    exact hn.1 ▸ hy o' b' hb
+  | y :: ys, b, hy => fun o c hn => by
+    simp only [core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator,
+      core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next] at hn
+    obtain ⟨⟨o', b'⟩, hb, hn⟩ := bind_eq_ok_inv hn
+    simp only [ok.injEq, Prod.mk.injEq] at hn
+    obtain ⟨rfl, rfl⟩ := hn
+    obtain ⟨h1, h2⟩ := hy o' b' hb
+    exact ⟨h1, core.iter.adapters.chain.Chain.okYields_b IA IB ys b' h2⟩
+
+/-- `a.chain(b)` Ok-yields `a`'s items, then `b`'s. -/
+theorem core.iter.adapters.chain.Chain.okYields {A B Item : Type}
+    (IA : core.iter.traits.iterator.Iterator A Item) (IB : core.iter.traits.iterator.Iterator B Item)
+    (ys : List Item) (b : B) (hb : OkYields IB b ys) :
+    ∀ (xs : List Item) (a : A), OkYields IA a xs →
+    OkYields (core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator IA IB)
+      ⟨some a, some b⟩ (xs ++ ys)
+  | [], a, ha => by
+    have hb' := core.iter.adapters.chain.Chain.okYields_b IA IB ys b hb
+    cases ys <;>
+    · intro o c hn
+      simp only [core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator,
+        core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next] at hn
+      obtain ⟨⟨o', a'⟩, hna, hn⟩ := bind_eq_ok_inv hn
+      obtain rfl := ha o' a' hna
+      exact hb' o c hn
+  | x :: xs, a, ha => fun o c hn => by
+    simp only [core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator,
+      core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next] at hn
+    obtain ⟨⟨o', a'⟩, hna, hn⟩ := bind_eq_ok_inv hn
+    obtain ⟨rfl, ha'⟩ := ha o' a' hna
+    simp only [ok.injEq, Prod.mk.injEq] at hn
+    obtain ⟨rfl, rfl⟩ := hn
+    exact ⟨rfl, core.iter.adapters.chain.Chain.okYields IA IB ys b hb xs a' ha'⟩
+
+theorem alloc.vec.FromIteratorVec.iterToList_okYields {I T : Type}
+    (IA : core.iter.traits.iterator.Iterator I T) :
+    ∀ (xs : List T) (it : I) (acc l : List T), OkYields IA it xs →
+    alloc.vec.FromIteratorVec.iterToList IA it acc = ok l → l = acc.reverse ++ xs
+  | [], it, acc, l, hy, h => by
+    rw [alloc.vec.FromIteratorVec.iterToList] at h
+    obtain ⟨⟨o, it'⟩, hn, h⟩ := bind_eq_ok_inv h
+    obtain rfl := hy o it' hn
+    simp only [ok.injEq] at h
+    simp [h]
+  | x :: xs, it, acc, l, hy, h => by
+    rw [alloc.vec.FromIteratorVec.iterToList] at h
+    obtain ⟨⟨o, it'⟩, hn, h⟩ := bind_eq_ok_inv h
+    obtain ⟨rfl, hy'⟩ := hy o it' hn
+    simpa using alloc.vec.FromIteratorVec.iterToList_okYields IA xs it' (x :: acc) l hy' h
+
+/-- Ok-conditional `collect::<Vec<_>>()`: the vector of what the iterator Ok-yields. -/
+theorem core.iter.traits.iterator.Iterator.collect_vec_okYields {I T : Type}
+    (IA : core.iter.traits.iterator.Iterator I T) (it : I) (xs : List T) (hy : OkYields IA it xs)
+    (v : alloc.vec.Vec T)
+    (h : core.iter.traits.iterator.Iterator.collect.default (S := instCollectShape) IA
+      (core.iter.traits.collect.FromIteratorVec T) it = ok v) : v.val = xs := by
+  simp only [core.iter.traits.iterator.Iterator.collect.default, CollectShape.collect,
+    alloc.vec.FromIteratorVec.from_iter,
+    core.iter.traits.collect.IntoIterator.Blanket.into_iter, bind_tc_ok] at h
+  obtain ⟨l, hl, h⟩ := bind_eq_ok_inv h
+  obtain rfl : l = xs := by simpa using alloc.vec.FromIteratorVec.iterToList_okYields IA xs it [] l hy hl
+  split at h
+  · simp only [ok.injEq] at h
+    subst h
+    simp
+  · simp at h
+
 /-! ## `List.overwrite` -/
 
 /-- `l` with its first `vs.length` items replaced by `vs` (none past its end): what the
@@ -842,5 +1137,92 @@ theorem _root_.List.overwrite_of_length {α : Type} (l vs : List α) (h : vs.len
   apply List.ext_getElem (by simp [h])
   intro j h1 h2
   simp [List.overwrite, List.getD_eq_getElem?_getD, List.getElem?_eq_getElem h2]
+
+/-! ## List sums and folds -/
+
+/-- `Forall₂`-related lists give the same `zipIdx`-weighted sum when related items agree. -/
+theorem _root_.List.Forall₂.sum_map_zipIdx {α β M : Type} [AddCommMonoid M] {R : α → β → Prop}
+    {l1 : List α} {l2 : List β} (h : List.Forall₂ R l1 l2) (f : α → ℕ → M) (g : β → ℕ → M)
+    (hfg : ∀ a b k, R a b → f a k = g b k) (k : ℕ) :
+    ((l1.zipIdx k).map fun p => f p.1 p.2).sum = ((l2.zipIdx k).map fun p => g p.1 p.2).sum := by
+  induction h generalizing k with
+  | nil => rfl
+  | cons hab _ ih =>
+    simp only [List.zipIdx_cons, List.map_cons, List.sum_cons]
+    rw [hfg _ _ k hab, ih (k + 1)]
+
+/-- Every right-hand member has a `Forall₂` partner. -/
+theorem _root_.List.Forall₂.exists_of_mem_right {α β : Type} {R : α → β → Prop}
+    {l₁ : List α} {l₂ : List β} (h : List.Forall₂ R l₁ l₂) {b : β} (hb : b ∈ l₂) :
+    ∃ a ∈ l₁, R a b := by
+  induction h with
+  | nil => simp at hb
+  | @cons a b' _ _ hr _ ih =>
+    rcases List.mem_cons.mp hb with rfl | hb
+    · exact ⟨a, List.mem_cons_self, hr⟩
+    · obtain ⟨a', ha', hr'⟩ := ih hb
+      exact ⟨a', List.mem_cons_of_mem _ ha', hr'⟩
+
+/-- Adjacent items of a duplicate-free list differ. -/
+theorem _root_.List.Nodup.ne_of_mem_zip_tail {α : Type} :
+    ∀ {l : List α}, l.Nodup → ∀ p ∈ l.zip l.tail, p.1 ≠ p.2
+  | [], _, _, hp => by simp at hp
+  | [_], _, _, hp => by simp at hp
+  | a :: b :: l, hnd, p, hp => by
+    simp only [List.tail_cons, List.zip_cons_cons, List.mem_cons] at hp
+    rcases hp with rfl | hp
+    · simp only [List.nodup_cons, List.mem_cons, not_or] at hnd
+      exact hnd.1.1
+    · exact List.Nodup.ne_of_mem_zip_tail (List.nodup_cons.mp hnd).2 p (by simpa using hp)
+
+/-- `anyM` of a predicate false on every item. -/
+theorem List.anyM_ok_false {α : Type} (f : α → Result Bool) :
+    ∀ (l : List α), (∀ x ∈ l, f x = ok false) → l.anyM f = ok false
+  | [], _ => by rw [List.anyM_nil]; rfl
+  | x :: l, h => by
+    simp [List.anyM_cons, h x (by simp), List.anyM_ok_false f l (fun y hy => h y (by simp [hy]))]
+
+/-- Horner's rule from the back (`rev().fold(0, |acc, e| acc·x + e)`) as a power-weighted sum. -/
+theorem _root_.List.foldl_reverse_horner {α K : Type} [CommSemiring K] (x : K) (t : α → K) :
+    ∀ l : List α, l.reverse.foldl (fun k a => k * x + t a) 0 =
+      ((List.range l.length).map fun j => x ^ j * (l[j]?.elim 0 t)).sum
+  | [] => by simp
+  | a :: l => by
+    rw [List.reverse_cons, List.foldl_append, List.foldl_reverse_horner x t l]
+    simp only [List.foldl_cons, List.foldl_nil, List.length_cons]
+    rw [List.range_succ_eq_map, List.map_cons, List.map_map, List.sum_cons]
+    simp only [pow_zero, one_mul, List.getElem?_cons_zero, Option.elim_some,
+      Function.comp_def, pow_succ, List.getElem?_cons_succ]
+    rw [← List.sum_map_mul_right, add_comm]
+    congr 2
+    apply List.map_congr_left
+    intro j _
+    ring
+
+/-- `zip` commutes with `reverse` on equal lengths. -/
+theorem _root_.List.zip_reverse {α β : Type} (l1 : List α) (l2 : List β)
+    (h : l1.length = l2.length) : l1.reverse.zip l2.reverse = (l1.zip l2).reverse := by
+  apply List.ext_getElem (by simp [h])
+  intro i h1 h2
+  simp only [List.length_zip, List.length_reverse] at h1
+  simp [List.getElem_reverse, List.getElem_zip, h]
+
+/-- An inner product against the powers `xⁱ⁺ᵏ`, as a `zipIdx` sum. -/
+theorem _root_.List.sum_zipWith_smul_pow {F K M α : Type} [CommSemiring K] [AddCommMonoid M]
+    [Module K M] (σ : F → K) (φ : α → M) (x : K) :
+    ∀ (l : List α) (ys : List F) (k : ℕ), l.length ≤ ys.length →
+    (∀ i (h : i < ys.length), σ ys[i] = x ^ (i + k)) →
+    (List.zipWith (fun c s => σ s • φ c) l ys).sum =
+      ((l.zipIdx k).map fun (c, m) => x ^ m • φ c).sum
+  | [], _, _, _, _ => by simp
+  | _ :: _, [], _, h, _ => by simp at h
+  | c :: l, y :: ys, k, hl, hy => by
+    simp only [List.zipWith_cons_cons, List.sum_cons, List.zipIdx_cons, List.map_cons]
+    have h0 := hy 0 (by simp)
+    simp only [List.getElem_cons_zero, zero_add] at h0
+    rw [h0, List.sum_zipWith_smul_pow σ φ x l ys (k + 1) (by simpa using hl) (fun i h => by
+      have := hy (i + 1) (by simpa using h)
+      simp only [List.getElem_cons_succ] at this
+      rw [this]; ring_nf)]
 
 end Aeneas.Std

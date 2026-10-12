@@ -82,6 +82,14 @@ theorem ListN.sizeOf_lt_of_mem {α} [SizeOf α] {n : Nat} (l : ListN α n) {x : 
     · simp; omega
     · have := ih hx; simp; omega
 
+/-- A `ListN`'s list is no larger than it: the `decreasing_by` step for recursion over the list
+of a nested `Slice`/`Vec` field. -/
+theorem ListN.sizeOf_toList_le {α} [SizeOf α] {n : Nat} (l : ListN α n) :
+    sizeOf l.toList ≤ sizeOf l := by
+  induction l with
+  | nil => simp [ListN.toList]
+  | cons a l ih => simp [ListN.toList]; omega
+
 /-!
 ## Positivity test
 
