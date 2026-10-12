@@ -5,6 +5,8 @@ public import Aeneas.Std.Core.IterAdapters
 public import Aeneas.Std.VecExtra
 public section
 
+@[expose] section
+
 set_option linter.dupNamespace false
 
 namespace Aeneas.Std

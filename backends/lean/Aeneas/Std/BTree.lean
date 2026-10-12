@@ -5,6 +5,8 @@ public import Aeneas.Std.CoreMisc
 public import Aeneas.Std.Alloc
 public section
 
+@[expose] section
+
 set_option linter.dupNamespace false
 
 namespace Aeneas.Std

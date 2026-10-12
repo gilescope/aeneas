@@ -5,6 +5,8 @@ public import Aeneas.Std.SliceIter
 public import Aeneas.Std.Scalar.SaturatingOps
 public section
 
+@[expose] section
+
 set_option linter.dupNamespace false
 
 namespace Aeneas.Std

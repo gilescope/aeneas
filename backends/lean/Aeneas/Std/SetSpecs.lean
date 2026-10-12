@@ -1674,4 +1674,21 @@ theorem _root_.String.eq_of_toByteArray_toList_eq {a b : String}
   rw [ByteArray.toList_eq_data_toList, ByteArray.toList_eq_data_toList, Array.toList_inj] at h
   exact String.toByteArray_inj.mp (ByteArray.ext h)
 
+/-! ## Models of fork-added Std files unfold here, as upstream's `@[expose] section`s do -/
+
+/-- `reduce` on an exhausted iterator returns `none`. -/
+theorem core.iter.traits.iterator.Iterator.reduce.default_none {Self F Item : Type}
+    (IA : core.iter.traits.iterator.Iterator Self Item)
+    (FI : core.ops.function.FnMut F (Item × Item) Item) (it : Self) (f : F)
+    (h : IA.next it = ok (none, it)) :
+    core.iter.traits.iterator.Iterator.reduce.default IA FI it f = ok none := by
+  simp [core.iter.traits.iterator.Iterator.reduce.default, h]
+
+/-- A BTreeMap `IntoIter` yields its entries in order. -/
+theorem alloc.collections.btree.map.IntoIter.next_cons {K V A : Type}
+    (AI : core.alloc.AllocatorClone A) (x : K × V) (xs : List (K × V)) :
+    alloc.collections.btree.map.IntoIter.Insts.CoreIterTraitsIteratorIteratorPair.next AI
+      { items := x :: xs } = ok (some x, { items := xs }) := by
+  simp [alloc.collections.btree.map.IntoIter.Insts.CoreIterTraitsIteratorIteratorPair.next]
+
 end Aeneas.Std
