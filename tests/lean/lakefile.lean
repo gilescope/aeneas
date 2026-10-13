@@ -28,6 +28,7 @@ package «tests» {}
 @[default_target] lean_lib Builtin
 @[default_target] lean_lib BuiltinAuto
 @[default_target] lean_lib CastSigned
+@[default_target] lean_lib ChainIterMut
 @[default_target] lean_lib ChunksExact
 @[default_target] lean_lib ClosureAssocTypeDiamond
 @[default_target] lean_lib ClosureMutArgs

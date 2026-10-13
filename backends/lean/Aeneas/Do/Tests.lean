@@ -742,6 +742,18 @@ def unit_bind : Result Nat := do
   let () ← ok ()
   ok 1
 
+/-- `let (a, b) := match …`: the `match` is postponed until its type is known, which only the
+destructuring needs (Aeneas emits this for an `Option`'s give back). -/
+def let_pat_match_test (o : Option Nat × Nat) (d : Nat) : Result Nat := do
+  let (a, b) :=
+    match o with
+    | (some t, n) => (t, n)
+    | _ => (d, d)
+  ok (a + b)
+
+example : let_pat_match_test (some 1, 2) 5 = ok 3 := rfl
+example : let_pat_match_test (none, 2) 5 = ok 10 := rfl
+
 end Tests
 
 /- ## Regression tests for `elabDoMatch` with unresolved discriminant type metavars.

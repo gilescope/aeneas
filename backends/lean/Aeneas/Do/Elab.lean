@@ -457,7 +457,11 @@ meta partial def elabDoLetPat (pat : Term) (rhs : Term)
     (rest : List DoElem) : ElabM Expr := do
   let α ← mkFreshTypeMVar
   let val ← elabTermEnsuringType rhs α
-  let α ← instantiateMVars α
+  let mut α ← instantiateMVars α
+  -- A `match` with no expected type is postponed, leaving `α` unknown; the pattern needs it.
+  if α.getAppFn.isMVar then
+    synthesizeSyntheticMVarsNoPostponing
+    α ← instantiateMVars α
   let shape ← analyzePat pat α
   let k ← mkPatContinuation shape α fun _ => elabDoSeqCore rest
   synthesizeSyntheticMVarsNoPostponing

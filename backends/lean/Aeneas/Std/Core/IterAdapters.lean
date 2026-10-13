@@ -440,27 +440,26 @@ instance (priority := low) {I : Type} : IntoIterBack I I := ⟨id⟩
 
 /-- The output of `chain(self, other)`: the `Chain`, and, when `self` holds a `&mut`, the give
 back of `self` and `other` from its final state (each half's original if it was dropped). -/
-class ChainShape (Self U IntoIter : Type) where
-  Out : Type
+class ChainShape (Self U IntoIter : Type) (Out : outParam Type) where
   ofChain : Self → U → core.iter.adapters.chain.Chain Self IntoIter → Out
 
-instance (priority := low) {Self U IntoIter : Type} : ChainShape Self U IntoIter :=
-  ⟨_, fun _ _ c => c⟩
+instance (priority := low) {Self U IntoIter : Type} :
+    ChainShape Self U IntoIter (core.iter.adapters.chain.Chain Self IntoIter) :=
+  ⟨fun _ _ c => c⟩
 
 instance {Self U IntoIter : Type} [GivesBack Self] [IntoIterBack IntoIter U] :
-    ChainShape Self U IntoIter :=
-  ⟨core.iter.adapters.chain.Chain Self IntoIter ×
-      (core.iter.adapters.chain.Chain Self IntoIter → Self × U),
-    fun self other c =>
-      (c, fun c' => (c'.a.getD self, (c'.b.map IntoIterBack.back).getD other))⟩
+    ChainShape Self U IntoIter (core.iter.adapters.chain.Chain Self IntoIter ×
+      (core.iter.adapters.chain.Chain Self IntoIter → Self × U)) :=
+  ⟨fun self other c =>
+    (c, fun c' => (c'.a.getD self, (c'.b.map IntoIterBack.back).getD other))⟩
 
 /-- `Chain::new(self, other.into_iter())` -/
 @[trait_default, rust_fun "core::iter::traits::iterator::Iterator::chain"]
 def core.iter.traits.iterator.Iterator.chain.default
-  {Self U Item IntoIter : Type} [S : ChainShape Self U IntoIter]
+  {Self U Item IntoIter Out : Type} [S : ChainShape Self U IntoIter Out]
   (_IteratorInst : core.iter.traits.iterator.Iterator Self Item)
   (IntoIteratorInst : core.iter.traits.collect.IntoIterator U Item IntoIter)
-  (self : Self) (other : U) : Result S.Out := do
+  (self : Self) (other : U) : Result Out := do
   ok (S.ofChain self other { a := some self, b := some (← IntoIteratorInst.into_iter other) })
 
 /-! ## `FlatMap` -/
