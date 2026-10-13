@@ -754,6 +754,28 @@ def let_pat_match_test (o : Option Nat × Nat) (d : Nat) : Result Nat := do
 example : let_pat_match_test (some 1, 2) 5 = ok 3 := rfl
 example : let_pat_match_test (none, 2) 5 = ok 10 := rfl
 
+/-- A shape class whose output a default instance fills in when the call site leaves it open
+(Aeneas's give-back shapes: one function, a plain output where the type is known, a pair with
+a backward function at a call site that destructures it). -/
+class ArrowShape (Out : Type) where
+  run : Nat → Result Out
+
+instance : ArrowShape Nat := ⟨fun n => ok n⟩
+
+@[default_instance]
+instance : ArrowShape (Nat × Nat) := ⟨fun n => ok (n, n + 1)⟩
+
+def arrowShape {Out : Type} [S : ArrowShape Out] (n : Nat) : Result Out := S.run n
+
+/-- `let (a, b) ← f x` where `f`'s output type is a default instance's: forced before the
+pattern needs it. -/
+def let_arrow_pat_default_test (n : Nat) : Result Nat := do
+  let (a, b) ← arrowShape n
+  ok (a + b)
+
+example : let_arrow_pat_default_test 2 = ok 5 := by
+  simp [let_arrow_pat_default_test, arrowShape, ArrowShape.run]
+
 end Tests
 
 /- ## Regression tests for `elabDoMatch` with unresolved discriminant type metavars.

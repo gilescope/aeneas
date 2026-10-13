@@ -432,7 +432,12 @@ meta partial def elabDoLetArrowPat (pat : Term) (rhs : DoElem) (rest : List DoEl
       if let some a := eType.getAppArgs[0]? then
         discard <| isDefEq α a
       pure e
-  let α ← instantiateMVars α
+  let mut α ← instantiateMVars α
+  -- Still unknown (a stuck instance, a postponed `match`): the pattern needs it, so synthesize
+  -- now, default instances included.
+  if α.getAppFn.isMVar then
+    synthesizeSyntheticMVarsNoPostponing
+    α ← instantiateMVars α
   let shape ← analyzePat pat α
   let k ← mkPatContinuation shape α fun _ => elabDoSeqCore rest
   synthesizeSyntheticMVarsNoPostponing
