@@ -320,6 +320,25 @@ let translate_crate_to_pure (crate : crate) (marked_ids : marked_ids) :
   (* Compute the translation context *)
   let trans_ctx = compute_contexts crate in
 
+  (* Register the [Fn*] traits: clauses on them are typed like closure impls
+     (see [SymbolicToPureTypes.fn_trait_decls]) *)
+  (SymbolicToPureTypes.fn_trait_decls :=
+     let matches (d : trait_decl) (s : string) =
+       ExtractName.match_name crate (NameMatcher.parse_pattern s)
+         d.item_meta.name
+     in
+     TraitDeclId.Map.of_list
+       (List.filter_map
+          (fun ((id, d) : TraitDeclId.id * trait_decl) ->
+            if matches d "core::ops::function::FnOnce" then
+              Some (id, SymbolicToPureTypes.FnOnce)
+            else if matches d "core::ops::function::FnMut" then
+              Some (id, SymbolicToPureTypes.FnMut)
+            else if matches d "core::ops::function::Fn" then
+              Some (id, SymbolicToPureTypes.Fn)
+            else None)
+          (TraitDeclId.Map.bindings crate.trait_decls)));
+
   (* Translate all the type definitions *)
   let type_decls = SymbolicToPure.translate_type_decls trans_ctx in
 

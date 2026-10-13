@@ -520,10 +520,43 @@ and translate_function_call_aux (call : S.call) (e : S.expr) (ctx : bs_ctx) :
              {!symbolic_value_to_texpr} so that it doesn't perform any
              lookups if the symbolic value has type unit.
           *)
-          let vars =
-            if ignore_fwd_output then back_funs else dest :: back_funs
+          let fn_trait =
+            match fid with
+            | TraitMethod (trait_ref, _) ->
+                SymbolicToPureTypes.fn_trait_of_decl
+                  trait_ref.trait_decl_ref.binder_value.id
+            | _ -> None
           in
-          mk_simpl_tuple_pat vars
+          match fn_trait with
+          | Some kind when back_funs <> [] ->
+              (* A call through an [Fn*] trait: the instance gives the [&mut]
+                 arguments back inside its [Output] (see
+                 [SymbolicToPureTypes.fn_trait_decls]), so the output is kept
+                 even when it is [()], and [call_mut]'s [self] comes last:
+                 [((out, backs), self')]. *)
+              let out =
+                if ignore_fwd_output then { pat = PIgnored; ty = mk_unit_ty }
+                else dest
+              in
+              let with_backs (backs : tpat list) =
+                if backs = [] then out
+                else mk_simpl_tuple_pat [ out; mk_simpl_tuple_pat backs ]
+              in
+              begin
+                match kind with
+                | SymbolicToPureTypes.FnMut -> (
+                    match back_funs with
+                    | self' :: backs ->
+                        mk_simpl_tuple_pat [ with_backs backs; self' ]
+                    | [] -> with_backs [])
+                | SymbolicToPureTypes.FnOnce | SymbolicToPureTypes.Fn ->
+                    with_backs back_funs
+              end
+          | _ ->
+              let vars =
+                if ignore_fwd_output then back_funs else dest :: back_funs
+              in
+              mk_simpl_tuple_pat vars
         in
         (* Register the forward call (some information, for instance about
            the places where the values come from, will be useful later to

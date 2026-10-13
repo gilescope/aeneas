@@ -54,6 +54,41 @@ let translate_const_generic_param (span : span option)
 
 (* Some generic translation functions (we need to translate different "flavours"
    of types: forward types, backward types, etc.) *)
+(** The [Fn*] traits. *)
+type fn_trait = FnOnce | FnMut | Fn
+
+(** The crate's [Fn*] trait declarations, filled by [Translate] before anything is
+    translated.
+
+    The models of the [Fn*] traits know nothing of borrows, so a closure impl puts
+    the [&mut] arguments it gives back into the instance's [Output]:
+    [Output' = Output × (b₀ × … × bₙ)] (see [Extract.method_adapter]). A trait
+    clause [F : FnOnce(&mut T) -> O] is typed the same way here, so that the
+    instance of a closure fits it and a call through the clause gives the
+    arguments back. *)
+let fn_trait_decls : fn_trait TraitDeclId.Map.t ref = ref TraitDeclId.Map.empty
+
+let fn_trait_of_decl (id : TraitDeclId.id) : fn_trait option =
+  TraitDeclId.Map.find_opt id !fn_trait_decls
+
+(** The [&mut] arguments of an [Fn*] trait's [Args] tuple, in order: a call
+    through the trait gives them back after the output. *)
+let fn_args_back_tys (translate_ty : T.ty -> ty) (args : T.ty) : ty list =
+  match args with
+  | T.TAdt { builtin = Some T.TTuple; generics; _ } ->
+      List.filter_map
+        (fun (t : T.ty) ->
+          match t with
+          | T.TRef (_, t, T.RMut) -> Some (translate_ty t)
+          | _ -> None)
+        generics.types
+  | _ -> []
+
+(** [Output × (b₀ × … × bₙ)], or [Output] when nothing is given back. *)
+let fn_output_with_backs (output : ty) (backs : ty list) : ty =
+  if backs = [] then output
+  else mk_simpl_tuple_ty [ output; mk_simpl_tuple_ty backs ]
+
 let rec translate_generic_args (span : Meta.span option)
     (translate_ty : T.ty -> ty) (generics : T.generic_args) : generic_args =
   (* We ignore the regions: if they didn't cause trouble for the symbolic execution,
@@ -82,6 +117,17 @@ and translate_trait_ref (span : Meta.span option) (translate_ty : T.ty -> ty)
 and translate_trait_decl_ref (span : Meta.span option)
     (translate_ty : T.ty -> ty) (tr : T.trait_decl_ref) : trait_decl_ref =
   let decl_generics = translate_generic_args span translate_ty tr.generics in
+  (* An [Fn*] trait's lifted [Output] carries the [&mut] arguments given back *)
+  let decl_generics =
+    match (fn_trait_of_decl tr.id, tr.generics.types, decl_generics.types) with
+    | Some _, [ _; args; _ ], [ self; args'; output ] ->
+        let backs = fn_args_back_tys translate_ty args in
+        {
+          decl_generics with
+          types = [ self; args'; fn_output_with_backs output backs ];
+        }
+    | _ -> decl_generics
+  in
   { trait_decl_id = tr.id; decl_generics }
 
 and translate_fun_decl_ref (span : Meta.span option) (translate_ty : T.ty -> ty)

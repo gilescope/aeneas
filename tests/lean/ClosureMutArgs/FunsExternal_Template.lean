@@ -25,6 +25,5 @@ open closure_mut_args
     Visibility: public -/
 axiom each
   {F : Type} (coreopsfunctionFnMutFTupleMut0U32TupleInst :
-  core.ops.function.FnMut F Std.U32 Unit) :
+  core.ops.function.FnMut F Std.U32 (Unit × Std.U32)) :
   Slice Std.U32 → F → Result (Slice Std.U32)
-

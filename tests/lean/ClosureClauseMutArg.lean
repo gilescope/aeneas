@@ -20,32 +20,32 @@ set_option maxRecDepth 2048
 namespace closure_clause_mut_arg
 
 /-- [closure_clause_mut_arg::apply_once]:
-    Source: 'tests/src/closure-clause-mut-arg.rs', lines 8:0-10:1
+    Source: 'tests/src/closure-clause-mut-arg.rs', lines 9:0-11:1
     Visibility: public -/
 def apply_once
   {F : Type} (coreopsfunctionFnOnceFTupleMut0U32BoolInst :
-  core.ops.function.FnOnce F Std.U32 Bool) (f : F) (x : Std.U32) :
+  core.ops.function.FnOnce F Std.U32 (Bool × Std.U32)) (f : F) (x : Std.U32) :
   Result (Bool × Std.U32)
   := do
   coreopsfunctionFnOnceFTupleMut0U32BoolInst.call_once f x
 
 /-- [closure_clause_mut_arg::apply_mut]:
-    Source: 'tests/src/closure-clause-mut-arg.rs', lines 12:0-14:1
+    Source: 'tests/src/closure-clause-mut-arg.rs', lines 13:0-15:1
     Visibility: public -/
 def apply_mut
   {F : Type} (coreopsfunctionFnMutFTupleMut0U32BoolInst :
-  core.ops.function.FnMut F Std.U32 Bool) (f : F) (x : Std.U32) :
+  core.ops.function.FnMut F Std.U32 (Bool × Std.U32)) (f : F) (x : Std.U32) :
   Result (Bool × Std.U32)
   := do
-  let (b, _, x1) ← coreopsfunctionFnMutFTupleMut0U32BoolInst.call_mut f x
+  let ((b, x1), _) ← coreopsfunctionFnMutFTupleMut0U32BoolInst.call_mut f x
   ok (b, x1)
 
 /-- [closure_clause_mut_arg::apply_fn]:
-    Source: 'tests/src/closure-clause-mut-arg.rs', lines 16:0-18:1
+    Source: 'tests/src/closure-clause-mut-arg.rs', lines 17:0-19:1
     Visibility: public -/
 def apply_fn
   {F : Type} (coreopsfunctionFnFTupleMut0U32BoolInst : core.ops.function.Fn F
-  Std.U32 Bool) (f : F) (x : Std.U32) :
+  Std.U32 (Bool × Std.U32)) (f : F) (x : Std.U32) :
   Result (Bool × Std.U32)
   := do
   coreopsfunctionFnFTupleMut0U32BoolInst.call f x
