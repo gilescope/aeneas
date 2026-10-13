@@ -2414,6 +2414,16 @@ let match_ctxs (span : Meta.span) ~(check_equiv : bool)
         "Region abstractions with distinct sets of ended sub-abstractions";
 
     [%ldebug "match_abstractions: matching values"];
+    (* Ignored values hold no loans nor borrows: one side's join may have dropped them
+       while the other kept them (e.g., after a conditional [mem::swap], see
+       tests/src/nested-vec-loop-write.rs), so match the remaining values only. *)
+    let not_ignored (v : tavalue) =
+      match v.value with
+      | AIgnored _ -> false
+      | _ -> true
+    in
+    let avalues0 = List.filter not_ignored avalues0 in
+    let avalues1 = List.filter not_ignored avalues1 in
     let _ =
       if List.length avalues0 <> List.length avalues1 then
         raise_distinct "Region abstractions with not the same number of values"

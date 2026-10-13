@@ -134,6 +134,7 @@ package «tests» {}
 @[default_target] lean_lib NestedBorrows
 @[default_target] lean_lib NestedSharedBorrows
 @[default_target] lean_lib NestedSharedIter
+@[default_target] lean_lib NestedVecLoopWrite
 @[default_target] lean_lib NewtypeGetterSameName
 @[default_target] lean_lib NoNestedBorrows
 @[default_target] lean_lib OpaqueMutRegion
