@@ -40,7 +40,7 @@ def
   (c : Assembly.merge.closure_1) (tupled_args : Std.U64) :
   Result (Bool × Assembly.merge.closure_1)
   := do
-  let b ← lift (core.cmp.impls.PartialEqU64.eq tupled_args c)
+  let b : Bool ← lift (core.cmp.impls.PartialEqU64.eq tupled_args c)
   ok (b, c)
 
 /-- [nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{impl core::ops::function::FnOnce<(&'_1 u64,), bool> for nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{closure#1}<'_0>}::call_once]:
@@ -85,7 +85,7 @@ def
   (c : Assembly.merge.closure) (tupled_args : Std.U64) :
   Result (Bool × Assembly.merge.closure)
   := do
-  let b ← lift (core.cmp.impls.PartialEqU64.eq tupled_args c)
+  let b : Bool ← lift (core.cmp.impls.PartialEqU64.eq tupled_args c)
   ok (b, c)
 
 /-- [nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{impl core::ops::function::FnOnce<(&'_1 u64,), bool> for nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{closure}<'_0>}::call_once]:
@@ -145,7 +145,7 @@ def Assembly.merge_loop.body
   let i3 ←
     alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice (Std.Usize ×
       Std.Usize)) v3 i2
-  let b ←
+  let b : Bool ←
     Pair.Insts.CoreCmpPartialEqPair.eq core.cmp.PartialEqUsize
       core.cmp.PartialEqUsize i3 right_cycle
   if b

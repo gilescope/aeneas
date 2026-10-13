@@ -204,7 +204,7 @@ def is_cons {T : Type} (l : List T) : Result Bool := do
     Source: 'tests/src/no_nested_borrows.rs', lines 178:0-182:1
     Visibility: public -/
 def test_is_cons : Result Unit := do
-  let b ← is_cons (List.Cons 0#i32 List.Nil)
+  let b : Bool ← is_cons (List.Cons 0#i32 List.Nil)
   massert b
 
 /- Unit test for [no_nested_borrows::test_is_cons] -/

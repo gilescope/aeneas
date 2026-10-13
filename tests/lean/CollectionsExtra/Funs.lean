@@ -299,18 +299,18 @@ def sets
   let c ←
     alloc.collections.btree.set.BTreeSet.Insts.CoreCloneClone.clone
       core.clone.CloneU32 alloc.alloc.Global.Insts.CoreAllocAllocatorClone a
-  let b1 ←
+  let b1 : Bool ←
     alloc.collections.btree.set.BTreeSet.Insts.CoreCmpPartialEqBTreeSet.eq
       core.cmp.PartialEqU32 alloc.alloc.Global.Insts.CoreAllocAllocatorClone c
       b
-  let same ←
+  let same : Bool ←
     if b1
     then
       do
       let o ←
         alloc.collections.btree.set.BTreeSet.Insts.CoreCmpOrd.cmp
           core.cmp.OrdU32 alloc.alloc.Global.Insts.CoreAllocAllocatorClone a b
-      let b2 ← core.cmp.Ordering.is_eq o
+      let b2 : Bool ← core.cmp.Ordering.is_eq o
       if b2
       then
         let o1 ←
@@ -331,7 +331,7 @@ def sets
     SharedABTreeSet.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
       alloc.alloc.Global.Insts.CoreAllocAllocatorClone b
   let n ← sets_loop iter 0#usize
-  let b2 ←
+  let b2 : Bool ←
     alloc.collections.btree.set.BTreeSet.is_empty
       alloc.alloc.Global.Insts.CoreAllocAllocatorClone a
   let i1 ←

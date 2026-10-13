@@ -51,7 +51,7 @@ def Bool.Insts.TraitsBoolTrait : BoolTrait Bool := {
     Source: 'tests/src/traits.rs', lines 19:0-21:1
     Visibility: public -/
 def test_bool_trait_bool (x : Bool) : Result Bool := do
-  let b ← Bool.Insts.TraitsBoolTrait.get_bool x
+  let b : Bool ← Bool.Insts.TraitsBoolTrait.get_bool x
   if b
   then BoolTrait.ret_true.default x
   else ok false
@@ -78,7 +78,7 @@ def core.option.Option.Insts.TraitsBoolTrait (T : Type) : BoolTrait (Option T)
     Source: 'tests/src/traits.rs', lines 33:0-35:1
     Visibility: public -/
 def test_bool_trait_option {T : Type} (x : Option T) : Result Bool := do
-  let b ← core.option.Option.Insts.TraitsBoolTrait.get_bool x
+  let b : Bool ← core.option.Option.Insts.TraitsBoolTrait.get_bool x
   if b
   then BoolTrait.ret_true.default x
   else ok false

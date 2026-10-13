@@ -232,7 +232,7 @@ def CopyEnum.Insts.CoreCloneClone.clone
   match self with
   | CopyEnum.Variant0 => ok CopyEnum.Variant0
   | CopyEnum.Variant1 __self_0 =>
-    let b ← lift (core.clone.impls.CloneBool.clone __self_0)
+    let b : Bool ← lift (core.clone.impls.CloneBool.clone __self_0)
     ok (CopyEnum.Variant1 b)
   | CopyEnum.Variant2 __self_0 =>
     let i ← lift (core.clone.impls.CloneU32.clone __self_0)
@@ -383,7 +383,7 @@ def Enum.Insts.CoreCloneClone.clone
   match self with
   | Enum.Variant0 => ok Enum.Variant0
   | Enum.Variant1 __self_0 =>
-    let b ← lift (core.clone.impls.CloneBool.clone __self_0)
+    let b : Bool ← lift (core.clone.impls.CloneBool.clone __self_0)
     ok (Enum.Variant1 b)
   | Enum.Variant2 __self_0 =>
     let i ← lift (core.clone.impls.CloneU32.clone __self_0)
@@ -578,7 +578,7 @@ def List.Insts.CoreCmpPartialEqList.eq
       match other with
       | List.Nil => ok true
       | List.Cons __arg1_0 __arg1_1 =>
-        let b ←
+        let b : Bool ←
           core.cmp.impls.PartialEqShared.eq corecmpPartialEqInst __self_0
             __arg1_0
         if b
@@ -634,7 +634,7 @@ def CopyStruct.Insts.CoreCloneClone.clone
   Result (CopyStruct T)
   := do
   (BuiltinClone Unit).clone ()
-  let b ← lift (core.clone.impls.CloneBool.clone self.f1)
+  let b : Bool ← lift (core.clone.impls.CloneBool.clone self.f1)
   let i ← lift (core.clone.impls.CloneU32.clone self.f2)
   let t ← corecloneCloneInst.clone self.f3
   ok { f0 := (), f1 := b, f2 := i, f3 := t }
@@ -671,7 +671,7 @@ def CopyStruct.Insts.CoreCmpPartialEqCopyStruct.eq
   (self : CopyStruct T) (other : CopyStruct T) :
   Result Bool
   := do
-  let b ← core.cmp.impls.PartialEqUnit.eq () ()
+  let b : Bool ← core.cmp.impls.PartialEqUnit.eq () ()
   if b
   then
     if self.f1 = other.f1

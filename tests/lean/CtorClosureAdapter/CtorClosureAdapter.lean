@@ -89,7 +89,7 @@ def
   (c : Columns.first_fixed.closure) (tupled_args : Std.Usize) :
   Result (Bool × Columns.first_fixed.closure)
   := do
-  let b ← Columns.is_simple c tupled_args
+  let b : Bool ← Columns.is_simple c tupled_args
   ok (¬ b, c)
 
 /-- [ctor_closure_adapter::{ctor_closure_adapter::Columns}::first_fixed::{impl core::ops::function::FnOnce<(&'_1 usize,), bool> for ctor_closure_adapter::{ctor_closure_adapter::Columns}::first_fixed::{closure}<'_0>}::call_once]:

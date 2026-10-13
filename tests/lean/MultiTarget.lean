@@ -91,7 +91,7 @@ def cpu_features_present (_mask : Std.U32) : Result Bool := do
     Source: 'tests/src/multi-target.rs', lines 52:0-70:1 -/
 def dispatch_add.«x86_64-apple-darwin»
   (a : Std.U128) (b : Std.U128) : Result Std.U128 := do
-  let b1 ← cpu_features_present 1#u32
+  let b1 : Bool ← cpu_features_present 1#u32
   if b1
   then add_vec x86.Sse2.Insts.Multi_targetSimdTraitU128 a b
   else scalar_add a b
@@ -100,7 +100,7 @@ def dispatch_add.«x86_64-apple-darwin»
     Source: 'tests/src/multi-target.rs', lines 52:0-70:1 -/
 def dispatch_add.«aarch64-apple-darwin»
   (a : Std.U128) (b : Std.U128) : Result Std.U128 := do
-  let b1 ← cpu_features_present 2#u32
+  let b1 : Bool ← cpu_features_present 2#u32
   if b1
   then add_vec arm.Neon.Insts.Multi_targetSimdTraitU128 a b
   else scalar_add a b

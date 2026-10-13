@@ -1428,6 +1428,14 @@ and extract_lets (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
               F.pp_print_string fmt "let";
               F.pp_print_space fmt ());
             let ctx = extract_tpat span ctx fmt ~is_let:true ~inside:false lv in
+            (* A comparison prints as a [Prop] in Lean; bound by an untyped [let] it would
+               elaborate as one (and [if b] then needs [Decidable b]), so pin the type. The
+               ascription leaves the elaborated term unchanged. *)
+            (match (backend (), lv.pat, lv.ty) with
+            | Lean, (POpen _ | PBound _), TLiteral TBool ->
+                F.pp_print_space fmt ();
+                F.pp_print_string fmt ": Bool"
+            | _ -> ());
             F.pp_print_space fmt ();
             let eq =
               match backend () with

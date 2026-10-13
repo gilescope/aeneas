@@ -71,13 +71,13 @@ def vec_ops
   let (v3, w1) ← alloc.vec.Vec.append v2 w
   let v4 ← alloc.vec.Vec.truncate v3 3#usize
   let s ← alloc.vec.Vec.as_slice v4
-  let b ← core.slice.Slice.is_empty s
-  let empty ←
+  let b : Bool ← core.slice.Slice.is_empty s
+  let empty : Bool ←
     if b
     then ok true
     else
       do
-      let b1 ← alloc.vec.Vec.is_empty v4
+      let b1 : Bool ← alloc.vec.Vec.is_empty v4
       if b1
       then ok true
       else alloc.vec.Vec.is_empty w1

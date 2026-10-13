@@ -37,7 +37,7 @@ def fill.closure.Insts.CoreOpsFunctionFnMutTupleShared2UsizeBool.call_mut
   (c : fill.closure) (tupled_args : Std.Usize) :
   Result (Bool × fill.closure)
   := do
-  let b ← lift (core.cmp.impls.PartialEqUsize.eq tupled_args c)
+  let b : Bool ← lift (core.cmp.impls.PartialEqUsize.eq tupled_args c)
   ok (b, c)
 
 /-- [loop_iter_mut_nested_index::fill::{impl core::ops::function::FnOnce<(&'_2 usize,), bool> for loop_iter_mut_nested_index::fill::{closure}<'_0, '_1>}::call_once]:

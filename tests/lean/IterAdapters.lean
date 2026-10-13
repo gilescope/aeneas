@@ -63,7 +63,7 @@ def test_enumerate_slice : Result Unit := do
   let (o3, _) ←
     core.iter.adapters.enumerate.IteratorEnumerate.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it3
-  let b := core.option.Option.is_none o3
+  let b : Bool := core.option.Option.is_none o3
   massert b
 
 /- Unit test for [iter_adapters::test_enumerate_slice] -/
@@ -81,7 +81,7 @@ def test_enumerate_empty : Result Unit := do
   let (o, _) ←
     core.iter.adapters.enumerate.IteratorEnumerate.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it
-  let b := core.option.Option.is_none o
+  let b : Bool := core.option.Option.is_none o
   massert b
 
 /- Unit test for [iter_adapters::test_enumerate_empty] -/
@@ -111,7 +111,7 @@ def test_take_2 : Result Unit := do
   let (o2, _) ←
     core.iter.adapters.take.IteratorTake.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it2
-  let b := core.option.Option.is_none o2
+  let b : Bool := core.option.Option.is_none o2
   massert b
 
 /- Unit test for [iter_adapters::test_take_2] -/
@@ -130,7 +130,7 @@ def test_take_0 : Result Unit := do
   let (o, _) ←
     core.iter.adapters.take.IteratorTake.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it
-  let b := core.option.Option.is_none o
+  let b : Bool := core.option.Option.is_none o
   massert b
 
 /- Unit test for [iter_adapters::test_take_0] -/
@@ -163,7 +163,7 @@ def test_take_more_than_available : Result Unit := do
   let (o3, _) ←
     core.iter.adapters.take.IteratorTake.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it3
-  let b := core.option.Option.is_none o3
+  let b : Bool := core.option.Option.is_none o3
   massert b
 
 /- Unit test for [iter_adapters::test_take_more_than_available] -/
@@ -406,7 +406,7 @@ def test_array_into_iter : Result Unit := do
   let i2 ← core.option.Option.unwrap o2
   massert (i2 = 30#u32)
   let (o3, _) ← core.slice.iter.IteratorSliceIter.next it3
-  let b := core.option.Option.is_none o3
+  let b : Bool := core.option.Option.is_none o3
   massert b
 
 /- Unit test for [iter_adapters::test_array_into_iter] -/
@@ -432,7 +432,7 @@ def test_slice_into_iter : Result Unit := do
   let i3 ← core.option.Option.unwrap o3
   massert (i3 = 4#u32)
   let (o4, _) ← core.slice.iter.IteratorSliceIter.next it4
-  let b := core.option.Option.is_none o4
+  let b : Bool := core.option.Option.is_none o4
   massert b
 
 /- Unit test for [iter_adapters::test_slice_into_iter] -/
@@ -504,7 +504,7 @@ def test_enumerate_take : Result Unit := do
     core.iter.adapters.take.IteratorTake.next
       (core.iter.traits.iterator.IteratorEnumerate
       (core.iter.traits.iterator.IteratorSliceIter Std.U32)) it2
-  let b := core.option.Option.is_none o2
+  let b : Bool := core.option.Option.is_none o2
   massert b
 
 /- Unit test for [iter_adapters::test_enumerate_take] -/
@@ -527,12 +527,12 @@ def test_take_exhausted_then_next : Result Unit := do
   let (o1, it2) ←
     core.iter.adapters.take.IteratorTake.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it1
-  let b := core.option.Option.is_none o1
+  let b : Bool := core.option.Option.is_none o1
   massert b
   let (o2, _) ←
     core.iter.adapters.take.IteratorTake.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it2
-  let b1 := core.option.Option.is_none o2
+  let b1 : Bool := core.option.Option.is_none o2
   massert b1
 
 /- Unit test for [iter_adapters::test_take_exhausted_then_next] -/
@@ -548,7 +548,7 @@ def test_range_single_element : Result Unit := do
   let i ← core.option.Option.unwrap o
   massert (i = 0#u8)
   let (o1, _) ← core.iter.range.IteratorRange.next core.iter.range.StepU8 it
-  let b := core.option.Option.is_none o1
+  let b : Bool := core.option.Option.is_none o1
   massert b
 
 /- Unit test for [iter_adapters::test_range_single_element] -/
@@ -564,7 +564,7 @@ def test_range_u8_near_max : Result Unit := do
   let i ← core.option.Option.unwrap o
   massert (i = 254#u8)
   let (o1, _) ← core.iter.range.IteratorRange.next core.iter.range.StepU8 it
-  let b := core.option.Option.is_none o1
+  let b : Bool := core.option.Option.is_none o1
   massert b
 
 /- Unit test for [iter_adapters::test_range_u8_near_max] -/
@@ -577,7 +577,7 @@ def test_range_u8_start_gt_end : Result Unit := do
   let (o, _) ←
     core.iter.range.IteratorRange.next core.iter.range.StepU8
       { start := 10#u8, «end» := 5#u8 }
-  let b := core.option.Option.is_none o
+  let b : Bool := core.option.Option.is_none o
   massert b
 
 /- Unit test for [iter_adapters::test_range_u8_start_gt_end] -/
@@ -590,7 +590,7 @@ def test_range_u8_start_eq_end : Result Unit := do
   let (o, _) ←
     core.iter.range.IteratorRange.next core.iter.range.StepU8
       { start := 5#u8, «end» := 5#u8 }
-  let b := core.option.Option.is_none o
+  let b : Bool := core.option.Option.is_none o
   massert b
 
 /- Unit test for [iter_adapters::test_range_u8_start_eq_end] -/
@@ -615,7 +615,7 @@ def test_range_u16_boundary : Result Unit := do
   massert (i2 = 2#u16)
   let (o3, _) ←
     core.iter.range.IteratorRange.next core.iter.range.StepU16 it2
-  let b := core.option.Option.is_none o3
+  let b : Bool := core.option.Option.is_none o3
   massert b
 
 /- Unit test for [iter_adapters::test_range_u16_boundary] -/
@@ -636,7 +636,7 @@ def test_range_u32_boundary : Result Unit := do
   massert (i1 = 1#u32)
   let (o2, _) ←
     core.iter.range.IteratorRange.next core.iter.range.StepU32 it1
-  let b := core.option.Option.is_none o2
+  let b : Bool := core.option.Option.is_none o2
   massert b
 
 /- Unit test for [iter_adapters::test_range_u32_boundary] -/
@@ -661,7 +661,7 @@ def test_range_u64_boundary : Result Unit := do
   massert (i2 = 102#u64)
   let (o3, _) ←
     core.iter.range.IteratorRange.next core.iter.range.StepU64 it2
-  let b := core.option.Option.is_none o3
+  let b : Bool := core.option.Option.is_none o3
   massert b
 
 /- Unit test for [iter_adapters::test_range_u64_boundary] -/
@@ -674,7 +674,7 @@ def test_range_usize_start_gt_end : Result Unit := do
   let (o, _) ←
     core.iter.range.IteratorRange.next core.iter.range.StepUsize
       { start := 10#usize, «end» := 5#usize }
-  let b := core.option.Option.is_none o
+  let b : Bool := core.option.Option.is_none o
   massert b
 
 /- Unit test for [iter_adapters::test_range_usize_start_gt_end] -/
@@ -696,7 +696,7 @@ def test_step_by_larger_than_range : Result Unit := do
   let (o1, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorRange core.iter.range.StepU8) it1
-  let b := core.option.Option.is_none o1
+  let b : Bool := core.option.Option.is_none o1
   massert b
 
 /- Unit test for [iter_adapters::test_step_by_larger_than_range] -/
@@ -718,7 +718,7 @@ def test_step_by_exact_range : Result Unit := do
   let (o1, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorRange core.iter.range.StepU8) it1
-  let b := core.option.Option.is_none o1
+  let b : Bool := core.option.Option.is_none o1
   massert b
 
 /- Unit test for [iter_adapters::test_step_by_exact_range] -/
@@ -755,7 +755,7 @@ def test_step_by_one : Result Unit := do
   let (o4, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorRange core.iter.range.StepU8) it4
-  let b := core.option.Option.is_none o4
+  let b : Bool := core.option.Option.is_none o4
   massert b
 
 /- Unit test for [iter_adapters::test_step_by_one] -/
@@ -772,7 +772,7 @@ def test_step_by_empty : Result Unit := do
   let (o, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorRange core.iter.range.StepU8) it
-  let b := core.option.Option.is_none o
+  let b : Bool := core.option.Option.is_none o
   massert b
 
 /- Unit test for [iter_adapters::test_step_by_empty] -/
@@ -804,7 +804,7 @@ def test_step_by_odd_range : Result Unit := do
   let (o3, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorRange core.iter.range.StepU8) it3
-  let b := core.option.Option.is_none o3
+  let b : Bool := core.option.Option.is_none o3
   massert b
 
 /- Unit test for [iter_adapters::test_step_by_odd_range] -/
@@ -836,7 +836,7 @@ def test_step_by_u8_near_max : Result Unit := do
   let (o3, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorRange core.iter.range.StepU8) it3
-  let b := core.option.Option.is_none o3
+  let b : Bool := core.option.Option.is_none o3
   massert b
 
 /- Unit test for [iter_adapters::test_step_by_u8_near_max] -/
@@ -865,7 +865,7 @@ def test_range_inclusive_basic : Result Unit := do
   let (o3, _) ←
     core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator.next
       core.iter.range.StepUsize it3
-  let b := core.option.Option.is_none o3
+  let b : Bool := core.option.Option.is_none o3
   massert b
 
 /- Unit test for [iter_adapters::test_range_inclusive_basic] -/
@@ -884,7 +884,7 @@ def test_range_inclusive_singleton : Result Unit := do
   let (o1, _) ←
     core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator.next
       core.iter.range.StepUsize it1
-  let b := core.option.Option.is_none o1
+  let b : Bool := core.option.Option.is_none o1
   massert b
 
 /- Unit test for [iter_adapters::test_range_inclusive_singleton] -/
@@ -898,7 +898,7 @@ def test_range_inclusive_empty : Result Unit := do
   let (o, _) ←
     core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator.next
       core.iter.range.StepUsize it
-  let b := core.option.Option.is_none o
+  let b : Bool := core.option.Option.is_none o
   massert b
 
 /- Unit test for [iter_adapters::test_range_inclusive_empty] -/
@@ -1071,7 +1071,7 @@ def test_rev_slice : Result Unit := do
     core.iter.adapters.rev.Rev.Insts.CoreIterTraitsIteratorIterator.next
       (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
       Std.U32) it3
-  let b := core.option.Option.is_none o3
+  let b : Bool := core.option.Option.is_none o3
   massert b
 
 /- Unit test for [iter_adapters::test_rev_slice] -/
@@ -1092,7 +1092,7 @@ def test_rev_empty_slice : Result Unit := do
     core.iter.adapters.rev.Rev.Insts.CoreIterTraitsIteratorIterator.next
       (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
       Std.U32) it
-  let b := core.option.Option.is_none o
+  let b : Bool := core.option.Option.is_none o
   massert b
 
 /- Unit test for [iter_adapters::test_rev_empty_slice] -/
