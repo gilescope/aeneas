@@ -113,6 +113,7 @@ package «tests» {}
 @[default_target] lean_lib LeanKeywordsClash
 @[default_target] lean_lib ListBorrows
 @[default_target] lean_lib LoopAfterMapFnItem
+@[default_target] lean_lib LoopAfterSharedBorrowPair
 @[default_target] lean_lib LoopGenericIntoIter
 @[default_target] lean_lib LoopIterMutNestedIndex
 @[default_target] lean_lib LoopJoinSharedMutLoan
