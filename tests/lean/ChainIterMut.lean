@@ -19,17 +19,6 @@ set_option maxRecDepth 2048
 
 namespace chain_iter_mut
 
-/-- Trait implementation: [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a mut T> for core::slice::iter::IterMut<'a, T>}]
-    Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 153:8-153:45
-    Name pattern: [core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>] -/
-@[reducible, rust_trait_impl
-  "core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>"]
-impl_def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT (T :
-  Type) : core.iter.traits.iterator.Iterator (core.slice.iter.IterMut T) T := {
-  next := fun _ => Result.fail Error.undef
-  size_hint := fun _ => Result.fail Error.undef
-}
-
 /-- [chain_iter_mut::chain_then_drop]:
     Source: 'tests/src/chain-iter-mut.rs', lines 8:0-10:1
     Visibility: public -/

@@ -36,12 +36,6 @@ impl_def core.iter.traits.iterator.IteratorVecIntoIter (T : Type) :
   core.iter.traits.iterator.Iterator (alloc.vec.into_iter.IntoIter T) T := {
   next := alloc.vec.into_iter.IteratorIntoIter.next
   size_hint := alloc.vec.into_iter.IteratorIntoIter.size_hint
-  step_by := core.iter.traits.iterator.Iterator.step_by.trait_default
-    (core.iter.traits.iterator.IteratorVecIntoIter T)
-  enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default
-    (core.iter.traits.iterator.IteratorVecIntoIter T)
-  take := core.iter.traits.iterator.Iterator.take.trait_default
-    (core.iter.traits.iterator.IteratorVecIntoIter T)
 }
 
 @[expose, rust_fun

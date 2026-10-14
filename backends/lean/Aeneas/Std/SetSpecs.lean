@@ -1044,7 +1044,7 @@ theorem core.iter.adapters.enumerate.Enumerate.yields {I Item : Type}
     obtain ⟨⟨o, it'⟩, hnext, ho⟩ := spec_eq_ok hy
     simp only [uncurry'_pair] at ho; subst ho
     simp [core.iter.traits.iterator.IteratorEnumerate,
-          core.iter.adapters.enumerate.IteratorEnumerate.next, hnext, bind_tc_ok, spec_ok,
+          core.iter.adapters.enumerate.IteratorEnumerate.nextPlain, hnext, bind_tc_ok, spec_ok,
           uncurry'_pair]
   | x :: xs, it, c, hy, hcount => by
     simp only [usizeEnumFrom, Yields] at hy ⊢
@@ -1061,7 +1061,7 @@ theorem core.iter.adapters.enumerate.Enumerate.yields {I Item : Type}
       simp only [show (1#usize).val = 1 from rfl] at hc1_val
       -- hadd_eq : c + 1#usize = ok c1;  hc1_val : ↑c1 = ↑c + 1
       simp only [core.iter.traits.iterator.IteratorEnumerate,
-                 core.iter.adapters.enumerate.IteratorEnumerate.next,
+                 core.iter.adapters.enumerate.IteratorEnumerate.nextPlain,
                  hnext, bind_tc_ok, hadd_eq, spec_ok, uncurry'_pair]
       constructor
       · -- head: c = Usize.ofNatCore c.val _

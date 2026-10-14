@@ -19,13 +19,13 @@ set_option maxRecDepth 2048
 
 namespace iter_rev_default
 
-/-- Trait implementation: [core::slice::iter::{impl core::iter::traits::double_ended::DoubleEndedIterator<&'_ T> for core::slice::iter::Iter<'a, T>}]
+/-- Trait implementation: [core::slice::iter::{impl core::iter::traits::double_ended::DoubleEndedIterator<&'a T> for core::slice::iter::Iter<'a, T>}]
     Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 431:8-431:56
-    Name pattern: [core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'_ @T>] -/
+    Name pattern: [core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'a @T>] -/
 @[reducible, rust_trait_impl
-  "core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'_ @T>"]
+  "core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'a @T>"]
 def
-  core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+  core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
   (T : Type) : core.iter.traits.double_ended.DoubleEndedIterator
   (core.slice.iter.Iter T) T := {
   iteratorInst := core.iter.traits.iterator.IteratorSliceIter T
@@ -76,7 +76,7 @@ def sum_rev_loop0.body
   := do
   let (o, iter1) ←
     core.iter.adapters.rev.Rev.Insts.CoreIterTraitsIteratorIterator.next
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U64) iter
   match o with
   | none => ok (done s)
@@ -112,7 +112,7 @@ def sum_rev (xs : Slice Std.U64) : Result Std.U64 := do
   let iter ←
     core.iter.traits.iterator.Iterator.rev.trait_default
       (core.iter.traits.iterator.IteratorSliceIter Std.U64)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U64) i
   sum_rev_loop0 iter 0#u64
 

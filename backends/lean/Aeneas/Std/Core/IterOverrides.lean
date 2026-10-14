@@ -115,19 +115,25 @@ def SharedAVec.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter (T : Type) :
 @[rust_fun
   "core::iter::adapters::enumerate::{core::iter::traits::iterator::Iterator<core::iter::adapters::enumerate::Enumerate<@I>, (usize, @Clause0_Item)>}::count"]
 def core.iter.adapters.enumerate.Enumerate.Insts.CoreIterTraitsIteratorIteratorPairUsizeClause0_Item.count
-  {I Item : Type} (IteratorInst : core.iter.traits.iterator.Iterator I Item)
-  (it : core.iter.adapters.enumerate.Enumerate I) : Result Usize :=
+  {I Item : Type} [M : MutRegions I] (IteratorInst : core.iter.traits.iterator.Iterator I Item)
+  (it : core.iter.adapters.enumerate.Enumerate I) :
+  Result (FinalsWith M.n Usize (core.iter.adapters.enumerate.Enumerate I)) :=
   core.iter.traits.iterator.Iterator.count.default
     (core.iter.traits.iterator.IteratorEnumerate IteratorInst) it
 
 @[rust_fun
   "core::iter::adapters::enumerate::{core::iter::traits::iterator::Iterator<core::iter::adapters::enumerate::Enumerate<@I>, (usize, @Clause0_Item)>}::fold"]
 def core.iter.adapters.enumerate.Enumerate.Insts.CoreIterTraitsIteratorIteratorPairUsizeClause0_Item.fold
-  {I Acc Fold Item : Type} (IteratorInst : core.iter.traits.iterator.Iterator I Item)
-  (FoldInst : core.ops.function.FnMut Fold (Acc × (Usize × Item)) Acc)
-  (it : core.iter.adapters.enumerate.Enumerate I) (init : Acc) (fold : Fold) : Result Acc :=
+  {I Acc Fold Item COut : Type} {Out : Type} [M : MutRegions I] [S : FoldShape Acc Fold Out]
+  [IM : ItemMut I Item] [IB : ItemBack COut Acc]
+  (IteratorInst : core.iter.traits.iterator.Iterator I Item)
+  (FoldInst : core.ops.function.FnMut Fold (Acc × (Usize × Item)) COut)
+  (it : core.iter.adapters.enumerate.Enumerate I) (init : Acc) (fold : Fold)
+  (h : IB.M = IM.M := by rfl) :
+  Result (core.iter.traits.iterator.Iterator.FoldOut M.n Out Acc
+    (core.iter.adapters.enumerate.Enumerate I)) :=
   core.iter.traits.iterator.Iterator.fold.default
-    (core.iter.traits.iterator.IteratorEnumerate IteratorInst) FoldInst it init fold
+    (core.iter.traits.iterator.IteratorEnumerate IteratorInst) FoldInst it init fold h
 
 /-- The smaller bounds (`zip.rs`) -/
 @[rust_fun
@@ -154,16 +160,32 @@ def core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair
   core.iter.traits.iterator.Iterator (core.iter.adapters.zip.Zip A B) (ItemA × ItemB) where
   next := core.iter.adapters.zip.Zip.nextPlain IA IB
   size_hint := core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.size_hint IA IB
+  nextMut := core.iter.adapters.zip.Zip.nextMut IA IB
+
+/-- `Zip::next` as Aeneas calls it: with `&mut` items, a backward function per region of `A`
+(each on the item's first component) then of `B` (on its second) -/
+@[rust_fun
+  "core::iter::adapters::zip::{core::iter::traits::iterator::Iterator<core::iter::adapters::zip::Zip<@A, @B>, (@Clause0_Item, @Clause1_Item)>}::next"]
+def core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.next
+  {A B ItemA ItemB : Type} [M : MutRegions (core.iter.adapters.zip.Zip A B)]
+  (IA : core.iter.traits.iterator.Iterator A ItemA) (IB : core.iter.traits.iterator.Iterator B ItemB)
+  (z : core.iter.adapters.zip.Zip A B) :
+  Result ((Option (ItemA × ItemB)) × Backs M.n (core.iter.adapters.zip.Zip A B)
+    (core.iter.adapters.zip.Zip A B → Option (ItemA × ItemB) → core.iter.adapters.zip.Zip A B)) :=
+  (core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair IA IB).nextShapedN M.n z
 
 @[rust_fun
   "core::iter::adapters::zip::{core::iter::traits::iterator::Iterator<core::iter::adapters::zip::Zip<@A, @B>, (@Clause0_Item, @Clause1_Item)>}::fold"]
 def core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.fold
-  {A B Acc F ItemA ItemB : Type}
+  {A B Acc F ItemA ItemB COut : Type} {Out : Type} [M : MutRegions (core.iter.adapters.zip.Zip A B)]
+  [S : FoldShape Acc F Out] [IM : ItemMut (core.iter.adapters.zip.Zip A B) (ItemA × ItemB)]
+  [IBk : ItemBack COut Acc]
   (IA : core.iter.traits.iterator.Iterator A ItemA) (IB : core.iter.traits.iterator.Iterator B ItemB)
-  (FInst : core.ops.function.FnMut F (Acc × (ItemA × ItemB)) Acc)
-  (z : core.iter.adapters.zip.Zip A B) (init : Acc) (f : F) : Result Acc :=
+  (FInst : core.ops.function.FnMut F (Acc × (ItemA × ItemB)) COut)
+  (z : core.iter.adapters.zip.Zip A B) (init : Acc) (f : F) (h : IBk.M = IM.M := by rfl) :
+  Result (core.iter.traits.iterator.Iterator.FoldOut M.n Out Acc (core.iter.adapters.zip.Zip A B)) :=
   core.iter.traits.iterator.Iterator.fold.default
-    (core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair IA IB) FInst z init f
+    (core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair IA IB) FInst z init f h
 
 @[rust_fun
   "core::iter::adapters::flatten::{core::iter::traits::iterator::Iterator<core::iter::adapters::flatten::FlatMap<@I, @U, @F, @Clause1_Item, @Clause1_IntoIter>, @Clause1_Item>}::count"]
@@ -298,20 +320,12 @@ def core.slice.iter.Chunks.Insts.CoreIterTraitsIteratorIteratorSharedASlice.coun
 /-! ## `IterMut`: the closure-free methods. `fold` and `any` take a closure of `&mut T`, whose
 writes their Aeneas signature cannot return, so they have no model. -/
 
-/-- Exact: the elements left -/
-@[rust_fun
-  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>}::size_hint"]
-def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.size_hint {T : Type}
-  (it : core.slice.iter.IterMut T) : Result (Usize × Option Usize) := do
-  let n ← UScalar.tryMk .Usize (it.slice.val.length - it.i)
-  ok (n, some n)
-
 /-- The elements left; the slice is given back unchanged -/
 @[rust_fun
   "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>}::count"]
 def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.count {T : Type}
   (it : core.slice.iter.IterMut T) : Result (Usize × core.slice.iter.IterMut T) := do
-  let n ← UScalar.tryMk .Usize (it.slice.val.length - it.i)
+  let n ← UScalar.tryMk .Usize (it.j - it.i)
   ok (n, it)
 
 /-! ## `collect` into a `Result` -/

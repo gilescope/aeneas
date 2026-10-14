@@ -51,24 +51,25 @@ def
     traitsexact_sizeExactSizeIteratorInst1
 }
 
-/-- Trait implementation: [core::slice::iter::{impl core::iter::traits::exact_size::ExactSizeIterator<&'_ T> for core::slice::iter::Iter<'_0, T>}]
+/-- Trait implementation: [core::slice::iter::{impl core::iter::traits::exact_size::ExactSizeIterator<&'_0 T> for core::slice::iter::Iter<'_0, T>}]
     Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 140:8-140:50
-    Name pattern: [core::iter::traits::exact_size::ExactSizeIterator<core::slice::iter::Iter<'0, @T>, &'_ @T>] -/
+    Name pattern: [core::iter::traits::exact_size::ExactSizeIterator<core::slice::iter::Iter<'0, @T>, &'0 @T>] -/
 @[reducible, rust_trait_impl
-  "core::iter::traits::exact_size::ExactSizeIterator<core::slice::iter::Iter<'0, @T>, &'_ @T>"]
-def core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorSharedT
+  "core::iter::traits::exact_size::ExactSizeIterator<core::slice::iter::Iter<'0, @T>, &'0 @T>"]
+def
+  core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorShared0T
   (T : Type) : core.iter.traits.exact_size.ExactSizeIterator
   (core.slice.iter.Iter T) T := {
   iteratorInst := core.iter.traits.iterator.IteratorSliceIter T
 }
 
-/-- Trait implementation: [core::slice::iter::{impl core::iter::traits::double_ended::DoubleEndedIterator<&'_ T> for core::slice::iter::Iter<'a, T>}]
+/-- Trait implementation: [core::slice::iter::{impl core::iter::traits::double_ended::DoubleEndedIterator<&'a T> for core::slice::iter::Iter<'a, T>}]
     Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 431:8-431:56
-    Name pattern: [core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'_ @T>] -/
+    Name pattern: [core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'a @T>] -/
 @[reducible, rust_trait_impl
-  "core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'_ @T>"]
+  "core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'a @T>"]
 def
-  core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+  core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
   (T : Type) : core.iter.traits.double_ended.DoubleEndedIterator
   (core.slice.iter.Iter T) T := {
   iteratorInst := core.iter.traits.iterator.IteratorSliceIter T
@@ -282,10 +283,10 @@ def horner (coeffs : Slice Std.U32) (x : Std.U32) : Result Std.U32 := do
   let r ←
     core.iter.traits.iterator.Iterator.rev.trait_default
       (core.iter.traits.iterator.IteratorSliceIter Std.U32)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32) i
   core.iter.adapters.rev.Rev.Insts.CoreIterTraitsIteratorIterator.fold
-    (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+    (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
     Std.U32) horner.closure.Insts.CoreOpsFunctionFnMutPairU32Shared1U32U32 r
     0#u32 x
 
@@ -329,24 +330,24 @@ def last_pair
       (core.iter.traits.iterator.IteratorSliceIter Std.U32)
       (core.iter.traits.iterator.IteratorSliceIter Std.U32))
       (core.iter.adapters.zip.Zip.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorPair
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorShared0T
       Std.U32)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorShared0T
       Std.U32)) z
   let (o, _) ←
     core.iter.adapters.rev.Rev.Insts.CoreIterTraitsIteratorIterator.next
       (core.iter.adapters.zip.Zip.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorPair
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorShared0T
       Std.U32)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorShared0T
       Std.U32)) r
   core.option.Option.map
     last_pair.closure.Insts.CoreOpsFunctionFnOnceTuplePairShared0U32Shared1U32PairU32U32

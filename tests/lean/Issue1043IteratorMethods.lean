@@ -87,7 +87,9 @@ def indexed_squares
   core.iter.traits.iterator.Iterator I Std.U32) (iter : I) :
   Result (alloc.vec.Vec Std.U32)
   := do
-  let e ← coreitertraitsiteratorIteratorIU32Inst.enumerate iter
+  let e ←
+    core.iter.traits.iterator.Iterator.enumerate.trait_default
+      coreitertraitsiteratorIteratorIU32Inst iter
   let m ←
     core.iter.traits.iterator.Iterator.map.default
       (core.iter.traits.iterator.IteratorEnumerate
