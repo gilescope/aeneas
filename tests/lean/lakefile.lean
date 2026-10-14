@@ -105,6 +105,8 @@ package «tests» {}
 @[default_target] lean_lib IteratorsArray
 @[default_target] lean_lib IteratorsScalar
 @[default_target] lean_lib IterExtra
+@[default_target] lean_lib IterMutAdapters
+@[default_target] lean_lib IterMutRev
 @[default_target] lean_lib IterRevDefault
 @[default_target] lean_lib IterSpecs
 @[default_target] lean_lib IterStdOverrides
@@ -114,6 +116,7 @@ package «tests» {}
 @[default_target] lean_lib LeanKeywordsClash
 @[default_target] lean_lib ListBorrows
 @[default_target] lean_lib LoopAfterMapFnItem
+@[default_target] lean_lib LoopAfterSharedBorrowPair
 @[default_target] lean_lib LoopGenericIntoIter
 @[default_target] lean_lib LoopIterMutNestedIndex
 @[default_target] lean_lib LoopJoinSharedMutLoan

@@ -22,9 +22,8 @@ debug assertions (`count` and `sum` use `#[rustc_inherit_overflow_checks]`). -/
 
 /-! ## Provided methods, from `next` -/
 
-/-- `fold`: `f` over every item, front to back -/
-@[expose, trait_default, rust_fun "core::iter::traits::iterator::Iterator::fold"]
-def core.iter.traits.iterator.Iterator.fold.default
+/-- `fold` over an iterator without `&mut` items: `f` over every item, front to back -/
+def core.iter.traits.iterator.Iterator.foldPlain
   {Self B F Item : Type} {Out : Type} [S : FoldShape B F Out]
   (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
   (FnMutInst : core.ops.function.FnMut F (B × Item) B)
@@ -38,17 +37,134 @@ def core.iter.traits.iterator.Iterator.fold.default
       ok (.cont (it, acc, f))) (self, init, f)
   ok (S.ofFold acc f)
 
+/-- `fold` over an iterator with `n + 1` regions: the closure gives the item's `&mut` parts back
+with the accumulator, written through every region's backward function; the final iterator
+comes back once per region, then the closure if it captures a `&mut` (`FoldShape.Tail`). -/
+def core.iter.traits.iterator.Iterator.foldMut
+  {Self B F Item COut : Type} {Out : Type} [S : FoldShape B F Out]
+  [IM : ItemMut Self Item] [IB : ItemBack COut B]
+  (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
+  (FnMutInst : core.ops.function.FnMut F (B × Item) COut)
+  (n : Nat) (self : Self) (init : B) (f : F) (h : IB.M = IM.M) :
+  Result (B × Tup Self (List.replicate n Self ++ S.Tail)) := do
+  let (acc, it, f) ← loop (fun ((it, acc, f) : Self × B × F) => do
+    let (o, it, bs) ← IteratorInst.nextMut it
+    match o with
+    | none => ok (.done (acc, it, f))
+    | some x =>
+      let (r, f) ← FnMutInst.call_mut f (acc, x)
+      let (acc, m) := IB.split r
+      let x' := m.map fun m => IM.put x (h ▸ m)
+      ok (.cont (bs.foldl (fun it b => b it x') it, acc, f))) (self, init, f)
+  ok (acc, Tup.ofHList it (HList.append (HList.replicate n it) (S.tail f)))
+
+/-- The output of `fold` by `Self`'s regions: `FoldShape`'s without one, else the
+accumulator, the final iterator once per region, then the closure's tail -/
+@[reducible] def core.iter.traits.iterator.Iterator.FoldOut :
+    Nat → Type → Type → Type → List Type → Type
+  | 0, Out, _, _, _ => Out
+  | n + 1, _, B, Self, Tail => B × Tup Self (List.replicate n Self ++ Tail)
+
+/-- `fold` by `Self`'s regions. Without one the closure returns the accumulator (`ItemBack`
+sees nothing to give back), as the provided method does. -/
+def core.iter.traits.iterator.Iterator.foldN
+  {Self B F Item COut : Type} {Out : Type} [S : FoldShape B F Out]
+  [IM : ItemMut Self Item] [IB : ItemBack COut B]
+  (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
+  (FnMutInst : core.ops.function.FnMut F (B × Item) COut) (h : IB.M = IM.M) :
+  (n : Nat) → Self → B → F →
+    Result (core.iter.traits.iterator.Iterator.FoldOut n Out B Self S.Tail)
+  | 0, self, init, f => do
+    let (acc, f) ← loop (fun ((it, acc, f) : Self × B × F) => do
+      let (o, it) ← IteratorInst.next it
+      match o with
+      | none => ok (.done (acc, f))
+      | some x =>
+        let (r, f) ← FnMutInst.call_mut f (acc, x)
+        ok (.cont (it, (IB.split r).1, f))) (self, init, f)
+    ok (S.ofFold acc f)
+  | n + 1, self, init, f =>
+    core.iter.traits.iterator.Iterator.foldMut IteratorInst FnMutInst n self init f h
+
+/-- `fold`: `f` over every item, front to back; a `&mut` item comes back from `f` and is
+written through `Self`'s regions -/
+@[expose, trait_default, rust_fun "core::iter::traits::iterator::Iterator::fold"]
+def core.iter.traits.iterator.Iterator.fold.default
+  {Self B F Item COut : Type} {Out : Type} [M : MutRegions Self] [S : FoldShape B F Out]
+  [IM : ItemMut Self Item] [IB : ItemBack COut B]
+  (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
+  (FnMutInst : core.ops.function.FnMut F (B × Item) COut)
+  (self : Self) (init : B) (f : F) (h : IB.M = IM.M := by rfl) :
+  Result (core.iter.traits.iterator.Iterator.FoldOut M.n Out B Self S.Tail) :=
+  core.iter.traits.iterator.Iterator.foldN IteratorInst FnMutInst h M.n self init f
+
+/-- `count` by `Self`'s regions: the number of items, panicking past `usize::MAX`, then the
+final iterator once per region -/
+def core.iter.traits.iterator.Iterator.countN
+  {Self Item : Type}
+  (IteratorInst : core.iter.traits.iterator.Iterator Self Item) :
+  (n : Nat) → Self → Result (FinalsWith n Usize Self)
+  | 0, self =>
+    loop (fun ((it, n) : Self × Usize) => do
+      let (o, it) ← IteratorInst.next it
+      match o with
+      | none => ok (.done n)
+      | some _ => ok (.cont (it, ← n + 1#usize))) (self, 0#usize)
+  | n + 1, self => do
+    let (c, it) ← loop (fun ((it, c) : Self × Usize) => do
+      let (o, it, _) ← IteratorInst.nextMut it
+      match o with
+      | none => ok (.done (c, it))
+      | some _ => ok (.cont (it, ← c + 1#usize))) (self, 0#usize)
+    ok (FinalsWith.mk (n + 1) c it)
+
 /-- `count`: the number of items, panicking past `usize::MAX` -/
 @[trait_default, rust_fun "core::iter::traits::iterator::Iterator::count"]
 def core.iter.traits.iterator.Iterator.count.default
-  {Self Item : Type}
+  {Self Item : Type} [M : MutRegions Self]
   (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
-  (self : Self) : Result Usize :=
-  loop (fun ((it, n) : Self × Usize) => do
-    let (o, it) ← IteratorInst.next it
-    match o with
-    | none => ok (.done n)
-    | some _ => ok (.cont (it, ← n + 1#usize))) (self, 0#usize)
+  (self : Self) : Result (FinalsWith M.n Usize Self) :=
+  core.iter.traits.iterator.Iterator.countN IteratorInst M.n self
+
+/-- `for_each` by `Self`'s regions: `f` on every item; a `&mut` item comes back from `f` and
+is written through `Self`'s regions, which give the final iterator back, then `f` if it
+captures a `&mut` (`FoldShape.Tail`) -/
+def core.iter.traits.iterator.Iterator.forEachN
+  {Self F Item COut : Type} {Out : Type} [S : FoldShape Unit F Out]
+  [IM : ItemMut Self Item] [IB : ItemBack COut Unit]
+  (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
+  (FnMutInst : core.ops.function.FnMut F Item COut) (h : IB.M = IM.M) :
+  (n : Nat) → Self → F → Result (Prods (List.replicate n Self ++ S.Tail))
+  | 0, self, f => do
+    let f ← loop (fun ((it, f) : Self × F) => do
+      let (o, it) ← IteratorInst.next it
+      match o with
+      | none => ok (.done f)
+      | some x =>
+        let (_, f) ← FnMutInst.call_mut f x
+        ok (.cont (it, f))) (self, f)
+    ok (HList.toProds (S.tail f))
+  | n + 1, self, f => do
+    let (it, f) ← loop (fun ((it, f) : Self × F) => do
+      let (o, it, bs) ← IteratorInst.nextMut it
+      match o with
+      | none => ok (.done (it, f))
+      | some x =>
+        let (r, f) ← FnMutInst.call_mut f x
+        let x' := (IB.split r).2.map fun m => IM.put x (h ▸ m)
+        ok (.cont (bs.foldl (fun it b => b it x') it, f))) (self, f)
+    ok (HList.toProds (HList.append (HList.replicate (n + 1) it) (S.tail f)))
+
+/-- `for_each`: `f` on every item -/
+@[expose, trait_default, rust_fun "core::iter::traits::iterator::Iterator::for_each"]
+def core.iter.traits.iterator.Iterator.for_each.default
+  {Self F Item COut : Type} {Out : Type} [M : MutRegions Self] [S : FoldShape Unit F Out]
+  [IM : ItemMut Self Item] [IB : ItemBack COut Unit]
+  (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
+  (FnMutInst : core.ops.function.FnMut F Item COut)
+  (self : Self) (f : F) (h : IB.M = IM.M := by rfl) :
+  Result (Prods (List.replicate M.n Self ++ S.Tail)) :=
+  core.iter.traits.iterator.Iterator.forEachN IteratorInst FnMutInst h M.n self f
 
 /-- `any`: whether some item satisfies `f`, stopping at the first; takes `&mut self` -/
 @[expose, trait_default, rust_fun "core::iter::traits::iterator::Iterator::any"]
@@ -175,6 +291,14 @@ def core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator
   next := core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next IteratorInst FnMutInst
   size_hint :=
     core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.size_hint IteratorInst FnMutInst
+
+/-- The instance's `next`, without unfolding the instance -/
+theorem core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator_next
+  {B I F Item : Type}
+  (IteratorInst : core.iter.traits.iterator.Iterator I Item)
+  (FnMutInst : core.ops.function.FnMut F Item B) :
+  (core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator IteratorInst FnMutInst).next =
+    core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next IteratorInst FnMutInst := rfl
 
 /-- `Map::fold`: the inner `fold` with `g(acc, f(x))`, i.e. `fold` over `Map::next` -/
 @[rust_fun
@@ -353,9 +477,8 @@ structure core.iter.adapters.chain.Chain (A : Type u) (B : Type v) where
   b : Option B
 
 /-- `a`'s next item, then (once `a` is exhausted and dropped) `b`'s -/
-@[expose, rust_fun
-  "core::iter::adapters::chain::{core::iter::traits::iterator::Iterator<core::iter::adapters::chain::Chain<@A, @B>, @Clause0_Item>}::next"]
-def core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next
+@[expose]
+def core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.nextPlain
   {A B Item : Type}
   (IA : core.iter.traits.iterator.Iterator A Item)
   (IB : core.iter.traits.iterator.Iterator B Item)
@@ -375,6 +498,39 @@ def core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next
     match o with
     | some x => ok (some x, { self with a := some a })
     | none => nextB { self with a := none }
+
+/-- The halves' items share a type, so their regions are one: the backward functions of
+whichever half yielded, writing into it. An exhausted `a` is kept (core drops it) so its final
+state can be given back; it is asked again on each `next`, which a `&mut` iterator (fused)
+answers with `None`. -/
+def core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.nextMut
+  {A B Item : Type}
+  (IA : core.iter.traits.iterator.Iterator A Item)
+  (IB : core.iter.traits.iterator.Iterator B Item)
+  (self : core.iter.adapters.chain.Chain A B) :
+  Result ((Option Item) × (core.iter.adapters.chain.Chain A B) ×
+    List (core.iter.adapters.chain.Chain A B → Option Item →
+      core.iter.adapters.chain.Chain A B)) := do
+  let liftA : (A → Option Item → A) → core.iter.adapters.chain.Chain A B → Option Item →
+      core.iter.adapters.chain.Chain A B := fun b c o => { c with a := c.a.map (b · o) }
+  let liftB : (B → Option Item → B) → core.iter.adapters.chain.Chain A B → Option Item →
+      core.iter.adapters.chain.Chain A B := fun b c o => { c with b := c.b.map (b · o) }
+  let nextB (self : core.iter.adapters.chain.Chain A B) :
+      Result ((Option Item) × (core.iter.adapters.chain.Chain A B) ×
+        List (core.iter.adapters.chain.Chain A B → Option Item →
+          core.iter.adapters.chain.Chain A B)) :=
+    match self.b with
+    | none => ok (none, self, [])
+    | some b => do
+      let (o, b, bs) ← IB.nextMut b
+      ok (o, { self with b := some b }, bs.map liftB)
+  match self.a with
+  | none => nextB self
+  | some a =>
+    let (o, a, bs) ← IA.nextMut a
+    match o with
+    | some x => ok (some x, { self with a := some a }, bs.map liftA)
+    | none => nextB { self with a := some a }
 
 /-- Both halves' bounds, added (lower saturating, upper checked) -/
 @[rust_fun
@@ -404,39 +560,61 @@ def core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator
   (IA : core.iter.traits.iterator.Iterator A Item)
   (IB : core.iter.traits.iterator.Iterator B Item) :
   core.iter.traits.iterator.Iterator (core.iter.adapters.chain.Chain A B) Item where
-  next := core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next IA IB
+  next := core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.nextPlain IA IB
   size_hint := core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.size_hint IA IB
+  nextMut := core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.nextMut IA IB
+
+/-- The instance's `next`, without unfolding the instance -/
+theorem core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator_next
+  {A B Item : Type}
+  (IA : core.iter.traits.iterator.Iterator A Item)
+  (IB : core.iter.traits.iterator.Iterator B Item) :
+  (core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator IA IB).next =
+    core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.nextPlain IA IB := rfl
+
+/-- The halves' regions are identified pairwise (their items share a type) -/
+instance {A B : Type} [MA : MutRegions A] [MB : MutRegions B] :
+    MutRegions (core.iter.adapters.chain.Chain A B) := ⟨max MA.n MB.n⟩
+instance {A B : Type} [GivesBack A] : GivesBack (core.iter.adapters.chain.Chain A B) := ⟨⟩
+instance {A B : Type} [GivesBack B] : GivesBack (core.iter.adapters.chain.Chain A B) := ⟨⟩
+instance {A B Item : Type} [MA : ItemMut A Item] : ItemMut (core.iter.adapters.chain.Chain A B) Item :=
+  ⟨MA.M, MA.put⟩
+
+@[rust_fun
+  "core::iter::adapters::chain::{core::iter::traits::iterator::Iterator<core::iter::adapters::chain::Chain<@A, @B>, @Clause0_Item>}::next"]
+def core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next
+  {A B Item : Type} [M : MutRegions (core.iter.adapters.chain.Chain A B)]
+  (IA : core.iter.traits.iterator.Iterator A Item)
+  (IB : core.iter.traits.iterator.Iterator B Item)
+  (self : core.iter.adapters.chain.Chain A B) :
+  Result ((Option Item) × Backs M.n (core.iter.adapters.chain.Chain A B)
+    (core.iter.adapters.chain.Chain A B → Option Item → core.iter.adapters.chain.Chain A B)) :=
+  (core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator IA IB).nextShapedN M.n self
 
 @[rust_fun
   "core::iter::adapters::chain::{core::iter::traits::iterator::Iterator<core::iter::adapters::chain::Chain<@A, @B>, @Clause0_Item>}::count"]
 def core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.count
-  {A B Item : Type}
+  {A B Item : Type} [M : MutRegions (core.iter.adapters.chain.Chain A B)]
   (IA : core.iter.traits.iterator.Iterator A Item)
   (IB : core.iter.traits.iterator.Iterator B Item)
-  (self : core.iter.adapters.chain.Chain A B) : Result Usize :=
+  (self : core.iter.adapters.chain.Chain A B) :
+  Result (FinalsWith M.n Usize (core.iter.adapters.chain.Chain A B)) :=
   core.iter.traits.iterator.Iterator.count.default
     (core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator IA IB) self
 
 @[rust_fun
   "core::iter::adapters::chain::{core::iter::traits::iterator::Iterator<core::iter::adapters::chain::Chain<@A, @B>, @Clause0_Item>}::fold"]
 def core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.fold
-  {A B Acc F Item : Type}
+  {A B Acc F Item COut : Type} {Out : Type} [M : MutRegions (core.iter.adapters.chain.Chain A B)]
+  [S : FoldShape Acc F Out] [IM : ItemMut (core.iter.adapters.chain.Chain A B) Item]
+  [IB : ItemBack COut Acc]
   (IA : core.iter.traits.iterator.Iterator A Item)
-  (IB : core.iter.traits.iterator.Iterator B Item)
-  (FInst : core.ops.function.FnMut F (Acc × Item) Acc)
-  (self : core.iter.adapters.chain.Chain A B) (init : Acc) (f : F) : Result Acc :=
+  (IB' : core.iter.traits.iterator.Iterator B Item)
+  (FInst : core.ops.function.FnMut F (Acc × Item) COut)
+  (self : core.iter.adapters.chain.Chain A B) (init : Acc) (f : F) (h : IB.M = IM.M := by rfl) :
+  Result (core.iter.traits.iterator.Iterator.FoldOut M.n Out Acc (core.iter.adapters.chain.Chain A B) S.Tail) :=
   core.iter.traits.iterator.Iterator.fold.default
-    (core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator IA IB) FInst self init f
-
-instance {A B : Type} [GivesBack A] : GivesBack (core.iter.adapters.chain.Chain A B) := ⟨⟩
-
-/-- How an `IntoIterator` value is recovered from its iterator, for give back: a `&mut` moved
-into `chain` (`Some(&mut x)`) comes back from the chain's final state. -/
-class IntoIterBack (IntoIter U : Type) where
-  back : IntoIter → U
-
-/-- An iterator is its own `IntoIterator` (`IntoIterator::Blanket`). -/
-instance (priority := low) {I : Type} : IntoIterBack I I := ⟨id⟩
+    (core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator IA IB') FInst self init f h
 
 /-- The output of `chain(self, other)`: the `Chain`, and, when `self` holds a `&mut`, the give
 back of `self` and `other` from its final state (each half's original if it was dropped). -/
@@ -682,5 +860,100 @@ def core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.any
   (it : core.slice.iter.Iter T) (f : F) : Result (Bool × core.slice.iter.Iter T) :=
   core.iter.traits.iterator.Iterator.any.default
     (core.iter.traits.iterator.IteratorSliceIter T) FnMutInst it f
+
+/-! ## `IterMut`: core's overrides taking a closure, which gives each `&mut` item back -/
+
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>}::fold"]
+def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.fold
+  {T B F COut : Type} {Out : Type} [S : FoldShape B F Out] [IB : ItemBack COut B]
+  (FnMutInst : core.ops.function.FnMut F (B × T) COut)
+  (it : core.slice.iter.IterMut T) (init : B) (f : F) (h : IB.M = T := by rfl) :
+  Result (B × Tup (core.slice.iter.IterMut T) S.Tail) :=
+  core.iter.traits.iterator.Iterator.fold.default
+    (core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT T) FnMutInst it init f h
+
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>}::for_each"]
+def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.for_each
+  {T F COut : Type} {Out : Type} [S : FoldShape Unit F Out] [IB : ItemBack COut Unit]
+  (FnMutInst : core.ops.function.FnMut F T COut)
+  (it : core.slice.iter.IterMut T) (f : F) (h : IB.M = T := by rfl) :
+  Result (Prods (core.slice.iter.IterMut T :: S.Tail)) :=
+  core.iter.traits.iterator.Iterator.for_each.default
+    (core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT T) FnMutInst it f h
+
+/-! ## `Skip` -/
+
+@[rust_type "core::iter::adapters::skip::Skip"]
+structure core.iter.adapters.skip.Skip (I : Type u) where
+  iter : I
+  n : Usize
+
+/-- Core's: `nth(n)` on the first call (the `n` dropped to `0`), `next` after -/
+def core.iter.adapters.skip.Skip.Insts.CoreIterTraitsIteratorIterator.nextPlain
+  {I Item : Type}
+  (IteratorInst : core.iter.traits.iterator.Iterator I Item)
+  (self : core.iter.adapters.skip.Skip I) :
+  Result ((Option Item) × (core.iter.adapters.skip.Skip I)) := do
+  let iter ← core.iter.adapters.step_by.skipN IteratorInst self.iter self.n.val
+  let (o, iter) ← IteratorInst.next iter
+  ok (o, { iter, n := 0#usize })
+
+/-- The skipped items are dropped unwritten -/
+def core.iter.adapters.skip.Skip.Insts.CoreIterTraitsIteratorIterator.nextMut
+  {I Item : Type}
+  (IteratorInst : core.iter.traits.iterator.Iterator I Item)
+  (self : core.iter.adapters.skip.Skip I) :
+  Result ((Option Item) × (core.iter.adapters.skip.Skip I) ×
+    List (core.iter.adapters.skip.Skip I → Option Item → core.iter.adapters.skip.Skip I)) := do
+  let iter ← core.iter.adapters.step_by.skipNMut IteratorInst self.iter self.n.val
+  let (o, iter, bs) ← IteratorInst.nextMut iter
+  ok (o, { iter, n := 0#usize }, bs.map fun b s o => { s with iter := b s.iter o })
+
+/-- The inner bounds less `n`, saturating (`skip.rs`) -/
+@[rust_fun
+  "core::iter::adapters::skip::{core::iter::traits::iterator::Iterator<core::iter::adapters::skip::Skip<@I>, @Clause0_Item>}::size_hint"]
+def core.iter.adapters.skip.Skip.Insts.CoreIterTraitsIteratorIterator.size_hint
+  {I Item : Type}
+  (IteratorInst : core.iter.traits.iterator.Iterator I Item)
+  (self : core.iter.adapters.skip.Skip I) : Result (Usize × Option Usize) := do
+  let (lo, hi) ← IteratorInst.size_hint self.iter
+  let sub (x : Usize) : Usize := UScalar.ofNatCore (x.val - self.n.val) (by scalar_tac)
+  ok (sub lo, hi.map sub)
+
+@[reducible, rust_trait_impl
+  "core::iter::traits::iterator::Iterator<core::iter::adapters::skip::Skip<@I>, @Clause0_Item>"]
+impl_def core.iter.adapters.skip.Skip.Insts.CoreIterTraitsIteratorIterator {I Item : Type}
+  (IteratorInst : core.iter.traits.iterator.Iterator I Item) :
+  core.iter.traits.iterator.Iterator (core.iter.adapters.skip.Skip I) Item := {
+  next := core.iter.adapters.skip.Skip.Insts.CoreIterTraitsIteratorIterator.nextPlain IteratorInst
+  size_hint := core.iter.adapters.skip.Skip.Insts.CoreIterTraitsIteratorIterator.size_hint IteratorInst
+  nextMut := core.iter.adapters.skip.Skip.Insts.CoreIterTraitsIteratorIterator.nextMut IteratorInst
+}
+
+instance {I : Type} [M : MutRegions I] : MutRegions (core.iter.adapters.skip.Skip I) := ⟨M.n⟩
+instance {I : Type} [GivesBack I] : GivesBack (core.iter.adapters.skip.Skip I) := ⟨⟩
+instance {I Item : Type} [IM : ItemMut I Item] : ItemMut (core.iter.adapters.skip.Skip I) Item :=
+  ⟨IM.M, IM.put⟩
+
+@[rust_fun
+  "core::iter::adapters::skip::{core::iter::traits::iterator::Iterator<core::iter::adapters::skip::Skip<@I>, @Clause0_Item>}::next"]
+def core.iter.adapters.skip.Skip.Insts.CoreIterTraitsIteratorIterator.next
+  {I Item : Type} [M : MutRegions I]
+  (IteratorInst : core.iter.traits.iterator.Iterator I Item)
+  (self : core.iter.adapters.skip.Skip I) :
+  Result ((Option Item) × Backs M.n (core.iter.adapters.skip.Skip I)
+    (core.iter.adapters.skip.Skip I → Option Item → core.iter.adapters.skip.Skip I)) :=
+  (core.iter.adapters.skip.Skip.Insts.CoreIterTraitsIteratorIterator IteratorInst).nextShapedN M.n self
+
+/-- `Skip::new(self, n)` -/
+@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::skip"]
+def core.iter.traits.iterator.Iterator.skip.default
+  {Self Item : Type} [M : MutRegions Self]
+  (_IteratorInst : core.iter.traits.iterator.Iterator Self Item)
+  (self : Self) (n : Usize) :
+  Result (Backs M.n (core.iter.adapters.skip.Skip Self) (core.iter.adapters.skip.Skip Self → Self)) :=
+  ok (Backs.replicate M.n { iter := self, n } (·.iter))
 
 end Aeneas.Std
