@@ -28,7 +28,7 @@ structure core.ops.arith.MulAssign (Self : Type) (Rhs : Type) where
   mul_assign : Self → Rhs → Result Self
 
 /-- Trait declaration: [loop_join_shared_mut_loan::Fld]
-    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 6:0-9:1
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 8:0-11:1
     Visibility: public -/
 structure Fld (Self : Type) where
   coremarkerCopyInst : core.marker.Copy Self
@@ -37,7 +37,7 @@ structure Fld (Self : Type) where
   mul_into : Self → Self → Self → Result Self
 
 /-- [loop_join_shared_mut_loan::no_letelse]: loop body 0:
-    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 14:4-17:5
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 16:4-19:5
     Visibility: public -/
 @[rust_loop_body]
 def no_letelse_loop0.body
@@ -63,7 +63,7 @@ def no_letelse_loop0.body
     ok (cont (iter1, s1))
 
 /-- [loop_join_shared_mut_loan::no_letelse]: loop 0:
-    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 14:4-17:5
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 16:4-19:5
     Visibility: public -/
 @[rust_loop]
 def no_letelse_loop0
@@ -77,7 +77,7 @@ def no_letelse_loop0
     (iter, scratch)
 
 /-- [loop_join_shared_mut_loan::no_letelse]: loop body 1:
-    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 20:4-24:5
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 22:4-26:5
     Visibility: public -/
 @[rust_loop_body]
 def no_letelse_loop1.body
@@ -104,7 +104,7 @@ def no_letelse_loop1.body
     ok (cont (iter1, s, inv1, inv_j1))
 
 /-- [loop_join_shared_mut_loan::no_letelse]: loop 1:
-    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 20:4-24:5
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 22:4-26:5
     Visibility: public -/
 @[rust_loop]
 def no_letelse_loop1
@@ -119,7 +119,7 @@ def no_letelse_loop1
     (iter, values, inv, inv_j)
 
 /-- [loop_join_shared_mut_loan::no_letelse]:
-    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 12:0-26:1
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 14:0-28:1
     Visibility: public -/
 def no_letelse
   {T : Type} (FldInst : Fld T) (values : Slice T) (scratch : Slice T)
@@ -144,7 +144,7 @@ def no_letelse
   ok (values2, scratch1)
 
 /-- [loop_join_shared_mut_loan::prefix]: loop body 0:
-    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 30:4-33:5 -/
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 32:4-35:5 -/
 @[rust_loop_body]
 def prefix_loop.body
   {T : Type} (FldInst : Fld T) (values : Slice T)
@@ -169,7 +169,7 @@ def prefix_loop.body
     ok (cont (iter1, s1))
 
 /-- [loop_join_shared_mut_loan::prefix]: loop 0:
-    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 30:4-33:5 -/
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 32:4-35:5 -/
 @[rust_loop]
 def prefix_loop
   {T : Type} (FldInst : Fld T) (iter : core.ops.range.Range Std.Usize)
@@ -181,7 +181,7 @@ def prefix_loop
     (iter, scratch)
 
 /-- [loop_join_shared_mut_loan::prefix]:
-    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 28:0-34:1 -/
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 30:0-36:1 -/
 def «prefix»
   {T : Type} (FldInst : Fld T) (values : Slice T) (scratch : Slice T) :
   Result (Slice T)
@@ -192,7 +192,7 @@ def «prefix»
   prefix_loop FldInst { start := 1#usize, «end» := i } values s
 
 /-- [loop_join_shared_mut_loan::helper]: loop body 0:
-    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 45:4-49:5
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 47:4-51:5
     Visibility: public -/
 @[rust_loop_body]
 def helper_loop.body
@@ -219,7 +219,7 @@ def helper_loop.body
     ok (cont (iter1, s, inv1, inv_j1))
 
 /-- [loop_join_shared_mut_loan::helper]: loop 0:
-    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 45:4-49:5
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 47:4-51:5
     Visibility: public -/
 @[rust_loop]
 def helper_loop
@@ -234,7 +234,7 @@ def helper_loop
     (iter, values, inv, inv_j)
 
 /-- [loop_join_shared_mut_loan::helper]:
-    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 37:0-51:1
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 39:0-53:1
     Visibility: public -/
 def helper
   {T : Type} (FldInst : Fld T) (values : Slice T) (scratch : Slice T)
@@ -257,5 +257,98 @@ def helper
     let (values1, inv) ← helper_loop FldInst iter values scratch1 inv0 inv_j
     let values2 ← Slice.update values1 0#usize inv
     ok (values2, scratch1)
+
+/-- [loop_join_shared_mut_loan::W]
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 57:0-57:22
+    Visibility: public -/
+@[reducible]
+def W := Std.U64
+
+/-- [loop_join_shared_mut_loan::{impl core::clone::Clone for loop_join_shared_mut_loan::W}::clone]:
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 56:9-56:14
+    Visibility: public -/
+def W.Insts.CoreCloneClone.clone (self : W) : Result W := do
+  ok self
+
+/-- Trait implementation: [loop_join_shared_mut_loan::{impl core::clone::Clone for loop_join_shared_mut_loan::W}]
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 56:9-56:14 -/
+@[reducible]
+def W.Insts.CoreCloneClone : core.clone.Clone W := {
+  clone := W.Insts.CoreCloneClone.clone
+}
+
+/-- Trait implementation: [loop_join_shared_mut_loan::{impl core::marker::Copy for loop_join_shared_mut_loan::W}]
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 56:16-56:20 -/
+@[reducible]
+def W.Insts.CoreMarkerCopy : core.marker.Copy W := {
+  cloneInst := W.Insts.CoreCloneClone
+}
+
+/-- [loop_join_shared_mut_loan::{impl core::ops::arith::MulAssign<&'_0 loop_join_shared_mut_loan::W> for loop_join_shared_mut_loan::W}::mul_assign]:
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 60:4-62:5
+    Visibility: public -/
+def W.Insts.CoreOpsArithMulAssignShared0W.mul_assign
+  (self : W) (b : W) : Result W := do
+  let i ← lift (core.num.U64.wrapping_mul self b)
+  ok i
+
+/-- Trait implementation: [loop_join_shared_mut_loan::{impl core::ops::arith::MulAssign<&'_0 loop_join_shared_mut_loan::W> for loop_join_shared_mut_loan::W}]
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 59:0-63:1 -/
+@[reducible]
+def W.Insts.CoreOpsArithMulAssignShared0W : core.ops.arith.MulAssign W W := {
+  mul_assign := W.Insts.CoreOpsArithMulAssignShared0W.mul_assign
+}
+
+/-- [loop_join_shared_mut_loan::{impl loop_join_shared_mut_loan::Fld for loop_join_shared_mut_loan::W}::mul_into]:
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 69:4-71:5
+    Visibility: public -/
+def W.Insts.Loop_join_shared_mut_loanFld.mul_into
+  (out : W) (a : W) (b : W) : Result W := do
+  let i ← lift (core.num.U64.wrapping_mul a b)
+  ok i
+
+/-- [loop_join_shared_mut_loan::{impl loop_join_shared_mut_loan::Fld for loop_join_shared_mut_loan::W}::zero]:
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 66:4-68:5
+    Visibility: public -/
+def W.Insts.Loop_join_shared_mut_loanFld.zero : Result W := do
+  ok 0#u64
+
+/-- Trait implementation: [loop_join_shared_mut_loan::{impl loop_join_shared_mut_loan::Fld for loop_join_shared_mut_loan::W}]
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 65:0-72:1 -/
+@[reducible]
+def W.Insts.Loop_join_shared_mut_loanFld : Fld W := {
+  coremarkerCopyInst := W.Insts.CoreMarkerCopy
+  coreopsarithMulAssignSelfSharedSelfInst :=
+    W.Insts.CoreOpsArithMulAssignShared0W
+  zero := W.Insts.Loop_join_shared_mut_loanFld.zero
+  mul_into := W.Insts.Loop_join_shared_mut_loanFld.mul_into
+}
+
+/-- [loop_join_shared_mut_loan::test_no_letelse]:
+    Source: 'tests/src/loop-join-shared-mut-loan.rs', lines 77:0-85:1
+    Visibility: public -/
+def test_no_letelse : Result Unit := do
+  let s := Array.repeat 3#usize 0#u64
+  let (s1, to_slice_mut_back) ←
+    lift (Array.to_slice_mut (Array.make 3#usize [ 2#u64, 3#u64, 5#u64 ]))
+  let (s2, to_slice_mut_back1) ← lift (Array.to_slice_mut s)
+  let (s3, s4) ← no_letelse W.Insts.Loop_join_shared_mut_loanFld s1 s2 1#u64
+  let s5 := to_slice_mut_back1 s4
+  let w ← Array.index_usize s5 0#usize
+  massert (w = 2#u64)
+  let w1 ← Array.index_usize s5 1#usize
+  massert (w1 = 6#u64)
+  let w2 ← Array.index_usize s5 2#usize
+  massert (w2 = 30#u64)
+  let v := to_slice_mut_back s3
+  let w3 ← Array.index_usize v 0#usize
+  massert (w3 = 15#u64)
+  let w4 ← Array.index_usize v 1#usize
+  massert (w4 = 10#u64)
+  let w5 ← Array.index_usize v 2#usize
+  massert (w5 = 6#u64)
+
+/- Unit test for [loop_join_shared_mut_loan::test_no_letelse] -/
+#guard (test_no_letelse).reducesTo ()
 
 end loop_join_shared_mut_loan

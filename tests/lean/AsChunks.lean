@@ -20,7 +20,7 @@ set_option maxRecDepth 2048
 namespace as_chunks
 
 /-- [as_chunks::limbs]:
-    Source: 'tests/src/as-chunks.rs', lines 3:0-11:1
+    Source: 'tests/src/as-chunks.rs', lines 5:0-13:1
     Visibility: public -/
 def limbs
   (bytes : Array Std.U8 32#usize) : Result (Array Std.U64 4#usize) := do
@@ -37,7 +37,7 @@ def limbs
   ok (Array.make 4#usize [ i, i1, i2, i3 ])
 
 /-- [as_chunks::tail_len]:
-    Source: 'tests/src/as-chunks.rs', lines 13:0-16:1
+    Source: 'tests/src/as-chunks.rs', lines 15:0-18:1
     Visibility: public -/
 def tail_len (s : Slice Std.U32) : Result Std.Usize := do
   let (chunks, rest) ← core.slice.Slice.as_chunks 3#usize s
@@ -45,5 +45,58 @@ def tail_len (s : Slice Std.U32) : Result Std.Usize := do
   let i1 ← i * 3#usize
   let i2 := Slice.len rest
   i1 + i2
+
+/-- [as_chunks::test_chunks_rest]:
+    Source: 'tests/src/as-chunks.rs', lines 22:0-29:1
+    Visibility: public -/
+def test_chunks_rest : Result Unit := do
+  let s ←
+    lift (Array.to_slice
+      (Array.make 7#usize [ 1#u32, 2#u32, 3#u32, 4#u32, 5#u32, 6#u32, 7#u32 ]))
+  let (chunks, rest) ← core.slice.Slice.as_chunks 3#usize s
+  let i := Slice.len chunks
+  massert (i = 2#usize)
+  let i1 := Slice.len rest
+  massert (i1 = 1#usize)
+  let a ← Slice.index_usize chunks 0#usize
+  let i2 ← Array.index_usize a 0#usize
+  massert (i2 = 1#u32)
+  let i3 ← Array.index_usize a 2#usize
+  massert (i3 = 3#u32)
+  let a1 ← Slice.index_usize chunks 1#usize
+  let i4 ← Array.index_usize a1 0#usize
+  massert (i4 = 4#u32)
+  let i5 ← Array.index_usize a1 2#usize
+  massert (i5 = 6#u32)
+  let i6 ← Slice.index_usize rest 0#usize
+  massert (i6 = 7#u32)
+  let s1 ←
+    lift (Array.to_slice
+      (Array.make 7#usize [ 1#u32, 2#u32, 3#u32, 4#u32, 5#u32, 6#u32, 7#u32 ]))
+  let i7 ← tail_len s1
+  massert (i7 = 7#usize)
+
+/- Unit test for [as_chunks::test_chunks_rest] -/
+#guard (test_chunks_rest).reducesTo ()
+
+/-- [as_chunks::test_limbs]:
+    Source: 'tests/src/as-chunks.rs', lines 33:0-39:1
+    Visibility: public -/
+def test_limbs : Result Unit := do
+  let b := Array.repeat 32#usize 0#u8
+  let b1 ← Array.update b 1#usize 1#u8
+  let b2 ← Array.update b1 24#usize 5#u8
+  let l ← limbs b2
+  let i ← Array.index_usize l 0#usize
+  massert (i = 256#u64)
+  let i1 ← Array.index_usize l 1#usize
+  massert (i1 = 0#u64)
+  let i2 ← Array.index_usize l 2#usize
+  massert (i2 = 0#u64)
+  let i3 ← Array.index_usize l 3#usize
+  massert (i3 = 5#u64)
+
+/- Unit test for [as_chunks::test_limbs] -/
+#guard (test_limbs).reducesTo ()
 
 end as_chunks
