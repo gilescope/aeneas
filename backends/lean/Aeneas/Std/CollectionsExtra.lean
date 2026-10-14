@@ -173,6 +173,165 @@ def std.collections.hash.set.HashSet.insert {T S A Hasher : Type} (EqInst : core
   if ← s.items.anyM (fun y => EqInst.partialEqInst.eq y x) then ok (false, s)
   else ok (true, { items := s.items ++ [x] })
 
+/-- `HashSet::new()`, with std's hasher -/
+@[expose, rust_fun
+  "std::collections::hash::set::{std::collections::hash::set::HashSet<@T, std::hash::random::RandomState, alloc::alloc::Global>}::new"]
+def std.collections.hash.set.HashSetTRandomStateGlobal.new (T : Type) :
+    Result (std.collections.hash.set.HashSet T std.hash.random.RandomState Global) :=
+  ok { items := [] }
+
+@[expose, rust_fun
+  "std::collections::hash::set::{std::collections::hash::set::HashSet<@T, @S, @A>}::is_empty"]
+def std.collections.hash.set.HashSet.is_empty {T S A : Type}
+    (s : std.collections.hash.set.HashSet T S A) : Result Bool :=
+  ok s.items.isEmpty
+
+/-- Whether an item, borrowed as `Q`, equals `q` -/
+@[expose]
+def std.collections.hash.set.HashSet.mem {T Q : Type} (BorrowInst : core.borrow.Borrow T Q)
+    (EqQInst : core.cmp.Eq Q) (items : List T) (q : Q) : Result Bool :=
+  items.anyM (fun y => do EqQInst.partialEqInst.eq (← BorrowInst.borrow y) q)
+
+@[expose, rust_fun
+  "std::collections::hash::set::{std::collections::hash::set::HashSet<@T, @S, @A>}::contains"]
+def std.collections.hash.set.HashSet.contains {T S A Q Hasher : Type}
+    (_EqInst : core.cmp.Eq T) (_HashInst : core.hash.Hash T)
+    (_BuildHasherInst : core.hash.BuildHasher S Hasher) (BorrowInst : core.borrow.Borrow T Q)
+    (_HashQInst : core.hash.Hash Q) (EqQInst : core.cmp.Eq Q)
+    (s : std.collections.hash.set.HashSet T S A) (q : Q) : Result Bool :=
+  std.collections.hash.set.HashSet.mem BorrowInst EqQInst s.items q
+
+/-- Drop the first item equal to `q`, if any; `true` iff one was -/
+@[expose]
+def std.collections.hash.set.HashSet.removeList {T Q : Type} (BorrowInst : core.borrow.Borrow T Q)
+    (EqQInst : core.cmp.Eq Q) : List T → Q → Result (Bool × List T)
+  | [], _ => ok (false, [])
+  | y :: ys, q => do
+    if ← EqQInst.partialEqInst.eq (← BorrowInst.borrow y) q then ok (true, ys)
+    else
+      let (b, ys') ← std.collections.hash.set.HashSet.removeList BorrowInst EqQInst ys q
+      ok (b, y :: ys')
+
+@[expose, rust_fun
+  "std::collections::hash::set::{std::collections::hash::set::HashSet<@T, @S, @A>}::remove"]
+def std.collections.hash.set.HashSet.remove {T S A Q Hasher : Type}
+    (_EqInst : core.cmp.Eq T) (_HashInst : core.hash.Hash T)
+    (_BuildHasherInst : core.hash.BuildHasher S Hasher) (BorrowInst : core.borrow.Borrow T Q)
+    (_HashQInst : core.hash.Hash Q) (EqQInst : core.cmp.Eq Q)
+    (s : std.collections.hash.set.HashSet T S A) (q : Q) :
+    Result (Bool × std.collections.hash.set.HashSet T S A) := do
+  let (b, items) ← std.collections.hash.set.HashSet.removeList BorrowInst EqQInst s.items q
+  ok (b, { items })
+
+@[expose, rust_fun
+  "std::collections::hash::set::{core::clone::Clone<std::collections::hash::set::HashSet<@T, @S, @A>>}::clone"]
+def std.collections.hash.set.HashSet.Insts.CoreCloneClone.clone {T S A : Type}
+    (CloneInst : core.clone.Clone T) (_CloneSInst : core.clone.Clone S)
+    (_CloneAInst : core.clone.Clone A) (s : std.collections.hash.set.HashSet T S A) :
+    Result (std.collections.hash.set.HashSet T S A) := do
+  ok { items := ← s.items.mapM CloneInst.clone }
+
+/-- Each item inserted in turn (an equal item already present wins) -/
+@[expose]
+def std.collections.hash.set.HashSet.insertAll {T : Type} (EqInst : core.cmp.Eq T)
+    (items : List T) (xs : List T) : Result (List T) :=
+  xs.foldlM
+    (fun acc x => do
+      if ← acc.anyM (fun y => EqInst.partialEqInst.eq y x) then ok acc else ok (acc ++ [x]))
+    items
+
+@[rust_fun
+  "std::collections::hash::set::{core::iter::traits::collect::FromIterator<std::collections::hash::set::HashSet<@T, @S, alloc::alloc::Global>, @T>}::from_iter"]
+def std.collections.hash.set.HashSetTSGlobal.Insts.CoreIterTraitsCollectFromIterator.from_iter
+    {T S I Hasher IntoIter : Type} (EqInst : core.cmp.Eq T) (_HashInst : core.hash.Hash T)
+    (_BuildHasherInst : core.hash.BuildHasher S Hasher) (_DefaultInst : core.default.Default S)
+    (IntoIteratorInst : core.iter.traits.collect.IntoIterator I T IntoIter) (input : I) :
+    Result (std.collections.hash.set.HashSet T S Global) := do
+  let xs ← alloc.collections.btree.toList IntoIteratorInst.iteratorInst
+    (← IntoIteratorInst.into_iter input)
+  ok { items := ← std.collections.hash.set.HashSet.insertAll EqInst [] xs }
+
+@[rust_fun
+  "std::collections::hash::set::{core::iter::traits::collect::Extend<std::collections::hash::set::HashSet<@T, @S, @A>, @T>}::extend"]
+def std.collections.hash.set.HashSet.Insts.CoreIterTraitsCollectExtend.extend
+    {T S A I Hasher IntoIter : Type} (EqInst : core.cmp.Eq T) (_HashInst : core.hash.Hash T)
+    (_BuildHasherInst : core.hash.BuildHasher S Hasher)
+    (IntoIteratorInst : core.iter.traits.collect.IntoIterator I T IntoIter)
+    (s : std.collections.hash.set.HashSet T S A) (input : I) :
+    Result (std.collections.hash.set.HashSet T S A) := do
+  let xs ← alloc.collections.btree.toList IntoIteratorInst.iteratorInst
+    (← IntoIteratorInst.into_iter input)
+  ok { items := ← std.collections.hash.set.HashSet.insertAll EqInst s.items xs }
+
+/-- Iteration visits the items in std's order: `hashOrder`, as for `HashMap` -/
+@[rust_type "std::collections::hash::set::Iter" (body := .opaque)]
+structure std.collections.hash.set.Iter (K : Type) where
+  items : List K
+
+@[rust_type "std::collections::hash::set::IntoIter" (body := .opaque)]
+structure std.collections.hash.set.IntoIter (K A : Type) where
+  items : List K
+
+@[expose, rust_fun
+  "std::collections::hash::set::{std::collections::hash::set::HashSet<@T, @S, @A>}::iter"]
+def std.collections.hash.set.HashSet.iter {T S A : Type}
+    (s : std.collections.hash.set.HashSet T S A) : Result (std.collections.hash.set.Iter T) :=
+  ok { items := (std.collections.hash.hashOrder s.items).val }
+
+@[expose, rust_fun
+  "std::collections::hash::set::{core::iter::traits::iterator::Iterator<std::collections::hash::set::Iter<'a, @K>, &'a @K>}::next"]
+def std.collections.hash.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAK.next {K : Type}
+    (it : std.collections.hash.set.Iter K) :
+    Result (Option K × std.collections.hash.set.Iter K) :=
+  match it.items with
+  | [] => ok (none, it)
+  | x :: xs => ok (some x, { items := xs })
+
+@[expose, rust_fun
+  "std::collections::hash::set::{core::iter::traits::collect::IntoIterator<std::collections::hash::set::HashSet<@T, @S, @A>, @T, std::collections::hash::set::IntoIter<@T, @A>>}::into_iter"]
+def std.collections.hash.set.HashSet.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
+    {T S A : Type} (s : std.collections.hash.set.HashSet T S A) :
+    Result (std.collections.hash.set.IntoIter T A) :=
+  ok { items := (std.collections.hash.hashOrder s.items).val }
+
+@[expose, rust_fun
+  "std::collections::hash::set::{core::iter::traits::iterator::Iterator<std::collections::hash::set::IntoIter<@K, @A>, @K>}::next"]
+def std.collections.hash.set.IntoIter.Insts.CoreIterTraitsIteratorIterator.next {K A : Type}
+    (it : std.collections.hash.set.IntoIter K A) :
+    Result (Option K × std.collections.hash.set.IntoIter K A) :=
+  match it.items with
+  | [] => ok (none, it)
+  | x :: xs => ok (some x, { items := xs })
+
+/-- `RandomState` carries nothing the models read -/
+@[expose, rust_fun "std::hash::random::{core::clone::Clone<std::hash::random::RandomState>}::clone"]
+def std.hash.random.RandomState.Insts.CoreCloneClone.clone (s : std.hash.random.RandomState) :
+    Result std.hash.random.RandomState :=
+  ok s
+
+/-! ## `Option` as an iterator -/
+
+/-- `Option::iter`: at most one item -/
+@[rust_type "core::option::Iter" (body := .opaque)]
+structure core.option.Iter (A : Type) where
+  item : Option A
+
+@[expose, rust_fun "core::option::{core::option::Option<@T>}::iter"]
+def core.option.Option.iter {T : Type} (o : Option T) : Result (core.option.Iter T) :=
+  ok { item := o }
+
+@[expose, rust_fun
+  "core::option::{core::iter::traits::iterator::Iterator<core::option::Iter<'a, @A>, &'a @A>}::next"]
+def core.option.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAA.next {A : Type}
+    (it : core.option.Iter A) : Result (Option A × core.option.Iter A) :=
+  ok (it.item, { item := none })
+
+@[expose, rust_fun "core::option::{core::clone::Clone<core::option::Option<@T>>}::clone"]
+def core.option.Option.Insts.CoreCloneClone.clone {T : Type} (CloneInst : core.clone.Clone T) :
+    Option T → Result (Option T)
+  | none => ok none
+  | some x => do ok (some (← CloneInst.clone x))
+
 /-! ## `BTreeMap` -/
 
 @[expose, rust_fun

@@ -29,26 +29,6 @@ def U32.Insts.CoreHashHash : core.hash.Hash Std.U32 := {
     U32.Insts.CoreHashHash.hash HasherInst
 }
 
-/-- Trait implementation: [std::collections::hash::map::{impl core::iter::traits::collect::FromIterator<(K, V)> for std::collections::hash::map::HashMap<K, V, S, alloc::alloc::Global>}]
-    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 3004:0-3007:29
-    Name pattern: [core::iter::traits::collect::FromIterator<std::collections::hash::map::HashMap<@K, @V, @S, alloc::alloc::Global>, (@K, @V)>] -/
-@[reducible, rust_trait_impl
-  "core::iter::traits::collect::FromIterator<std::collections::hash::map::HashMap<@K, @V, @S, alloc::alloc::Global>, (@K, @V)>"]
-def
-  std.collections.hash.map.HashMapKVSGlobal.Insts.CoreIterTraitsCollectFromIteratorPair
-  {K : Type} (V : Type) {S : Type} {Clause2_Hasher : Type} (corecmpEqInst :
-  core.cmp.Eq K) (corehashHashInst : core.hash.Hash K) (corehashBuildHasherInst
-  : core.hash.BuildHasher S Clause2_Hasher) (coredefaultDefaultInst :
-  core.default.Default S) : core.iter.traits.collect.FromIterator
-  (std.collections.hash.map.HashMap K V S Global) (K × V) := {
-  from_iter := fun {I : Type} {Clause0_IntoIter : Type}
-    (coreitertraitscollectIntoIteratorPPairPInst :
-    core.iter.traits.collect.IntoIterator I (K × V) Clause0_IntoIter) =>
-    std.collections.hash.map.HashMapKVSGlobal.Insts.CoreIterTraitsCollectFromIteratorPair.from_iter
-    corecmpEqInst corehashHashInst corehashBuildHasherInst
-    coredefaultDefaultInst coreitertraitscollectIntoIteratorPPairPInst
-}
-
 /-- Trait implementation: [std::hash::random::{impl core::hash::Hasher for std::hash::random::DefaultHasher}]
     Source: '/rustc/library/std/src/hash/random.rs', lines 125:0-125:29
     Name pattern: [core::hash::Hasher<std::hash::random::DefaultHasher>] -/

@@ -54,14 +54,15 @@ let translate_const_generic_param (span : span option)
 
 (* Some generic translation functions (we need to translate different "flavours"
    of types: forward types, backward types, etc.) *)
+
 (** The [Fn*] traits. *)
 type fn_trait = FnOnce | FnMut | Fn
 
-(** The crate's [Fn*] trait declarations, filled by [Translate] before anything is
-    translated.
+(** The crate's [Fn*] trait declarations, filled by [Translate] before anything
+    is translated.
 
-    The models of the [Fn*] traits know nothing of borrows, so a closure impl puts
-    the [&mut] arguments it gives back into the instance's [Output]:
+    The models of the [Fn*] traits know nothing of borrows, so a closure impl
+    puts the [&mut] arguments it gives back into the instance's [Output]:
     [Output' = Output × (b₀ × … × bₙ)] (see [Extract.method_adapter]). A trait
     clause [F : FnOnce(&mut T) -> O] is typed the same way here, so that the
     instance of a closure fits it and a call through the clause gives the

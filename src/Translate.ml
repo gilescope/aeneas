@@ -324,7 +324,8 @@ let translate_crate_to_pure (crate : crate) (marked_ids : marked_ids) :
      (see [SymbolicToPureTypes.fn_trait_decls]) *)
   (SymbolicToPureTypes.fn_trait_decls :=
      let matches (d : trait_decl) (s : string) =
-       ExtractName.match_name crate (NameMatcher.parse_pattern s)
+       ExtractName.match_name crate
+         (NameMatcher.parse_pattern s)
          d.item_meta.name
      in
      TraitDeclId.Map.of_list
