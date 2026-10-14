@@ -13,6 +13,7 @@ package «tests» {}
 @[default_target] lean_lib Arrays
 @[default_target] lean_lib ArraysDefs
 @[default_target] lean_lib ArraySliceIndex
+@[default_target] lean_lib AsChunks
 @[default_target] lean_lib AsMut
 @[default_target] lean_lib AssertCfg
 @[default_target] lean_lib AssocTypeConstraint

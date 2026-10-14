@@ -3696,6 +3696,8 @@ let lean_builtin_funs =
       "core.slice.iter.ChunksExact.getRemainder";
     (* file: "Aeneas/Std/CoreMisc.lean", line: 126 *)
     mk_fun "core::slice::raw::from_ref" "core.slice.raw.from_ref";
+    (* file: "Aeneas/Std/SliceChunks.lean", line: 22 *)
+    mk_fun "core::slice::{[@T]}::as_chunks" "core.slice.Slice.as_chunks";
     (* file: "Aeneas/Std/Core/IterOverrides.lean", line: 259 *)
     mk_fun "core::slice::{[@T]}::chunks" "core.slice.Slice.chunks";
     (* file: "Aeneas/Std/SliceIter.lean", line: 303 *)

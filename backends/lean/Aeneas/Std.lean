@@ -13,6 +13,7 @@ public import Aeneas.Std.PrimitivesLemmas
 public import Aeneas.Std.RawPtr
 public import Aeneas.Std.Scalar
 public import Aeneas.Std.Slice
+public import Aeneas.Std.SliceChunks
 public import Aeneas.Std.SliceDef
 public import Aeneas.Std.SliceIter
 public import Aeneas.Std.Std
