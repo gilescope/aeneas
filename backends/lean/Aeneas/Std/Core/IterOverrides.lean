@@ -131,7 +131,7 @@ def core.iter.adapters.enumerate.Enumerate.Insts.CoreIterTraitsIteratorIteratorP
   (it : core.iter.adapters.enumerate.Enumerate I) (init : Acc) (fold : Fold)
   (h : IB.M = IM.M := by rfl) :
   Result (core.iter.traits.iterator.Iterator.FoldOut M.n Out Acc
-    (core.iter.adapters.enumerate.Enumerate I)) :=
+    (core.iter.adapters.enumerate.Enumerate I) S.Tail) :=
   core.iter.traits.iterator.Iterator.fold.default
     (core.iter.traits.iterator.IteratorEnumerate IteratorInst) FoldInst it init fold h
 
@@ -183,7 +183,7 @@ def core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.fold
   (IA : core.iter.traits.iterator.Iterator A ItemA) (IB : core.iter.traits.iterator.Iterator B ItemB)
   (FInst : core.ops.function.FnMut F (Acc × (ItemA × ItemB)) COut)
   (z : core.iter.adapters.zip.Zip A B) (init : Acc) (f : F) (h : IBk.M = IM.M := by rfl) :
-  Result (core.iter.traits.iterator.Iterator.FoldOut M.n Out Acc (core.iter.adapters.zip.Zip A B)) :=
+  Result (core.iter.traits.iterator.Iterator.FoldOut M.n Out Acc (core.iter.adapters.zip.Zip A B) S.Tail) :=
   core.iter.traits.iterator.Iterator.fold.default
     (core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair IA IB) FInst z init f h
 

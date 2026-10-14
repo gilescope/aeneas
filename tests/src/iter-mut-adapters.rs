@@ -81,6 +81,22 @@ pub fn count_mut(a: &mut [u32]) -> usize {
     a.iter_mut().count()
 }
 
+/// A closure capturing a `&mut` is given back after the final iterator.
+pub fn fold_capture(a: &mut [u32], total: &mut u32) -> u32 {
+    a.iter_mut().fold(0u32, |s, x| {
+        *x += 1;
+        *total = total.wrapping_add(*x);
+        s.wrapping_add(*x)
+    })
+}
+
+pub fn for_each_capture(a: &mut [u32], total: &mut u32) {
+    a.iter_mut().for_each(|x| {
+        *x += 1;
+        *total += *x;
+    });
+}
+
 #[verify::test]
 pub fn test_enumerate_set() {
     let mut a = [9u32, 9, 9];
@@ -158,4 +174,20 @@ pub fn test_fold_bump_sum() {
 pub fn test_count_mut() {
     let mut a = [0u32, 0, 0, 0];
     assert!(count_mut(&mut a) == 4);
+}
+
+#[verify::test]
+pub fn test_fold_capture() {
+    let mut a = [1u32, 2];
+    let mut total = 100u32;
+    let s = fold_capture(&mut a, &mut total);
+    assert!(s == 5 && total == 105 && a[0] == 2 && a[1] == 3);
+}
+
+#[verify::test]
+pub fn test_for_each_capture() {
+    let mut a = [1u32, 2];
+    let mut total = 100u32;
+    for_each_capture(&mut a, &mut total);
+    assert!(total == 105 && a[0] == 2 && a[1] == 3);
 }

@@ -93,7 +93,7 @@ output shape depends on how many regions `Self` holds: a constructor returns
 `(w, back_1, .., back_n)` with `back_i : W → Self`, `next` returns `(o, it, nb_1, .., nb_n)`
 with `nb_i : I → Option Item → I` (each writes its region's part of the item), and a consumer
 returns the final iterator once per region. `MutRegions` is that count at the type level, and
-the `Backs`/`Finals` shapes below are what the models return. The backward functions
+the `Backs`/`FinalsWith`/`Prods` shapes below are what the models return. The backward functions
 themselves ride on the `Iterator` instance (`nextMut`), so adapters compose without knowing
 what they wrap, and a plain iterator (no region) keeps today's shapes. -/
 
@@ -149,23 +149,23 @@ def Backs.replicate (n : Nat) {W F : Type} (w : W) (f : F) : Backs n W F :=
 def Backs.ofList (n : Nat) {W F : Type} (w : W) (fs : List F) (dflt : F) : Backs n W F :=
   Tup.ofHList w (HList.ofList fs dflt n)
 
-/-- The final iterator a consumer gives back, once per region: nothing without one -/
-@[reducible] def Finals : Nat → Type → Type
-  | 0, _ => Unit
-  | n + 1, I => Tup I (List.replicate n I)
+/-- The types in `l` as a right-nested tuple, `Unit` for none: what a consumer with no result
+of its own gives back (the final iterator per region, then a capturing closure) -/
+@[reducible] def Prods : List Type → Type
+  | [] => Unit
+  | [A] => A
+  | A :: l => A × Prods l
 
-def Finals.replicate : (n : Nat) → {I : Type} → I → Finals n I
-  | 0, _, _ => ()
-  | n + 1, _, it => Tup.ofHList it (HList.replicate n it)
+def HList.toProds : {l : List Type} → HList l → Prods l
+  | [], .nil => ()
+  | [_], .cons a .nil => a
+  | _ :: _ :: _, .cons a rest => (a, HList.toProds rest)
 
 /-- A consumer's result `R`, then the final iterator once per region -/
-@[reducible] def FinalsWith : Nat → Type → Type → Type
-  | 0, R, _ => R
-  | n + 1, R, I => R × Tup I (List.replicate n I)
+abbrev FinalsWith (n : Nat) (R I : Type) : Type := Tup R (List.replicate n I)
 
-def FinalsWith.mk : (n : Nat) → {R I : Type} → R → I → FinalsWith n R I
-  | 0, _, _, r, _ => r
-  | n + 1, _, _, r, it => (r, Tup.ofHList it (HList.replicate n it))
+def FinalsWith.mk (n : Nat) {R I : Type} (r : R) (it : I) : FinalsWith n R I :=
+  Tup.ofHList r (HList.replicate n it)
 
 /-- The `&mut` parts of `I`'s items, which a closure handed an item gives back (Aeneas drops
 the rest: `Enumerate`'s index, a zipped shared item), put back into the item. `Unit` where
@@ -1405,10 +1405,14 @@ instance {Self F : Type} [GivesBack F] : MapShape Self F :=
   ⟨core.iter.adapters.map.Map Self F × (core.iter.adapters.map.Map Self F → F),
     fun m => (m, (·.f))⟩
 
-/-- The output of `fold(it, init, f)`: the result, and the closure in its final state. -/
+/-- The output of `fold(it, init, f)`: the result, and the closure in its final state. `Tail`
+is that closure alone, for consumers over `&mut` items, which give it back after the final
+iterators. -/
 class FoldShape (B F : Type) (Out : outParam Type) where
   ofFold : B → F → Out
+  Tail : List Type
+  tail : F → HList Tail
 
-instance (priority := low) {B F : Type} : FoldShape B F B := ⟨fun b _ => b⟩
+instance (priority := low) {B F : Type} : FoldShape B F B := ⟨fun b _ => b, [], fun _ => .nil⟩
 
-instance {B F : Type} [GivesBack F] : FoldShape B F (B × F) := ⟨Prod.mk⟩
+instance {B F : Type} [GivesBack F] : FoldShape B F (B × F) := ⟨Prod.mk, [F], fun f => .cons f .nil⟩

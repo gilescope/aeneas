@@ -675,8 +675,146 @@ def count_mut (a : Slice Std.U32) : Result (Std.Usize × (Slice Std.U32)) := do
   let a1 := iter_mut_back im1
   ok (i, a1)
 
+/-- [iter_mut_adapters::fold_capture::{closure}]
+    Source: 'tests/src/iter-mut-adapters.rs', lines 86:28-90:5 -/
+@[reducible]
+def fold_capture.closure := Std.U32
+
+instance : Aeneas.Std.GivesBack fold_capture.closure := ⟨⟩
+
+/-- [iter_mut_adapters::fold_capture::{impl core::ops::function::FnMut<(u32, &'_1 mut u32), u32> for iter_mut_adapters::fold_capture::{closure}<'_0>}::call_mut]:
+    Source: 'tests/src/iter-mut-adapters.rs', lines 86:28-90:5 -/
+def fold_capture.closure.Insts.CoreOpsFunctionFnMutPairU32Mut1U32U32.call_mut
+  (c : fold_capture.closure) (tupled_args : (Std.U32 × Std.U32)) :
+  Result (Std.U32 × fold_capture.closure × (fold_capture.closure →
+    fold_capture.closure) × Std.U32)
+  := do
+  let (s, x) := tupled_args
+  let x1 ← x + 1#u32
+  let i ← lift (core.num.U32.wrapping_add c x1)
+  let i1 ← lift (core.num.U32.wrapping_add s x1)
+  let back := fun c1 => c1
+  ok (i1, i, back, x1)
+
+/-- [iter_mut_adapters::fold_capture::{impl core::ops::function::FnOnce<(u32, &'_1 mut u32), u32> for iter_mut_adapters::fold_capture::{closure}<'_0>}::call_once]:
+    Source: 'tests/src/iter-mut-adapters.rs', lines 86:28-90:5 -/
+def fold_capture.closure.Insts.CoreOpsFunctionFnOncePairU32Mut1U32U32.call_once
+  (c : fold_capture.closure) (p : (Std.U32 × Std.U32)) :
+  Result (Std.U32 × fold_capture.closure × Std.U32)
+  := do
+  let (i, c1, call_mut_back, i1) ←
+    fold_capture.closure.Insts.CoreOpsFunctionFnMutPairU32Mut1U32U32.call_mut c
+      p
+  ok (i, call_mut_back c1, i1)
+
+/-- Trait implementation: [iter_mut_adapters::fold_capture::{impl core::ops::function::FnOnce<(u32, &'_1 mut u32), u32> for iter_mut_adapters::fold_capture::{closure}<'_0>}]
+    Source: 'tests/src/iter-mut-adapters.rs', lines 86:28-90:5 -/
+@[reducible]
+def fold_capture.closure.Insts.CoreOpsFunctionFnOncePairU32Mut1U32U32 :
+  core.ops.function.FnOnce fold_capture.closure (Std.U32 × Std.U32) (Std.U32
+  × Std.U32) := {
+  call_once := fun _ _ => Result.fail Error.undef
+}
+
+/-- Trait implementation: [iter_mut_adapters::fold_capture::{impl core::ops::function::FnMut<(u32, &'_1 mut u32), u32> for iter_mut_adapters::fold_capture::{closure}<'_0>}]
+    Source: 'tests/src/iter-mut-adapters.rs', lines 86:28-90:5 -/
+@[reducible]
+def fold_capture.closure.Insts.CoreOpsFunctionFnMutPairU32Mut1U32U32 :
+  core.ops.function.FnMut fold_capture.closure (Std.U32 × Std.U32) (Std.U32 ×
+  Std.U32) := {
+  FnOnceInst :=
+    fold_capture.closure.Insts.CoreOpsFunctionFnOncePairU32Mut1U32U32
+  call_mut := fun x0 x1 =>
+    Bind.bind ((fold_capture.closure.Insts.CoreOpsFunctionFnMutPairU32Mut1U32U32.call_mut) x0 x1)
+    (fun (out, self', e1, b2) => ok ((out, b2), (e1 self')))
+}
+
+/-- [iter_mut_adapters::fold_capture]:
+    Source: 'tests/src/iter-mut-adapters.rs', lines 85:0-91:1
+    Visibility: public -/
+def fold_capture
+  (a : Slice Std.U32) (total : Std.U32) :
+  Result (Std.U32 × (Slice Std.U32) × Std.U32)
+  := do
+  let (im, iter_mut_back) ← core.slice.Slice.iter_mut a
+  let (i, im1, c) ←
+    core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.fold
+      fold_capture.closure.Insts.CoreOpsFunctionFnMutPairU32Mut1U32U32 im 0#u32
+      total
+  let a1 := iter_mut_back im1
+  ok (i, a1, c)
+
+/-- [iter_mut_adapters::for_each_capture::{closure}]
+    Source: 'tests/src/iter-mut-adapters.rs', lines 94:26-97:5 -/
+@[reducible]
+def for_each_capture.closure := Std.U32
+
+instance : Aeneas.Std.GivesBack for_each_capture.closure := ⟨⟩
+
+/-- [iter_mut_adapters::for_each_capture::{impl core::ops::function::FnMut<(&'_1 mut u32,), ()> for iter_mut_adapters::for_each_capture::{closure}<'_0>}::call_mut]:
+    Source: 'tests/src/iter-mut-adapters.rs', lines 94:26-97:5 -/
+def
+  for_each_capture.closure.Insts.CoreOpsFunctionFnMutTupleMut1U32Tuple.call_mut
+  (c : for_each_capture.closure) (tupled_args : Std.U32) :
+  Result (for_each_capture.closure × (for_each_capture.closure →
+    for_each_capture.closure) × Std.U32)
+  := do
+  let x ← tupled_args + 1#u32
+  let i ← c + x
+  let back := fun c1 => c1
+  ok (i, back, x)
+
+/-- [iter_mut_adapters::for_each_capture::{impl core::ops::function::FnOnce<(&'_1 mut u32,), ()> for iter_mut_adapters::for_each_capture::{closure}<'_0>}::call_once]:
+    Source: 'tests/src/iter-mut-adapters.rs', lines 94:26-97:5 -/
+def
+  for_each_capture.closure.Insts.CoreOpsFunctionFnOnceTupleMut1U32Tuple.call_once
+  (c : for_each_capture.closure) (i : Std.U32) :
+  Result (for_each_capture.closure × Std.U32)
+  := do
+  let (c1, call_mut_back, i1) ←
+    for_each_capture.closure.Insts.CoreOpsFunctionFnMutTupleMut1U32Tuple.call_mut
+      c i
+  ok (call_mut_back c1, i1)
+
+/-- Trait implementation: [iter_mut_adapters::for_each_capture::{impl core::ops::function::FnOnce<(&'_1 mut u32,), ()> for iter_mut_adapters::for_each_capture::{closure}<'_0>}]
+    Source: 'tests/src/iter-mut-adapters.rs', lines 94:26-97:5 -/
+@[reducible]
+def for_each_capture.closure.Insts.CoreOpsFunctionFnOnceTupleMut1U32Tuple :
+  core.ops.function.FnOnce for_each_capture.closure Std.U32 (Unit × Std.U32)
+  := {
+  call_once := fun _ _ => Result.fail Error.undef
+}
+
+/-- Trait implementation: [iter_mut_adapters::for_each_capture::{impl core::ops::function::FnMut<(&'_1 mut u32,), ()> for iter_mut_adapters::for_each_capture::{closure}<'_0>}]
+    Source: 'tests/src/iter-mut-adapters.rs', lines 94:26-97:5 -/
+@[reducible]
+def for_each_capture.closure.Insts.CoreOpsFunctionFnMutTupleMut1U32Tuple :
+  core.ops.function.FnMut for_each_capture.closure Std.U32 (Unit × Std.U32)
+  := {
+  FnOnceInst :=
+    for_each_capture.closure.Insts.CoreOpsFunctionFnOnceTupleMut1U32Tuple
+  call_mut := fun x0 x1 =>
+    Bind.bind ((for_each_capture.closure.Insts.CoreOpsFunctionFnMutTupleMut1U32Tuple.call_mut) x0 x1)
+    (fun (self', e1, b2) => ok (((), b2), (e1 self')))
+}
+
+/-- [iter_mut_adapters::for_each_capture]:
+    Source: 'tests/src/iter-mut-adapters.rs', lines 93:0-98:1
+    Visibility: public -/
+def for_each_capture
+  (a : Slice Std.U32) (total : Std.U32) :
+  Result ((Slice Std.U32) × Std.U32)
+  := do
+  let (im, iter_mut_back) ← core.slice.Slice.iter_mut a
+  let (im1, c) ←
+    core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.for_each
+      for_each_capture.closure.Insts.CoreOpsFunctionFnMutTupleMut1U32Tuple im
+      total
+  let a1 := iter_mut_back im1
+  ok (a1, c)
+
 /-- [iter_mut_adapters::test_enumerate_set]:
-    Source: 'tests/src/iter-mut-adapters.rs', lines 85:0-89:1
+    Source: 'tests/src/iter-mut-adapters.rs', lines 101:0-105:1
     Visibility: public -/
 def test_enumerate_set : Result Unit := do
   let a := Array.repeat 3#usize 9#u32
@@ -694,7 +832,7 @@ def test_enumerate_set : Result Unit := do
 #guard (test_enumerate_set).reducesTo ()
 
 /-- [iter_mut_adapters::test_take_bump]:
-    Source: 'tests/src/iter-mut-adapters.rs', lines 92:0-96:1
+    Source: 'tests/src/iter-mut-adapters.rs', lines 108:0-112:1
     Visibility: public -/
 def test_take_bump : Result Unit := do
   let a := Array.repeat 3#usize 1#u32
@@ -712,7 +850,7 @@ def test_take_bump : Result Unit := do
 #guard (test_take_bump).reducesTo ()
 
 /-- [iter_mut_adapters::test_step_by_bump]:
-    Source: 'tests/src/iter-mut-adapters.rs', lines 99:0-103:1
+    Source: 'tests/src/iter-mut-adapters.rs', lines 115:0-119:1
     Visibility: public -/
 def test_step_by_bump : Result Unit := do
   let a := Array.repeat 5#usize 0#u32
@@ -734,7 +872,7 @@ def test_step_by_bump : Result Unit := do
 #guard (test_step_by_bump).reducesTo ()
 
 /-- [iter_mut_adapters::test_skip_bump]:
-    Source: 'tests/src/iter-mut-adapters.rs', lines 106:0-110:1
+    Source: 'tests/src/iter-mut-adapters.rs', lines 122:0-126:1
     Visibility: public -/
 def test_skip_bump : Result Unit := do
   let a := Array.repeat 3#usize 0#u32
@@ -752,7 +890,7 @@ def test_skip_bump : Result Unit := do
 #guard (test_skip_bump).reducesTo ()
 
 /-- [iter_mut_adapters::test_chain_bump]:
-    Source: 'tests/src/iter-mut-adapters.rs', lines 113:0-118:1
+    Source: 'tests/src/iter-mut-adapters.rs', lines 129:0-134:1
     Visibility: public -/
 def test_chain_bump : Result Unit := do
   let a := Array.repeat 2#usize 0#u32
@@ -778,7 +916,7 @@ def test_chain_bump : Result Unit := do
 #guard (test_chain_bump).reducesTo ()
 
 /-- [iter_mut_adapters::test_chain_count]:
-    Source: 'tests/src/iter-mut-adapters.rs', lines 121:0-125:1
+    Source: 'tests/src/iter-mut-adapters.rs', lines 137:0-141:1
     Visibility: public -/
 def test_chain_count : Result Unit := do
   let a := Array.repeat 2#usize 0#u32
@@ -792,7 +930,7 @@ def test_chain_count : Result Unit := do
 #guard (test_chain_count).reducesTo ()
 
 /-- [iter_mut_adapters::test_zip_enumerate]:
-    Source: 'tests/src/iter-mut-adapters.rs', lines 128:0-133:1
+    Source: 'tests/src/iter-mut-adapters.rs', lines 144:0-149:1
     Visibility: public -/
 def test_zip_enumerate : Result Unit := do
   let a := Array.repeat 3#usize 0#u32
@@ -819,7 +957,7 @@ def test_zip_enumerate : Result Unit := do
 #guard (test_zip_enumerate).reducesTo ()
 
 /-- [iter_mut_adapters::test_butterflies]:
-    Source: 'tests/src/iter-mut-adapters.rs', lines 136:0-141:1
+    Source: 'tests/src/iter-mut-adapters.rs', lines 152:0-157:1
     Visibility: public -/
 def test_butterflies : Result Unit := do
   let (s, to_slice_mut_back) ←
@@ -843,7 +981,7 @@ def test_butterflies : Result Unit := do
 #guard (test_butterflies).reducesTo ()
 
 /-- [iter_mut_adapters::test_for_each_bump]:
-    Source: 'tests/src/iter-mut-adapters.rs', lines 144:0-148:1
+    Source: 'tests/src/iter-mut-adapters.rs', lines 160:0-164:1
     Visibility: public -/
 def test_for_each_bump : Result Unit := do
   let (s, to_slice_mut_back) ←
@@ -859,7 +997,7 @@ def test_for_each_bump : Result Unit := do
 #guard (test_for_each_bump).reducesTo ()
 
 /-- [iter_mut_adapters::test_fold_bump_sum]:
-    Source: 'tests/src/iter-mut-adapters.rs', lines 151:0-155:1
+    Source: 'tests/src/iter-mut-adapters.rs', lines 167:0-171:1
     Visibility: public -/
 def test_fold_bump_sum : Result Unit := do
   let (s, to_slice_mut_back) ←
@@ -876,7 +1014,7 @@ def test_fold_bump_sum : Result Unit := do
 #guard (test_fold_bump_sum).reducesTo ()
 
 /-- [iter_mut_adapters::test_count_mut]:
-    Source: 'tests/src/iter-mut-adapters.rs', lines 158:0-161:1
+    Source: 'tests/src/iter-mut-adapters.rs', lines 174:0-177:1
     Visibility: public -/
 def test_count_mut : Result Unit := do
   let a := Array.repeat 4#usize 0#u32
@@ -886,5 +1024,40 @@ def test_count_mut : Result Unit := do
 
 /- Unit test for [iter_mut_adapters::test_count_mut] -/
 #guard (test_count_mut).reducesTo ()
+
+/-- [iter_mut_adapters::test_fold_capture]:
+    Source: 'tests/src/iter-mut-adapters.rs', lines 180:0-185:1
+    Visibility: public -/
+def test_fold_capture : Result Unit := do
+  let (s, to_slice_mut_back) ←
+    lift (Array.to_slice_mut (Array.make 2#usize [ 1#u32, 2#u32 ]))
+  let (s1, s2, total) ← fold_capture s 100#u32
+  massert (s1 = 5#u32)
+  massert (total = 105#u32)
+  let a := to_slice_mut_back s2
+  let i ← Array.index_usize a 0#usize
+  massert (i = 2#u32)
+  let i1 ← Array.index_usize a 1#usize
+  massert (i1 = 3#u32)
+
+/- Unit test for [iter_mut_adapters::test_fold_capture] -/
+#guard (test_fold_capture).reducesTo ()
+
+/-- [iter_mut_adapters::test_for_each_capture]:
+    Source: 'tests/src/iter-mut-adapters.rs', lines 188:0-193:1
+    Visibility: public -/
+def test_for_each_capture : Result Unit := do
+  let (s, to_slice_mut_back) ←
+    lift (Array.to_slice_mut (Array.make 2#usize [ 1#u32, 2#u32 ]))
+  let (s1, total) ← for_each_capture s 100#u32
+  massert (total = 105#u32)
+  let a := to_slice_mut_back s1
+  let i ← Array.index_usize a 0#usize
+  massert (i = 2#u32)
+  let i1 ← Array.index_usize a 1#usize
+  massert (i1 = 3#u32)
+
+/- Unit test for [iter_mut_adapters::test_for_each_capture] -/
+#guard (test_for_each_capture).reducesTo ()
 
 end iter_mut_adapters

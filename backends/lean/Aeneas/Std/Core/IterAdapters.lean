@@ -39,30 +39,31 @@ def core.iter.traits.iterator.Iterator.foldPlain
 
 /-- `fold` over an iterator with `n + 1` regions: the closure gives the item's `&mut` parts back
 with the accumulator, written through every region's backward function; the final iterator
-comes back once per region. The closure's own give back (`FoldShape`) is not combined with
-this: Aeneas's order for both at once is unknown. -/
+comes back once per region, then the closure if it captures a `&mut` (`FoldShape.Tail`). -/
 def core.iter.traits.iterator.Iterator.foldMut
-  {Self B F Item COut : Type} [IM : ItemMut Self Item] [IB : ItemBack COut B]
+  {Self B F Item COut : Type} {Out : Type} [S : FoldShape B F Out]
+  [IM : ItemMut Self Item] [IB : ItemBack COut B]
   (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
   (FnMutInst : core.ops.function.FnMut F (B × Item) COut)
   (n : Nat) (self : Self) (init : B) (f : F) (h : IB.M = IM.M) :
-  Result (B × Tup Self (List.replicate n Self)) := do
-  let (acc, it) ← loop (fun ((it, acc, f) : Self × B × F) => do
+  Result (B × Tup Self (List.replicate n Self ++ S.Tail)) := do
+  let (acc, it, f) ← loop (fun ((it, acc, f) : Self × B × F) => do
     let (o, it, bs) ← IteratorInst.nextMut it
     match o with
-    | none => ok (.done (acc, it))
+    | none => ok (.done (acc, it, f))
     | some x =>
       let (r, f) ← FnMutInst.call_mut f (acc, x)
       let (acc, m) := IB.split r
       let x' := m.map fun m => IM.put x (h ▸ m)
       ok (.cont (bs.foldl (fun it b => b it x') it, acc, f))) (self, init, f)
-  ok (acc, Tup.ofHList it (HList.replicate n it))
+  ok (acc, Tup.ofHList it (HList.append (HList.replicate n it) (S.tail f)))
 
 /-- The output of `fold` by `Self`'s regions: `FoldShape`'s without one, else the
-accumulator and the final iterator once per region -/
-@[reducible] def core.iter.traits.iterator.Iterator.FoldOut : Nat → Type → Type → Type → Type
-  | 0, Out, _, _ => Out
-  | n + 1, _, B, Self => FinalsWith (n + 1) B Self
+accumulator, the final iterator once per region, then the closure's tail -/
+@[reducible] def core.iter.traits.iterator.Iterator.FoldOut :
+    Nat → Type → Type → Type → List Type → Type
+  | 0, Out, _, _, _ => Out
+  | n + 1, _, B, Self, Tail => B × Tup Self (List.replicate n Self ++ Tail)
 
 /-- `fold` by `Self`'s regions. Without one the closure returns the accumulator (`ItemBack`
 sees nothing to give back), as the provided method does. -/
@@ -71,7 +72,8 @@ def core.iter.traits.iterator.Iterator.foldN
   [IM : ItemMut Self Item] [IB : ItemBack COut B]
   (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
   (FnMutInst : core.ops.function.FnMut F (B × Item) COut) (h : IB.M = IM.M) :
-  (n : Nat) → Self → B → F → Result (core.iter.traits.iterator.Iterator.FoldOut n Out B Self)
+  (n : Nat) → Self → B → F →
+    Result (core.iter.traits.iterator.Iterator.FoldOut n Out B Self S.Tail)
   | 0, self, init, f => do
     let (acc, f) ← loop (fun ((it, acc, f) : Self × B × F) => do
       let (o, it) ← IteratorInst.next it
@@ -93,7 +95,7 @@ def core.iter.traits.iterator.Iterator.fold.default
   (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
   (FnMutInst : core.ops.function.FnMut F (B × Item) COut)
   (self : Self) (init : B) (f : F) (h : IB.M = IM.M := by rfl) :
-  Result (core.iter.traits.iterator.Iterator.FoldOut M.n Out B Self) :=
+  Result (core.iter.traits.iterator.Iterator.FoldOut M.n Out B Self S.Tail) :=
   core.iter.traits.iterator.Iterator.foldN IteratorInst FnMutInst h M.n self init f
 
 /-- `count` by `Self`'s regions: the number of items, panicking past `usize::MAX`, then the
@@ -125,39 +127,43 @@ def core.iter.traits.iterator.Iterator.count.default
   core.iter.traits.iterator.Iterator.countN IteratorInst M.n self
 
 /-- `for_each` by `Self`'s regions: `f` on every item; a `&mut` item comes back from `f` and
-is written through `Self`'s regions, which give the final iterator back -/
+is written through `Self`'s regions, which give the final iterator back, then `f` if it
+captures a `&mut` (`FoldShape.Tail`) -/
 def core.iter.traits.iterator.Iterator.forEachN
-  {Self F Item COut : Type} [IM : ItemMut Self Item] [IB : ItemBack COut Unit]
+  {Self F Item COut : Type} {Out : Type} [S : FoldShape Unit F Out]
+  [IM : ItemMut Self Item] [IB : ItemBack COut Unit]
   (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
   (FnMutInst : core.ops.function.FnMut F Item COut) (h : IB.M = IM.M) :
-  (n : Nat) → Self → F → Result (Finals n Self)
-  | 0, self, f =>
-    loop (fun ((it, f) : Self × F) => do
+  (n : Nat) → Self → F → Result (Prods (List.replicate n Self ++ S.Tail))
+  | 0, self, f => do
+    let f ← loop (fun ((it, f) : Self × F) => do
       let (o, it) ← IteratorInst.next it
       match o with
-      | none => ok (.done ())
+      | none => ok (.done f)
       | some x =>
         let (_, f) ← FnMutInst.call_mut f x
         ok (.cont (it, f))) (self, f)
+    ok (HList.toProds (S.tail f))
   | n + 1, self, f => do
-    let it ← loop (fun ((it, f) : Self × F) => do
+    let (it, f) ← loop (fun ((it, f) : Self × F) => do
       let (o, it, bs) ← IteratorInst.nextMut it
       match o with
-      | none => ok (.done it)
+      | none => ok (.done (it, f))
       | some x =>
         let (r, f) ← FnMutInst.call_mut f x
         let x' := (IB.split r).2.map fun m => IM.put x (h ▸ m)
         ok (.cont (bs.foldl (fun it b => b it x') it, f))) (self, f)
-    ok (Finals.replicate (n + 1) it)
+    ok (HList.toProds (HList.append (HList.replicate (n + 1) it) (S.tail f)))
 
 /-- `for_each`: `f` on every item -/
 @[expose, trait_default, rust_fun "core::iter::traits::iterator::Iterator::for_each"]
 def core.iter.traits.iterator.Iterator.for_each.default
-  {Self F Item COut : Type} [M : MutRegions Self] [IM : ItemMut Self Item]
-  [IB : ItemBack COut Unit]
+  {Self F Item COut : Type} {Out : Type} [M : MutRegions Self] [S : FoldShape Unit F Out]
+  [IM : ItemMut Self Item] [IB : ItemBack COut Unit]
   (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
   (FnMutInst : core.ops.function.FnMut F Item COut)
-  (self : Self) (f : F) (h : IB.M = IM.M := by rfl) : Result (Finals M.n Self) :=
+  (self : Self) (f : F) (h : IB.M = IM.M := by rfl) :
+  Result (Prods (List.replicate M.n Self ++ S.Tail)) :=
   core.iter.traits.iterator.Iterator.forEachN IteratorInst FnMutInst h M.n self f
 
 /-- `any`: whether some item satisfies `f`, stopping at the first; takes `&mut self` -/
@@ -606,7 +612,7 @@ def core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.fold
   (IB' : core.iter.traits.iterator.Iterator B Item)
   (FInst : core.ops.function.FnMut F (Acc × Item) COut)
   (self : core.iter.adapters.chain.Chain A B) (init : Acc) (f : F) (h : IB.M = IM.M := by rfl) :
-  Result (core.iter.traits.iterator.Iterator.FoldOut M.n Out Acc (core.iter.adapters.chain.Chain A B)) :=
+  Result (core.iter.traits.iterator.Iterator.FoldOut M.n Out Acc (core.iter.adapters.chain.Chain A B) S.Tail) :=
   core.iter.traits.iterator.Iterator.fold.default
     (core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator IA IB') FInst self init f h
 
@@ -863,17 +869,17 @@ def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.fold
   {T B F COut : Type} {Out : Type} [S : FoldShape B F Out] [IB : ItemBack COut B]
   (FnMutInst : core.ops.function.FnMut F (B × T) COut)
   (it : core.slice.iter.IterMut T) (init : B) (f : F) (h : IB.M = T := by rfl) :
-  Result (B × core.slice.iter.IterMut T) :=
+  Result (B × Tup (core.slice.iter.IterMut T) S.Tail) :=
   core.iter.traits.iterator.Iterator.fold.default
     (core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT T) FnMutInst it init f h
 
 @[rust_fun
   "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>}::for_each"]
 def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.for_each
-  {T F COut : Type} [IB : ItemBack COut Unit]
+  {T F COut : Type} {Out : Type} [S : FoldShape Unit F Out] [IB : ItemBack COut Unit]
   (FnMutInst : core.ops.function.FnMut F T COut)
   (it : core.slice.iter.IterMut T) (f : F) (h : IB.M = T := by rfl) :
-  Result (core.slice.iter.IterMut T) :=
+  Result (Prods (core.slice.iter.IterMut T :: S.Tail)) :=
   core.iter.traits.iterator.Iterator.for_each.default
     (core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT T) FnMutInst it f h
 
