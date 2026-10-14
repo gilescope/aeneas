@@ -178,13 +178,14 @@ theorem core.iter.adapters.step_by.IteratorStepBy.next_Range_UScalar_none_spec
       (it' : core.iter.adapters.step_by.StepBy (core.ops.range.Range (UScalar ty))) =>
       opt = none ∧ it' = it ⦄ := by
   unfold core.iter.adapters.step_by.IteratorStepBy.next
-  simp only [core.iter.traits.iterator.IteratorRange,
+  simp only [plainMutRegions_n, core.iter.traits.iterator.Iterator.nextShapedN_zero,
+    core.iter.traits.iterator.IteratorStepBy]
+  unfold core.iter.adapters.step_by.IteratorStepBy.nextPlain
+  have hnot : ¬ (it.iter.start.val < it.iter.end.val) := by omega
+  simp [core.iter.traits.iterator.IteratorRange,
     core.iter.range.IteratorRange.next,
     core.iter.range.UScalarStep, core.iter.range.UScalarStep.forward_checked,
-    h_lt, bind_tc_ok,
-    show ¬ (it.iter.start.val < it.iter.end.val) from by omega,
-    decide_false, Bool.false_eq_true, ↓reduceIte, spec_ok]
-  simp [uncurry'_pair]
+    h_lt, hnot, spec_ok]
 
 /-- Generic merged `IteratorStepBy.next` on `Range (UScalar ty)` (saturating,
     conditional postcondition combining the some and none cases). -/
@@ -444,7 +445,9 @@ theorem core.iter.adapters.take.IteratorTake.next_ChunksExact_spec {T : Type}
         | [] => result = none ∧ iter'.iter.chunks = [] ∧ iter'.n.val = iter.n.val - 1
         | chunk :: rest =>
           result = some chunk ∧ iter'.iter.chunks = rest ∧ iter'.n.val = iter.n.val - 1 ⦄ := by
-  simp only [core.iter.adapters.take.IteratorTake.next]
+  simp only [core.iter.adapters.take.IteratorTake.next, plainMutRegions_n,
+    core.iter.traits.iterator.Iterator.nextShapedN_zero, core.iter.traits.iterator.IteratorTake]
+  unfold core.iter.adapters.take.IteratorTake.nextPlain
   split
   · simp [spec_ok]
   · rename_i hne
@@ -588,12 +591,6 @@ impl_def core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator
     core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator.next StepInst
   size_hint :=
     core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator.size_hint StepInst
-  step_by := core.iter.traits.iterator.Iterator.step_by.trait_default
-    (core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator StepInst)
-  enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default
-    (core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator StepInst)
-  take := core.iter.traits.iterator.Iterator.take.trait_default
-    (core.ops.range.RangeInclusive.Insts.CoreIterTraitsIteratorIterator StepInst)
 }
 
 end Aeneas.Std

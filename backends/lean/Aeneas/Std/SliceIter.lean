@@ -24,14 +24,17 @@ structure core.slice.iter.Iter (T : Type) where
   slice : Slice T
   i : Nat
 
+/-- The slice and the cursors of what is left, `i ≤ j`: `next` yields at `i`, `next_back`
+at `j - 1`. The slice is given back whole, writes landed. -/
 @[rust_type "core::slice::iter::IterMut" (mutRegions := #[0]) (body := .opaque)]
 structure core.slice.iter.IterMut (T : Type) where
-  /- We need to remember the slice and an index inside the slice (this is necessary)
-     for double ended iterators) -/
   slice : Slice T
   i : Nat := 0
+  j : Nat := slice.len
 
 instance {T : Type} : GivesBack (core.slice.iter.IterMut T) := ⟨⟩
+instance {T : Type} : MutRegions (core.slice.iter.IterMut T) := ⟨1⟩
+instance {T : Type} : ItemMut (core.slice.iter.IterMut T) T := ⟨T, fun _ m => m⟩
 
 @[rust_fun "core::slice::{[@T]}::iter"]
 def core.slice.Slice.iter {T : Type} (s : Slice T) : Result (core.slice.iter.Iter T) :=
@@ -49,8 +52,8 @@ def core.slice.iter.IteratorIterMut.next
   (it : core.slice.iter.IterMut T) :
   Result ((Option T) × (core.slice.iter.IterMut T) ×
           (core.slice.iter.IterMut T → Option T → core.slice.iter.IterMut T)) :=
-  if h: it.i < it.slice.len then
-    let x := it.slice[it.i]
+  if h: it.i < it.j ∧ it.i < it.slice.len then
+    let x := it.slice[it.i]'h.2
     let i := it.i
     let it := { it with i := i + 1 }
     let back it' x :=
@@ -60,24 +63,58 @@ def core.slice.iter.IteratorIterMut.next
     ok (some x, it, back)
   else ok (none, it, fun it _ => it)
 
-/-- `Zip::next` with `iter_mut()` as `B`: `IterMut::next` (the instance `B`'s Aeneas generates
-cannot give the item back, so it is not used), whose backward function writes the item. -/
-instance {A T Item_A : Type} : ZipNextShape A (core.slice.iter.IterMut T) Item_A T where
-  Out := Option (Item_A × T) × core.iter.adapters.zip.Zip A (core.slice.iter.IterMut T) ×
-    (core.iter.adapters.zip.Zip A (core.slice.iter.IterMut T) → Option (Item_A × T) →
-      core.iter.adapters.zip.Zip A (core.slice.iter.IterMut T))
-  next IA _ z := do
-    let (oa, a') ← IA.next z.fst
-    match oa with
-    | none => ok (none, ⟨a', z.snd⟩, fun z _ => z)
-    | some a => do
-      let (ob, b', back) ← core.slice.iter.IteratorIterMut.next z.snd
-      match ob with
-      | none => ok (none, ⟨a', b'⟩, fun z _ => z)
-      | some b => ok (some (a, b), ⟨a', b'⟩, fun z o =>
-          match o with
-          | none => z
-          | some (_, t) => ⟨z.fst, back z.snd (some t)⟩)
+/-- `DoubleEndedIterator::next_back` on `slice::IterMut`: the last element left, and the
+backward function writing it -/
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::IterMut<'a, @T>, &'_ mut @T>}::next_back"]
+def core.slice.iter.IterMut.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorMutT.next_back
+  {T : Type}
+  (it : core.slice.iter.IterMut T) :
+  Result ((Option T) × (core.slice.iter.IterMut T) ×
+          (core.slice.iter.IterMut T → Option T → core.slice.iter.IterMut T)) :=
+  if h: it.i < it.j ∧ it.j - 1 < it.slice.len then
+    let j := it.j - 1
+    let x := it.slice[j]'h.2
+    let it := { it with j }
+    let back it' x :=
+      match x with
+      | none => it'
+      | some x => { it' with slice := it'.slice.setAtNat j x }
+    ok (some x, it, back)
+  else ok (none, it, fun it _ => it)
+
+/-- Exact: the elements left -/
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>}::size_hint"]
+def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.size_hint {T : Type}
+  (it : core.slice.iter.IterMut T) : Result (Usize × Option Usize) := do
+  let n ← UScalar.tryMk .Usize (it.j - it.i)
+  ok (n, some n)
+
+/-- `next` cannot give the item back (the trait's type has no room), so a generic function
+reaching it fails; the give back goes through `nextMut`. -/
+@[reducible, rust_trait_impl
+  "core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>"]
+impl_def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT (T : Type) :
+  core.iter.traits.iterator.Iterator (core.slice.iter.IterMut T) T := {
+  next := fun _ => fail .undef
+  size_hint := core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT.size_hint
+  nextMut := fun it => do
+    let (o, it, back) ← core.slice.iter.IteratorIterMut.next it
+    ok (o, it, [back])
+}
+
+@[reducible, rust_trait_impl
+  "core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::IterMut<'a, @T>, &'_ mut @T>"]
+impl_def core.slice.iter.IterMut.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorMutT
+  (T : Type) : core.iter.traits.double_ended.DoubleEndedIterator (core.slice.iter.IterMut T) T := {
+  iteratorInst := core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT T
+  next_back := fun _ => fail .undef
+  nextBackMut := fun it => do
+    let (o, it, back) ←
+      core.slice.iter.IterMut.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorMutT.next_back it
+    ok (o, it, [back])
+}
 
 @[rust_fun "core::slice::{[@T]}::iter_mut"]
 def core.slice.Slice.iter_mut {T : Type} (slice : Slice T) :
@@ -168,13 +205,11 @@ impl_def core.iter.traits.iterator.IteratorSliceIter (T : Type) :
   core.iter.traits.iterator.Iterator (core.slice.iter.Iter T) T := {
   next := core.slice.iter.IteratorSliceIter.next
   size_hint := core.slice.iter.IteratorSliceIter.size_hint
-  step_by := core.iter.traits.iterator.Iterator.step_by.trait_default
-    (core.iter.traits.iterator.IteratorSliceIter T)
-  enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default
-    (core.iter.traits.iterator.IteratorSliceIter T)
-  take := core.iter.traits.iterator.Iterator.take.trait_default
-    (core.iter.traits.iterator.IteratorSliceIter T)
 }
+
+/-- The instance's `next`, without unfolding the instance (which would expose `nextMut`) -/
+theorem core.iter.traits.iterator.IteratorSliceIter_next {T : Type} :
+    (core.iter.traits.iterator.IteratorSliceIter T).next = core.slice.iter.IteratorSliceIter.next := rfl
 
 -- ============================================================================
 -- IntoIterator for shared array references: &[T; N] → Iter<T>
@@ -254,12 +289,6 @@ impl_def core.iter.traits.iterator.IteratorChunksExact (T : Type) :
   := {
   next := core.slice.iter.IteratorChunksExact.next
   size_hint := core.slice.iter.IteratorChunksExact.size_hint
-  step_by := core.iter.traits.iterator.Iterator.step_by.trait_default
-    (core.iter.traits.iterator.IteratorChunksExact T)
-  enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default
-    (core.iter.traits.iterator.IteratorChunksExact T)
-  take := core.iter.traits.iterator.Iterator.take.trait_default
-    (core.iter.traits.iterator.IteratorChunksExact T)
 }
 
 /-- Split a list into non-overlapping chunks of exactly size `n`, returning the
