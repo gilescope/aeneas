@@ -238,6 +238,53 @@ theorem core.iter.range.IteratorRange.next_IScalar_some_spec {ty : IScalarTy}
   simp only [hfwd, ↓reduceDIte, bind_tc_ok, spec_ok]
   simp [IScalar.succOfLt]
 
+-- Per-type `IteratorRange.next` on signed ranges (`for _ in 0..n` with an untyped `n` is
+-- `i32`), in the unsigned specs' shape (`RangeIter.lean`).
+iscalar
+theorem core.iter.range.IteratorRange.next_'S_some_spec
+    (range : core.ops.range.Range «%S»)
+    (hlt : range.start.val < range.end.val) :
+    core.iter.range.IteratorRange.next core.iter.range.Step'S range
+    ⦃ (opt : Option «%S») (range' : core.ops.range.Range «%S») =>
+      opt = some range.start ∧
+      range'.start.val = range.start.val + 1 ∧
+      range'.end = range.end ⦄ := by
+  apply spec_mono (core.iter.range.IteratorRange.next_IScalar_some_spec
+    (by simp) (by intros; rfl) range hlt)
+  rintro ⟨o, r'⟩ ⟨rfl, rfl⟩
+  simp
+
+iscalar
+theorem core.iter.range.IteratorRange.next_'S_none_spec
+    (range : core.ops.range.Range «%S»)
+    (hge : range.start.val ≥ range.end.val) :
+    core.iter.range.IteratorRange.next core.iter.range.Step'S range
+    ⦃ (opt : Option «%S») (range' : core.ops.range.Range «%S») =>
+      opt = none ∧ range' = range ⦄ :=
+  core.iter.range.IteratorRange.next_IScalar_none_spec (by intros; rfl) range hge
+
+iscalar
+@[step]
+theorem core.iter.range.IteratorRange.next_'S_spec
+    (range : core.ops.range.Range «%S») :
+    core.iter.range.IteratorRange.next core.iter.range.Step'S range
+    ⦃ (opt : Option «%S») (range' : core.ops.range.Range «%S») =>
+      (if range.start.val < range.end.val then
+         opt = some range.start ∧ range'.start.val = range.start.val + 1
+       else
+         opt = none ∧ range'.start = range.start) ∧
+      range'.end = range.end ⦄ := by
+  by_cases h : range.start.val < range.end.val
+  · simp only [h, ↓reduceIte]
+    apply spec_mono (core.iter.range.IteratorRange.next_'S_some_spec range h)
+    rintro ⟨o, r'⟩ ⟨h1, h2, h3⟩
+    simp only [uncurry'_pair]
+    exact ⟨⟨h1, h2⟩, h3⟩
+  · simp only [h, ↓reduceIte]
+    apply spec_mono (core.iter.range.IteratorRange.next_'S_none_spec range (by omega))
+    rintro ⟨o, r'⟩ ⟨rfl, rfl⟩
+    simp [uncurry'_pair]
+
 /-- `start..end` over `IScalar ty` yields `[start, end)`. -/
 theorem core.iter.range.IteratorRange.yields_IScalar {ty : IScalarTy}
     {cloneInst : core.clone.Clone (IScalar ty)}
