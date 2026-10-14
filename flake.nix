@@ -4,7 +4,7 @@
   inputs = {
     # Remark: when adding inputs here, don't forget to also add them in the
     # arguments to `outputs` below!
-    charon.url = "github:aeneasverif/charon";
+    charon.url = "github:gilescope/charon";
     flake-utils.follows = "charon/flake-utils";
     # Keep Aeneas on OCaml 5.2 for now. Newer nixpkgs revisions mark the
     # matching ocaml-lsp 1.21 package broken, and it indeed fails to compile.
