@@ -56,11 +56,14 @@ pub fn zip_enumerate(a: &mut [u32], b: &mut [u32]) {
 
 /// The FFT butterfly loop's shape: two regions consumed by `for_each`.
 pub fn butterflies(left: &mut [u64], right: &mut [u64], twiddles: &[u64]) {
-    left.iter_mut().zip(right.iter_mut()).enumerate().for_each(|(i, (a, b))| {
-        let t = b.wrapping_mul(twiddles[i]);
-        *b = a.wrapping_sub(t);
-        *a = a.wrapping_add(t);
-    });
+    left.iter_mut()
+        .zip(right.iter_mut())
+        .enumerate()
+        .for_each(|(i, (a, b))| {
+            let t = b.wrapping_mul(twiddles[i]);
+            *b = a.wrapping_sub(t);
+            *a = a.wrapping_add(t);
+        });
 }
 
 pub fn for_each_bump(a: &mut [u32]) {
