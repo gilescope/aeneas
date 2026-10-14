@@ -216,7 +216,7 @@ def order (a : Label) (b : Label) : Result Ordering := do
   Label.Insts.CoreCmpOrd.cmp a b
 
 /-- [recursive_derive_clone::sample]:
-    Source: 'tests/src/recursive-derive-clone.rs', lines 39:0-41:1
+    Source: 'tests/src/recursive-derive-clone.rs', lines 39:0-44:1
     Visibility: public -/
 def sample : Result Label := do
   let y ←

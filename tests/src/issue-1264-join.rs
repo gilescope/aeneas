@@ -9,7 +9,11 @@ fn join<A: FnOnce() -> RA, B: FnOnce() -> RB, RA, RB>(a: A, b: B) -> (RA, RB) {
 
 pub fn sum(s: &[u32]) -> u32 {
     if s.len() <= 1 {
-        if s.len() == 1 { s[0] } else { 0 }
+        if s.len() == 1 {
+            s[0]
+        } else {
+            0
+        }
     } else {
         let (l, r) = s.split_at(s.len() / 2);
         let (x, y) = join(|| sum(l), || sum(r));
@@ -19,7 +23,11 @@ pub fn sum(s: &[u32]) -> u32 {
 
 pub fn sum_direct(s: &[u32]) -> u32 {
     if s.len() <= 1 {
-        if s.len() == 1 { s[0] } else { 0 }
+        if s.len() == 1 {
+            s[0]
+        } else {
+            0
+        }
     } else {
         let (l, r) = s.split_at(s.len() / 2);
         let x = sum_direct(l);

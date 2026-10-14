@@ -8,10 +8,18 @@ pub fn step(rem: u128, lam: u128) -> u128 {
     let carry = rem >> 127;
     let rem = rem << 1;
     let bit = carry == 1 || rem >= lam;
-    if bit { rem.wrapping_sub(lam) } else { rem }
+    if bit {
+        rem.wrapping_sub(lam)
+    } else {
+        rem
+    }
 }
 
 pub fn ge_let(a: u32, b: u32) -> u32 {
     let ge = a >= b;
-    if ge { a } else { b }
+    if ge {
+        a
+    } else {
+        b
+    }
 }

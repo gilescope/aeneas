@@ -51,24 +51,25 @@ def
     traitsexact_sizeExactSizeIteratorInst1
 }
 
-/-- Trait implementation: [core::slice::iter::{impl core::iter::traits::exact_size::ExactSizeIterator<&'_ T> for core::slice::iter::Iter<'_0, T>}]
+/-- Trait implementation: [core::slice::iter::{impl core::iter::traits::exact_size::ExactSizeIterator<&'_0 T> for core::slice::iter::Iter<'_0, T>}]
     Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 140:8-140:50
-    Name pattern: [core::iter::traits::exact_size::ExactSizeIterator<core::slice::iter::Iter<'0, @T>, &'_ @T>] -/
+    Name pattern: [core::iter::traits::exact_size::ExactSizeIterator<core::slice::iter::Iter<'0, @T>, &'0 @T>] -/
 @[reducible, rust_trait_impl
-  "core::iter::traits::exact_size::ExactSizeIterator<core::slice::iter::Iter<'0, @T>, &'_ @T>"]
-def core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorSharedT
+  "core::iter::traits::exact_size::ExactSizeIterator<core::slice::iter::Iter<'0, @T>, &'0 @T>"]
+def
+  core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorShared0T
   (T : Type) : core.iter.traits.exact_size.ExactSizeIterator
   (core.slice.iter.Iter T) T := {
   iteratorInst := core.iter.traits.iterator.IteratorSliceIter T
 }
 
-/-- Trait implementation: [core::slice::iter::{impl core::iter::traits::double_ended::DoubleEndedIterator<&'_ T> for core::slice::iter::Iter<'a, T>}]
+/-- Trait implementation: [core::slice::iter::{impl core::iter::traits::double_ended::DoubleEndedIterator<&'a T> for core::slice::iter::Iter<'a, T>}]
     Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 431:8-431:56
-    Name pattern: [core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'_ @T>] -/
+    Name pattern: [core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'a @T>] -/
 @[reducible, rust_trait_impl
-  "core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'_ @T>"]
+  "core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'a @T>"]
 def
-  core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+  core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
   (T : Type) : core.iter.traits.double_ended.DoubleEndedIterator
   (core.slice.iter.Iter T) T := {
   iteratorInst := core.iter.traits.iterator.IteratorSliceIter T
@@ -237,7 +238,7 @@ def sum_cloned (v : Slice Std.U32) : Result Std.U32 := do
     sum_cloned.closure.Insts.CoreOpsFunctionFnMutPairU32U32U32 c 0#u32 ()
 
 /-- [iter_extra::horner::{impl core::ops::function::FnMut<(u32, &'_1 u32), u32> for iter_extra::horner::{closure}<'_0>}::call_mut]:
-    Source: 'tests/src/iter-extra.rs', lines 20:35-20:80 -/
+    Source: 'tests/src/iter-extra.rs', lines 23:20-23:65 -/
 def horner.closure.Insts.CoreOpsFunctionFnMutPairU32Shared1U32U32.call_mut
   (c : horner.closure) (tupled_args : (Std.U32 × Std.U32)) :
   Result (Std.U32 × horner.closure)
@@ -248,7 +249,7 @@ def horner.closure.Insts.CoreOpsFunctionFnMutPairU32Shared1U32U32.call_mut
   ok (i1, c)
 
 /-- [iter_extra::horner::{impl core::ops::function::FnOnce<(u32, &'_1 u32), u32> for iter_extra::horner::{closure}<'_0>}::call_once]:
-    Source: 'tests/src/iter-extra.rs', lines 20:35-20:80 -/
+    Source: 'tests/src/iter-extra.rs', lines 23:20-23:65 -/
 def horner.closure.Insts.CoreOpsFunctionFnOncePairU32Shared1U32U32.call_once
   (c : horner.closure) (p : (Std.U32 × Std.U32)) : Result Std.U32 := do
   let (i, _) ←
@@ -256,7 +257,7 @@ def horner.closure.Insts.CoreOpsFunctionFnOncePairU32Shared1U32U32.call_once
   ok i
 
 /-- Trait implementation: [iter_extra::horner::{impl core::ops::function::FnOnce<(u32, &'_1 u32), u32> for iter_extra::horner::{closure}<'_0>}]
-    Source: 'tests/src/iter-extra.rs', lines 20:35-20:80 -/
+    Source: 'tests/src/iter-extra.rs', lines 23:20-23:65 -/
 @[reducible]
 def horner.closure.Insts.CoreOpsFunctionFnOncePairU32Shared1U32U32 :
   core.ops.function.FnOnce horner.closure (Std.U32 × Std.U32) Std.U32 := {
@@ -265,7 +266,7 @@ def horner.closure.Insts.CoreOpsFunctionFnOncePairU32Shared1U32U32 :
 }
 
 /-- Trait implementation: [iter_extra::horner::{impl core::ops::function::FnMut<(u32, &'_1 u32), u32> for iter_extra::horner::{closure}<'_0>}]
-    Source: 'tests/src/iter-extra.rs', lines 20:35-20:80 -/
+    Source: 'tests/src/iter-extra.rs', lines 23:20-23:65 -/
 @[reducible]
 def horner.closure.Insts.CoreOpsFunctionFnMutPairU32Shared1U32U32 :
   core.ops.function.FnMut horner.closure (Std.U32 × Std.U32) Std.U32 := {
@@ -275,22 +276,22 @@ def horner.closure.Insts.CoreOpsFunctionFnMutPairU32Shared1U32U32 :
 }
 
 /-- [iter_extra::horner]:
-    Source: 'tests/src/iter-extra.rs', lines 19:0-21:1
+    Source: 'tests/src/iter-extra.rs', lines 19:0-24:1
     Visibility: public -/
 def horner (coeffs : Slice Std.U32) (x : Std.U32) : Result Std.U32 := do
   let i ← core.slice.Slice.iter coeffs
   let r ←
     core.iter.traits.iterator.Iterator.rev.trait_default
       (core.iter.traits.iterator.IteratorSliceIter Std.U32)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32) i
   core.iter.adapters.rev.Rev.Insts.CoreIterTraitsIteratorIterator.fold
-    (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+    (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
     Std.U32) horner.closure.Insts.CoreOpsFunctionFnMutPairU32Shared1U32U32 r
     0#u32 x
 
 /-- [iter_extra::last_pair::{impl core::ops::function::FnOnce<((&'_0 u32, &'_1 u32),), (u32, u32)> for iter_extra::last_pair::{closure}}::call_once]:
-    Source: 'tests/src/iter-extra.rs', lines 24:44-24:61 -/
+    Source: 'tests/src/iter-extra.rs', lines 27:44-27:61 -/
 def
   last_pair.closure.Insts.CoreOpsFunctionFnOnceTuplePairShared0U32Shared1U32PairU32U32.call_once
   (c : last_pair.closure) (tupled_args : (Std.U32 × Std.U32)) :
@@ -299,7 +300,7 @@ def
   ok tupled_args
 
 /-- Trait implementation: [iter_extra::last_pair::{impl core::ops::function::FnOnce<((&'_0 u32, &'_1 u32),), (u32, u32)> for iter_extra::last_pair::{closure}}]
-    Source: 'tests/src/iter-extra.rs', lines 24:44-24:61 -/
+    Source: 'tests/src/iter-extra.rs', lines 27:44-27:61 -/
 @[reducible]
 def
   last_pair.closure.Insts.CoreOpsFunctionFnOnceTuplePairShared0U32Shared1U32PairU32U32
@@ -310,7 +311,7 @@ def
 }
 
 /-- [iter_extra::last_pair]:
-    Source: 'tests/src/iter-extra.rs', lines 23:0-25:1
+    Source: 'tests/src/iter-extra.rs', lines 26:0-28:1
     Visibility: public -/
 def last_pair
   (a : Slice Std.U32) (b : Slice Std.U32) :
@@ -329,31 +330,31 @@ def last_pair
       (core.iter.traits.iterator.IteratorSliceIter Std.U32)
       (core.iter.traits.iterator.IteratorSliceIter Std.U32))
       (core.iter.adapters.zip.Zip.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorPair
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorShared0T
       Std.U32)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorShared0T
       Std.U32)) z
   let (o, _) ←
     core.iter.adapters.rev.Rev.Insts.CoreIterTraitsIteratorIterator.next
       (core.iter.adapters.zip.Zip.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorPair
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorShared0T
       Std.U32)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsExact_sizeExactSizeIteratorShared0T
       Std.U32)) r
   core.option.Option.map
     last_pair.closure.Insts.CoreOpsFunctionFnOnceTuplePairShared0U32Shared1U32PairU32U32
     o ()
 
 /-- [iter_extra::split]:
-    Source: 'tests/src/iter-extra.rs', lines 27:0-29:1
+    Source: 'tests/src/iter-extra.rs', lines 30:0-32:1
     Visibility: public -/
 def split
   (v : Slice (Std.U32 × Std.U64)) :
@@ -378,7 +379,7 @@ def split
     (BuiltinClone (Std.U32 × Std.U64))) c
 
 /-- [iter_extra::total::{impl core::ops::function::FnMut<(u32, u32), u32> for iter_extra::total::{closure}}::call_mut]:
-    Source: 'tests/src/iter-extra.rs', lines 32:29-32:53 -/
+    Source: 'tests/src/iter-extra.rs', lines 35:29-35:53 -/
 def total.closure.Insts.CoreOpsFunctionFnMutPairU32U32U32.call_mut
   (c : total.closure) (tupled_args : (Std.U32 × Std.U32)) :
   Result (Std.U32 × total.closure)
@@ -388,7 +389,7 @@ def total.closure.Insts.CoreOpsFunctionFnMutPairU32U32U32.call_mut
   ok (i, c)
 
 /-- [iter_extra::total::{impl core::ops::function::FnOnce<(u32, u32), u32> for iter_extra::total::{closure}}::call_once]:
-    Source: 'tests/src/iter-extra.rs', lines 32:29-32:53 -/
+    Source: 'tests/src/iter-extra.rs', lines 35:29-35:53 -/
 def total.closure.Insts.CoreOpsFunctionFnOncePairU32U32U32.call_once
   (c : total.closure) (p : (Std.U32 × Std.U32)) : Result Std.U32 := do
   let (i, _) ←
@@ -396,7 +397,7 @@ def total.closure.Insts.CoreOpsFunctionFnOncePairU32U32U32.call_once
   ok i
 
 /-- Trait implementation: [iter_extra::total::{impl core::ops::function::FnOnce<(u32, u32), u32> for iter_extra::total::{closure}}]
-    Source: 'tests/src/iter-extra.rs', lines 32:29-32:53 -/
+    Source: 'tests/src/iter-extra.rs', lines 35:29-35:53 -/
 @[reducible]
 def total.closure.Insts.CoreOpsFunctionFnOncePairU32U32U32 :
   core.ops.function.FnOnce total.closure (Std.U32 × Std.U32) Std.U32 := {
@@ -404,7 +405,7 @@ def total.closure.Insts.CoreOpsFunctionFnOncePairU32U32U32 :
 }
 
 /-- Trait implementation: [iter_extra::total::{impl core::ops::function::FnMut<(u32, u32), u32> for iter_extra::total::{closure}}]
-    Source: 'tests/src/iter-extra.rs', lines 32:29-32:53 -/
+    Source: 'tests/src/iter-extra.rs', lines 35:29-35:53 -/
 @[reducible]
 def total.closure.Insts.CoreOpsFunctionFnMutPairU32U32U32 :
   core.ops.function.FnMut total.closure (Std.U32 × Std.U32) Std.U32 := {
@@ -413,7 +414,7 @@ def total.closure.Insts.CoreOpsFunctionFnMutPairU32U32U32 :
 }
 
 /-- [iter_extra::total]:
-    Source: 'tests/src/iter-extra.rs', lines 31:0-33:1
+    Source: 'tests/src/iter-extra.rs', lines 34:0-36:1
     Visibility: public -/
 def total (v : Slice Std.U32) : Result (Option Std.U32) := do
   let i ← core.slice.Slice.iter v
@@ -427,7 +428,7 @@ def total (v : Slice Std.U32) : Result (Option Std.U32) := do
     total.closure.Insts.CoreOpsFunctionFnMutPairU32U32U32 c ()
 
 /-- [iter_extra::order::{impl core::ops::function::FnMut<(&'_1 usize,), (usize, usize)> for iter_extra::order::{closure}<'_0>}::call_mut]:
-    Source: 'tests/src/iter-extra.rs', lines 37:22-37:39 -/
+    Source: 'tests/src/iter-extra.rs', lines 40:22-40:39 -/
 def
   order.closure.Insts.CoreOpsFunctionFnMutTupleShared1UsizePairUsizeUsize.call_mut
   (c : order.closure) (tupled_args : Std.Usize) :
@@ -437,7 +438,7 @@ def
   ok ((i, tupled_args), c)
 
 /-- [iter_extra::order::{impl core::ops::function::FnOnce<(&'_1 usize,), (usize, usize)> for iter_extra::order::{closure}<'_0>}::call_once]:
-    Source: 'tests/src/iter-extra.rs', lines 37:22-37:39 -/
+    Source: 'tests/src/iter-extra.rs', lines 40:22-40:39 -/
 def
   order.closure.Insts.CoreOpsFunctionFnOnceTupleShared1UsizePairUsizeUsize.call_once
   (c : order.closure) (i : Std.Usize) : Result (Std.Usize × Std.Usize) := do
@@ -447,7 +448,7 @@ def
   ok p
 
 /-- Trait implementation: [iter_extra::order::{impl core::ops::function::FnOnce<(&'_1 usize,), (usize, usize)> for iter_extra::order::{closure}<'_0>}]
-    Source: 'tests/src/iter-extra.rs', lines 37:22-37:39 -/
+    Source: 'tests/src/iter-extra.rs', lines 40:22-40:39 -/
 @[reducible]
 def order.closure.Insts.CoreOpsFunctionFnOnceTupleShared1UsizePairUsizeUsize :
   core.ops.function.FnOnce order.closure Std.Usize (Std.Usize × Std.Usize)
@@ -457,7 +458,7 @@ def order.closure.Insts.CoreOpsFunctionFnOnceTupleShared1UsizePairUsizeUsize :
 }
 
 /-- Trait implementation: [iter_extra::order::{impl core::ops::function::FnMut<(&'_1 usize,), (usize, usize)> for iter_extra::order::{closure}<'_0>}]
-    Source: 'tests/src/iter-extra.rs', lines 37:22-37:39 -/
+    Source: 'tests/src/iter-extra.rs', lines 40:22-40:39 -/
 @[reducible]
 def order.closure.Insts.CoreOpsFunctionFnMutTupleShared1UsizePairUsizeUsize :
   core.ops.function.FnMut order.closure Std.Usize (Std.Usize × Std.Usize) := {
@@ -468,7 +469,7 @@ def order.closure.Insts.CoreOpsFunctionFnMutTupleShared1UsizePairUsizeUsize :
 }
 
 /-- [iter_extra::order]:
-    Source: 'tests/src/iter-extra.rs', lines 35:0-39:1
+    Source: 'tests/src/iter-extra.rs', lines 38:0-42:1
     Visibility: public -/
 def order (lens : Slice Std.Usize) : Result (alloc.vec.Vec Std.Usize) := do
   let i := Slice.len lens
@@ -485,7 +486,7 @@ def order (lens : Slice Std.Usize) : Result (alloc.vec.Vec Std.Usize) := do
   ok (deref_mut_back s1)
 
 /-- [iter_extra::first_big::{impl core::ops::function::FnMut<(&'_0 &'_1 u32,), bool> for iter_extra::first_big::{closure}}::call_mut]:
-    Source: 'tests/src/iter-extra.rs', lines 42:34-42:46 -/
+    Source: 'tests/src/iter-extra.rs', lines 45:34-45:46 -/
 def
   first_big.closure.Insts.CoreOpsFunctionFnMutTupleShared0Shared1U32Bool.call_mut
   (c : first_big.closure) (tupled_args : Std.U32) :
@@ -494,7 +495,7 @@ def
   ok (tupled_args > 10#u32, c)
 
 /-- [iter_extra::first_big::{impl core::ops::function::FnOnce<(&'_0 &'_1 u32,), bool> for iter_extra::first_big::{closure}}::call_once]:
-    Source: 'tests/src/iter-extra.rs', lines 42:34-42:46 -/
+    Source: 'tests/src/iter-extra.rs', lines 45:34-45:46 -/
 def
   first_big.closure.Insts.CoreOpsFunctionFnOnceTupleShared0Shared1U32Bool.call_once
   (c : first_big.closure) (i : Std.U32) : Result Bool := do
@@ -504,7 +505,7 @@ def
   ok b
 
 /-- Trait implementation: [iter_extra::first_big::{impl core::ops::function::FnOnce<(&'_0 &'_1 u32,), bool> for iter_extra::first_big::{closure}}]
-    Source: 'tests/src/iter-extra.rs', lines 42:34-42:46 -/
+    Source: 'tests/src/iter-extra.rs', lines 45:34-45:46 -/
 @[reducible]
 def first_big.closure.Insts.CoreOpsFunctionFnOnceTupleShared0Shared1U32Bool :
   core.ops.function.FnOnce first_big.closure Std.U32 Bool := {
@@ -513,7 +514,7 @@ def first_big.closure.Insts.CoreOpsFunctionFnOnceTupleShared0Shared1U32Bool :
 }
 
 /-- Trait implementation: [iter_extra::first_big::{impl core::ops::function::FnMut<(&'_0 &'_1 u32,), bool> for iter_extra::first_big::{closure}}]
-    Source: 'tests/src/iter-extra.rs', lines 42:34-42:46 -/
+    Source: 'tests/src/iter-extra.rs', lines 45:34-45:46 -/
 @[reducible]
 def first_big.closure.Insts.CoreOpsFunctionFnMutTupleShared0Shared1U32Bool :
   core.ops.function.FnMut first_big.closure Std.U32 Bool := {
@@ -524,7 +525,7 @@ def first_big.closure.Insts.CoreOpsFunctionFnMutTupleShared0Shared1U32Bool :
 }
 
 /-- [iter_extra::first_big]:
-    Source: 'tests/src/iter-extra.rs', lines 41:0-43:1
+    Source: 'tests/src/iter-extra.rs', lines 44:0-46:1
     Visibility: public -/
 def first_big
   (a : Slice Std.U32) (b : Slice Std.U32) : Result (Option Std.U32) := do
@@ -544,7 +545,7 @@ def first_big
   core.option.OptionShared0T.copied core.marker.CopyU32 o
 
 /-- [iter_extra::first_big_index::{impl core::ops::function::FnMut<(&'_0 usize,), bool> for iter_extra::first_big_index::{closure}}::call_mut]:
-    Source: 'tests/src/iter-extra.rs', lines 46:16-46:32 -/
+    Source: 'tests/src/iter-extra.rs', lines 49:16-49:32 -/
 def
   first_big_index.closure.Insts.CoreOpsFunctionFnMutTupleShared0UsizeBool.call_mut
   (c : first_big_index.closure) (tupled_args : Std.Usize) :
@@ -554,7 +555,7 @@ def
   ok (i > 10#usize, c)
 
 /-- [iter_extra::first_big_index::{impl core::ops::function::FnOnce<(&'_0 usize,), bool> for iter_extra::first_big_index::{closure}}::call_once]:
-    Source: 'tests/src/iter-extra.rs', lines 46:16-46:32 -/
+    Source: 'tests/src/iter-extra.rs', lines 49:16-49:32 -/
 def
   first_big_index.closure.Insts.CoreOpsFunctionFnOnceTupleShared0UsizeBool.call_once
   (c : first_big_index.closure) (i : Std.Usize) : Result Bool := do
@@ -564,7 +565,7 @@ def
   ok b
 
 /-- Trait implementation: [iter_extra::first_big_index::{impl core::ops::function::FnOnce<(&'_0 usize,), bool> for iter_extra::first_big_index::{closure}}]
-    Source: 'tests/src/iter-extra.rs', lines 46:16-46:32 -/
+    Source: 'tests/src/iter-extra.rs', lines 49:16-49:32 -/
 @[reducible]
 def first_big_index.closure.Insts.CoreOpsFunctionFnOnceTupleShared0UsizeBool :
   core.ops.function.FnOnce first_big_index.closure Std.Usize Bool := {
@@ -573,7 +574,7 @@ def first_big_index.closure.Insts.CoreOpsFunctionFnOnceTupleShared0UsizeBool :
 }
 
 /-- Trait implementation: [iter_extra::first_big_index::{impl core::ops::function::FnMut<(&'_0 usize,), bool> for iter_extra::first_big_index::{closure}}]
-    Source: 'tests/src/iter-extra.rs', lines 46:16-46:32 -/
+    Source: 'tests/src/iter-extra.rs', lines 49:16-49:32 -/
 @[reducible]
 def first_big_index.closure.Insts.CoreOpsFunctionFnMutTupleShared0UsizeBool :
   core.ops.function.FnMut first_big_index.closure Std.Usize Bool := {
@@ -584,7 +585,7 @@ def first_big_index.closure.Insts.CoreOpsFunctionFnMutTupleShared0UsizeBool :
 }
 
 /-- [iter_extra::first_big_index]:
-    Source: 'tests/src/iter-extra.rs', lines 45:0-47:1
+    Source: 'tests/src/iter-extra.rs', lines 48:0-50:1
     Visibility: public -/
 def first_big_index (n : Std.Usize) : Result (Option Std.Usize) := do
   let (o, _) ←

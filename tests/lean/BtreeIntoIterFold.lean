@@ -20,12 +20,12 @@ set_option maxRecDepth 2048
 namespace btree_into_iter_fold
 
 /-- [btree_into_iter_fold::sum_map::{closure}]
-    Source: 'tests/src/btree-into-iter-fold.rs', lines 8:26-8:71 -/
+    Source: 'tests/src/btree-into-iter-fold.rs', lines 9:17-9:62 -/
 @[reducible]
 def sum_map.closure := Unit
 
 /-- [btree_into_iter_fold::sum_map::{impl core::ops::function::FnMut<(u32, (u32, u32)), u32> for btree_into_iter_fold::sum_map::{closure}}::call_mut]:
-    Source: 'tests/src/btree-into-iter-fold.rs', lines 8:26-8:71 -/
+    Source: 'tests/src/btree-into-iter-fold.rs', lines 9:17-9:62 -/
 def sum_map.closure.Insts.CoreOpsFunctionFnMutPairU32PairU32U32U32.call_mut
   (c : sum_map.closure) (tupled_args : (Std.U32 × (Std.U32 × Std.U32))) :
   Result (Std.U32 × sum_map.closure)
@@ -36,7 +36,7 @@ def sum_map.closure.Insts.CoreOpsFunctionFnMutPairU32PairU32U32U32.call_mut
   ok (i1, c)
 
 /-- [btree_into_iter_fold::sum_map::{impl core::ops::function::FnOnce<(u32, (u32, u32)), u32> for btree_into_iter_fold::sum_map::{closure}}::call_once]:
-    Source: 'tests/src/btree-into-iter-fold.rs', lines 8:26-8:71 -/
+    Source: 'tests/src/btree-into-iter-fold.rs', lines 9:17-9:62 -/
 def sum_map.closure.Insts.CoreOpsFunctionFnOncePairU32PairU32U32U32.call_once
   (c : sum_map.closure) (p : (Std.U32 × (Std.U32 × Std.U32))) :
   Result Std.U32
@@ -46,7 +46,7 @@ def sum_map.closure.Insts.CoreOpsFunctionFnOncePairU32PairU32U32U32.call_once
   ok i
 
 /-- Trait implementation: [btree_into_iter_fold::sum_map::{impl core::ops::function::FnOnce<(u32, (u32, u32)), u32> for btree_into_iter_fold::sum_map::{closure}}]
-    Source: 'tests/src/btree-into-iter-fold.rs', lines 8:26-8:71 -/
+    Source: 'tests/src/btree-into-iter-fold.rs', lines 9:17-9:62 -/
 @[reducible]
 def sum_map.closure.Insts.CoreOpsFunctionFnOncePairU32PairU32U32U32 :
   core.ops.function.FnOnce sum_map.closure (Std.U32 × (Std.U32 × Std.U32))
@@ -56,7 +56,7 @@ def sum_map.closure.Insts.CoreOpsFunctionFnOncePairU32PairU32U32U32 :
 }
 
 /-- Trait implementation: [btree_into_iter_fold::sum_map::{impl core::ops::function::FnMut<(u32, (u32, u32)), u32> for btree_into_iter_fold::sum_map::{closure}}]
-    Source: 'tests/src/btree-into-iter-fold.rs', lines 8:26-8:71 -/
+    Source: 'tests/src/btree-into-iter-fold.rs', lines 9:17-9:62 -/
 @[reducible]
 def sum_map.closure.Insts.CoreOpsFunctionFnMutPairU32PairU32U32U32 :
   core.ops.function.FnMut sum_map.closure (Std.U32 × (Std.U32 × Std.U32))
@@ -67,7 +67,7 @@ def sum_map.closure.Insts.CoreOpsFunctionFnMutPairU32PairU32U32U32 :
 }
 
 /-- [btree_into_iter_fold::sum_map]:
-    Source: 'tests/src/btree-into-iter-fold.rs', lines 7:0-9:1
+    Source: 'tests/src/btree-into-iter-fold.rs', lines 7:0-10:1
     Visibility: public -/
 def sum_map
   (m : alloc.collections.btree.map.BTreeMap Std.U32 Std.U32 Global) :
@@ -82,12 +82,12 @@ def sum_map
     sum_map.closure.Insts.CoreOpsFunctionFnMutPairU32PairU32U32U32 ii 0#u32 ()
 
 /-- [btree_into_iter_fold::sum_set::{closure}]
-    Source: 'tests/src/btree-into-iter-fold.rs', lines 12:26-12:50 -/
+    Source: 'tests/src/btree-into-iter-fold.rs', lines 13:26-13:50 -/
 @[reducible]
 def sum_set.closure := Unit
 
 /-- [btree_into_iter_fold::sum_set::{impl core::ops::function::FnMut<(u32, u32), u32> for btree_into_iter_fold::sum_set::{closure}}::call_mut]:
-    Source: 'tests/src/btree-into-iter-fold.rs', lines 12:26-12:50 -/
+    Source: 'tests/src/btree-into-iter-fold.rs', lines 13:26-13:50 -/
 def sum_set.closure.Insts.CoreOpsFunctionFnMutPairU32U32U32.call_mut
   (c : sum_set.closure) (tupled_args : (Std.U32 × Std.U32)) :
   Result (Std.U32 × sum_set.closure)
@@ -97,7 +97,7 @@ def sum_set.closure.Insts.CoreOpsFunctionFnMutPairU32U32U32.call_mut
   ok (i, c)
 
 /-- [btree_into_iter_fold::sum_set::{impl core::ops::function::FnOnce<(u32, u32), u32> for btree_into_iter_fold::sum_set::{closure}}::call_once]:
-    Source: 'tests/src/btree-into-iter-fold.rs', lines 12:26-12:50 -/
+    Source: 'tests/src/btree-into-iter-fold.rs', lines 13:26-13:50 -/
 def sum_set.closure.Insts.CoreOpsFunctionFnOncePairU32U32U32.call_once
   (c : sum_set.closure) (p : (Std.U32 × Std.U32)) : Result Std.U32 := do
   let (i, _) ←
@@ -105,7 +105,7 @@ def sum_set.closure.Insts.CoreOpsFunctionFnOncePairU32U32U32.call_once
   ok i
 
 /-- Trait implementation: [btree_into_iter_fold::sum_set::{impl core::ops::function::FnOnce<(u32, u32), u32> for btree_into_iter_fold::sum_set::{closure}}]
-    Source: 'tests/src/btree-into-iter-fold.rs', lines 12:26-12:50 -/
+    Source: 'tests/src/btree-into-iter-fold.rs', lines 13:26-13:50 -/
 @[reducible]
 def sum_set.closure.Insts.CoreOpsFunctionFnOncePairU32U32U32 :
   core.ops.function.FnOnce sum_set.closure (Std.U32 × Std.U32) Std.U32 := {
@@ -114,7 +114,7 @@ def sum_set.closure.Insts.CoreOpsFunctionFnOncePairU32U32U32 :
 }
 
 /-- Trait implementation: [btree_into_iter_fold::sum_set::{impl core::ops::function::FnMut<(u32, u32), u32> for btree_into_iter_fold::sum_set::{closure}}]
-    Source: 'tests/src/btree-into-iter-fold.rs', lines 12:26-12:50 -/
+    Source: 'tests/src/btree-into-iter-fold.rs', lines 13:26-13:50 -/
 @[reducible]
 def sum_set.closure.Insts.CoreOpsFunctionFnMutPairU32U32U32 :
   core.ops.function.FnMut sum_set.closure (Std.U32 × Std.U32) Std.U32 := {
@@ -123,7 +123,7 @@ def sum_set.closure.Insts.CoreOpsFunctionFnMutPairU32U32U32 :
 }
 
 /-- [btree_into_iter_fold::sum_set]:
-    Source: 'tests/src/btree-into-iter-fold.rs', lines 11:0-13:1
+    Source: 'tests/src/btree-into-iter-fold.rs', lines 12:0-14:1
     Visibility: public -/
 def sum_set
   (s : alloc.collections.btree.set.BTreeSet Std.U32 Global) :

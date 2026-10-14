@@ -257,7 +257,7 @@ def dedup (keys : Slice Std.U32) : Result Std.Usize := do
   dedup_loop iter s 0#usize
 
 /-- [collections_extra::sets]: loop body 0:
-    Source: 'tests/src/collections-extra.rs', lines 34:4-36:5
+    Source: 'tests/src/collections-extra.rs', lines 38:4-40:5
     Visibility: public -/
 @[rust_loop_body]
 def sets_loop.body
@@ -276,7 +276,7 @@ def sets_loop.body
     ok (cont (iter1, n1))
 
 /-- [collections_extra::sets]: loop 0:
-    Source: 'tests/src/collections-extra.rs', lines 34:4-36:5
+    Source: 'tests/src/collections-extra.rs', lines 38:4-40:5
     Visibility: public -/
 @[rust_loop]
 def sets_loop
@@ -288,7 +288,7 @@ def sets_loop
     (iter, n)
 
 /-- [collections_extra::sets]:
-    Source: 'tests/src/collections-extra.rs', lines 29:0-38:1
+    Source: 'tests/src/collections-extra.rs', lines 29:0-42:1
     Visibility: public -/
 def sets
   (a : alloc.collections.btree.set.BTreeSet Std.U32 Global)

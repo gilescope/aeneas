@@ -59,7 +59,7 @@ structure Scheme (Self : Type) (Self_Commitment : Type) (Self_Params : Type)
 def Kzg := Unit
 
 /-- [trait_method_diamond::sizes]:
-    Source: 'tests/src/trait-method-diamond.rs', lines 60:0-62:1
+    Source: 'tests/src/trait-method-diamond.rs', lines 60:0-66:1
     Visibility: public -/
 def sizes
   {S : Type} {Clause0_Commitment : Type} {Clause0_Params : Type} {Clause0_Guard

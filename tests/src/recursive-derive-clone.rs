@@ -37,7 +37,10 @@ pub fn order(a: &Label, b: &Label) -> std::cmp::Ordering {
 }
 
 pub fn sample() -> Label {
-    Label::Collection(vec![Label::Fixed(1), Label::Collection(vec![Label::NoLabel])])
+    Label::Collection(vec![
+        Label::Fixed(1),
+        Label::Collection(vec![Label::NoLabel]),
+    ])
 }
 
 #[cfg(test)]

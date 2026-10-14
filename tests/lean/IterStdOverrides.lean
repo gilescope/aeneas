@@ -176,12 +176,12 @@ def ref_vec_sum (v : alloc.vec.Vec Std.U32) : Result Std.U32 := do
   ref_vec_sum_loop iter 0#u32
 
 /-- [iter_std_overrides::indexed::{closure}]
-    Source: 'tests/src/iter-std-overrides.rs', lines 38:33-38:66 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 40:17-40:50 -/
 @[reducible]
 def indexed.closure := Unit
 
 /-- [iter_std_overrides::indexed::{impl core::ops::function::FnMut<(usize, (usize, &'_0 u32)), usize> for iter_std_overrides::indexed::{closure}}::call_mut]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 38:33-38:66 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 40:17-40:50 -/
 def
   indexed.closure.Insts.CoreOpsFunctionFnMutPairUsizePairUsizeShared0U32Usize.call_mut
   (c : indexed.closure) (tupled_args : (Std.Usize × (Std.Usize × Std.U32))) :
@@ -194,7 +194,7 @@ def
   ok (i3, c)
 
 /-- [iter_std_overrides::indexed::{impl core::ops::function::FnOnce<(usize, (usize, &'_0 u32)), usize> for iter_std_overrides::indexed::{closure}}::call_once]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 38:33-38:66 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 40:17-40:50 -/
 def
   indexed.closure.Insts.CoreOpsFunctionFnOncePairUsizePairUsizeShared0U32Usize.call_once
   (c : indexed.closure) (p : (Std.Usize × (Std.Usize × Std.U32))) :
@@ -206,7 +206,7 @@ def
   ok i
 
 /-- Trait implementation: [iter_std_overrides::indexed::{impl core::ops::function::FnOnce<(usize, (usize, &'_0 u32)), usize> for iter_std_overrides::indexed::{closure}}]
-    Source: 'tests/src/iter-std-overrides.rs', lines 38:33-38:66 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 40:17-40:50 -/
 @[reducible]
 def
   indexed.closure.Insts.CoreOpsFunctionFnOncePairUsizePairUsizeShared0U32Usize
@@ -217,7 +217,7 @@ def
 }
 
 /-- Trait implementation: [iter_std_overrides::indexed::{impl core::ops::function::FnMut<(usize, (usize, &'_0 u32)), usize> for iter_std_overrides::indexed::{closure}}]
-    Source: 'tests/src/iter-std-overrides.rs', lines 38:33-38:66 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 40:17-40:50 -/
 @[reducible]
 def indexed.closure.Insts.CoreOpsFunctionFnMutPairUsizePairUsizeShared0U32Usize
   : core.ops.function.FnMut indexed.closure (Std.Usize × (Std.Usize ×
@@ -229,7 +229,7 @@ def indexed.closure.Insts.CoreOpsFunctionFnMutPairUsizePairUsizeShared0U32Usize
 }
 
 /-- [iter_std_overrides::indexed]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 37:0-39:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 37:0-41:1
     Visibility: public -/
 def indexed (v : Slice Std.U32) : Result Std.Usize := do
   let i ← core.slice.Slice.iter v
@@ -242,7 +242,7 @@ def indexed (v : Slice Std.U32) : Result Std.Usize := do
     e 0#usize ()
 
 /-- [iter_std_overrides::indexed_len]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 41:0-43:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 43:0-45:1
     Visibility: public -/
 def indexed_len (v : Slice Std.U32) : Result Std.Usize := do
   let i ← core.slice.Slice.iter v
@@ -253,12 +253,12 @@ def indexed_len (v : Slice Std.U32) : Result Std.Usize := do
     (core.iter.traits.iterator.IteratorSliceIter Std.U32) e
 
 /-- [iter_std_overrides::dot::{closure}]
-    Source: 'tests/src/iter-std-overrides.rs', lines 46:35-46:56 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 48:35-48:56 -/
 @[reducible]
 def dot.closure := Unit
 
 /-- [iter_std_overrides::dot::{impl core::ops::function::FnMut<(u32, (&'_0 u32, &'_1 u32)), u32> for iter_std_overrides::dot::{closure}}::call_mut]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 46:35-46:56 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 48:35-48:56 -/
 def
   dot.closure.Insts.CoreOpsFunctionFnMutPairU32PairShared0U32Shared1U32U32.call_mut
   (c : dot.closure) (tupled_args : (Std.U32 × (Std.U32 × Std.U32))) :
@@ -270,7 +270,7 @@ def
   ok (i1, c)
 
 /-- [iter_std_overrides::dot::{impl core::ops::function::FnOnce<(u32, (&'_0 u32, &'_1 u32)), u32> for iter_std_overrides::dot::{closure}}::call_once]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 46:35-46:56 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 48:35-48:56 -/
 def
   dot.closure.Insts.CoreOpsFunctionFnOncePairU32PairShared0U32Shared1U32U32.call_once
   (c : dot.closure) (p : (Std.U32 × (Std.U32 × Std.U32))) :
@@ -282,7 +282,7 @@ def
   ok i
 
 /-- Trait implementation: [iter_std_overrides::dot::{impl core::ops::function::FnOnce<(u32, (&'_0 u32, &'_1 u32)), u32> for iter_std_overrides::dot::{closure}}]
-    Source: 'tests/src/iter-std-overrides.rs', lines 46:35-46:56 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 48:35-48:56 -/
 @[reducible]
 def dot.closure.Insts.CoreOpsFunctionFnOncePairU32PairShared0U32Shared1U32U32 :
   core.ops.function.FnOnce dot.closure (Std.U32 × (Std.U32 × Std.U32))
@@ -292,7 +292,7 @@ def dot.closure.Insts.CoreOpsFunctionFnOncePairU32PairShared0U32Shared1U32U32 :
 }
 
 /-- Trait implementation: [iter_std_overrides::dot::{impl core::ops::function::FnMut<(u32, (&'_0 u32, &'_1 u32)), u32> for iter_std_overrides::dot::{closure}}]
-    Source: 'tests/src/iter-std-overrides.rs', lines 46:35-46:56 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 48:35-48:56 -/
 @[reducible]
 def dot.closure.Insts.CoreOpsFunctionFnMutPairU32PairShared0U32Shared1U32U32 :
   core.ops.function.FnMut dot.closure (Std.U32 × (Std.U32 × Std.U32)) Std.U32
@@ -304,7 +304,7 @@ def dot.closure.Insts.CoreOpsFunctionFnMutPairU32PairShared0U32Shared1U32U32 :
 }
 
 /-- [iter_std_overrides::dot]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 45:0-47:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 47:0-49:1
     Visibility: public -/
 def dot (a : Slice Std.U32) (b : Slice Std.U32) : Result Std.U32 := do
   let i ← core.slice.Slice.iter a
@@ -321,7 +321,7 @@ def dot (a : Slice Std.U32) (b : Slice Std.U32) : Result Std.U32 := do
     0#u32 ()
 
 /-- [iter_std_overrides::zip_hint]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 49:0-51:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 51:0-53:1
     Visibility: public -/
 def zip_hint
   (a : Slice Std.U32) (b : Slice Std.U32) :
@@ -339,12 +339,12 @@ def zip_hint
     (core.iter.traits.iterator.IteratorSliceIter Std.U32) z
 
 /-- [iter_std_overrides::flat_len::{closure}]
-    Source: 'tests/src/iter-std-overrides.rs', lines 54:22-54:31 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 56:22-56:31 -/
 @[reducible]
 def flat_len.closure := Unit
 
 /-- [iter_std_overrides::flat_len::{impl core::ops::function::FnMut<(&'_0 u32,), core::ops::range::Range<u32>> for iter_std_overrides::flat_len::{closure}}::call_mut]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 54:22-54:31 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 56:22-56:31 -/
 def flat_len.closure.Insts.CoreOpsFunctionFnMutTupleShared0U32RangeU32.call_mut
   (c : flat_len.closure) (tupled_args : Std.U32) :
   Result ((core.ops.range.Range Std.U32) × flat_len.closure)
@@ -352,7 +352,7 @@ def flat_len.closure.Insts.CoreOpsFunctionFnMutTupleShared0U32RangeU32.call_mut
   ok ({ start := 0#u32, «end» := tupled_args }, c)
 
 /-- [iter_std_overrides::flat_len::{impl core::ops::function::FnOnce<(&'_0 u32,), core::ops::range::Range<u32>> for iter_std_overrides::flat_len::{closure}}::call_once]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 54:22-54:31 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 56:22-56:31 -/
 def
   flat_len.closure.Insts.CoreOpsFunctionFnOnceTupleShared0U32RangeU32.call_once
   (c : flat_len.closure) (i : Std.U32) :
@@ -364,7 +364,7 @@ def
   ok r
 
 /-- Trait implementation: [iter_std_overrides::flat_len::{impl core::ops::function::FnOnce<(&'_0 u32,), core::ops::range::Range<u32>> for iter_std_overrides::flat_len::{closure}}]
-    Source: 'tests/src/iter-std-overrides.rs', lines 54:22-54:31 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 56:22-56:31 -/
 @[reducible]
 def flat_len.closure.Insts.CoreOpsFunctionFnOnceTupleShared0U32RangeU32 :
   core.ops.function.FnOnce flat_len.closure Std.U32 (core.ops.range.Range
@@ -374,7 +374,7 @@ def flat_len.closure.Insts.CoreOpsFunctionFnOnceTupleShared0U32RangeU32 :
 }
 
 /-- Trait implementation: [iter_std_overrides::flat_len::{impl core::ops::function::FnMut<(&'_0 u32,), core::ops::range::Range<u32>> for iter_std_overrides::flat_len::{closure}}]
-    Source: 'tests/src/iter-std-overrides.rs', lines 54:22-54:31 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 56:22-56:31 -/
 @[reducible]
 def flat_len.closure.Insts.CoreOpsFunctionFnMutTupleShared0U32RangeU32 :
   core.ops.function.FnMut flat_len.closure Std.U32 (core.ops.range.Range
@@ -386,7 +386,7 @@ def flat_len.closure.Insts.CoreOpsFunctionFnMutTupleShared0U32RangeU32 :
 }
 
 /-- [iter_std_overrides::flat_len]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 53:0-55:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 55:0-57:1
     Visibility: public -/
 def flat_len (v : Slice Std.U32) : Result Std.Usize := do
   let i ← core.slice.Slice.iter v
@@ -403,21 +403,21 @@ def flat_len (v : Slice Std.U32) : Result Std.Usize := do
     flat_len.closure.Insts.CoreOpsFunctionFnMutTupleShared0U32RangeU32 fm
 
 /-- [iter_std_overrides::range_len]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 57:0-59:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 59:0-61:1
     Visibility: public -/
 def range_len (a : Std.Usize) (b : Std.Usize) : Result Std.Usize := do
   core.ops.range.Range.Insts.CoreIterTraitsIteratorIterator.count
     core.iter.range.StepUsize { start := a, «end» := b }
 
 /-- [iter_std_overrides::range_max]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 61:0-63:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 63:0-65:1
     Visibility: public -/
 def range_max (a : Std.Usize) (b : Std.Usize) : Result (Option Std.Usize) := do
   core.ops.range.Range.Insts.CoreIterTraitsIteratorIterator.max
     core.iter.range.StepUsize core.cmp.OrdUsize { start := a, «end» := b }
 
 /-- [iter_std_overrides::incl_len]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 65:0-67:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 67:0-69:1
     Visibility: public -/
 def incl_len (a : Std.Usize) (b : Std.Usize) : Result Std.Usize := do
   let ri ← core.ops.range.RangeInclusive.new a b
@@ -425,12 +425,12 @@ def incl_len (a : Std.Usize) (b : Std.Usize) : Result Std.Usize := do
     core.iter.range.StepUsize ri
 
 /-- [iter_std_overrides::incl_sum::{closure}]
-    Source: 'tests/src/iter-std-overrides.rs', lines 70:20-70:32 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 72:20-72:32 -/
 @[reducible]
 def incl_sum.closure := Unit
 
 /-- [iter_std_overrides::incl_sum::{impl core::ops::function::FnMut<(usize, usize), usize> for iter_std_overrides::incl_sum::{closure}}::call_mut]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 70:20-70:32 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 72:20-72:32 -/
 def incl_sum.closure.Insts.CoreOpsFunctionFnMutPairUsizeUsizeUsize.call_mut
   (c : incl_sum.closure) (tupled_args : (Std.Usize × Std.Usize)) :
   Result (Std.Usize × incl_sum.closure)
@@ -440,7 +440,7 @@ def incl_sum.closure.Insts.CoreOpsFunctionFnMutPairUsizeUsizeUsize.call_mut
   ok (i, c)
 
 /-- [iter_std_overrides::incl_sum::{impl core::ops::function::FnOnce<(usize, usize), usize> for iter_std_overrides::incl_sum::{closure}}::call_once]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 70:20-70:32 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 72:20-72:32 -/
 def incl_sum.closure.Insts.CoreOpsFunctionFnOncePairUsizeUsizeUsize.call_once
   (c : incl_sum.closure) (p : (Std.Usize × Std.Usize)) :
   Result Std.Usize
@@ -450,7 +450,7 @@ def incl_sum.closure.Insts.CoreOpsFunctionFnOncePairUsizeUsizeUsize.call_once
   ok i
 
 /-- Trait implementation: [iter_std_overrides::incl_sum::{impl core::ops::function::FnOnce<(usize, usize), usize> for iter_std_overrides::incl_sum::{closure}}]
-    Source: 'tests/src/iter-std-overrides.rs', lines 70:20-70:32 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 72:20-72:32 -/
 @[reducible]
 def incl_sum.closure.Insts.CoreOpsFunctionFnOncePairUsizeUsizeUsize :
   core.ops.function.FnOnce incl_sum.closure (Std.Usize × Std.Usize) Std.Usize
@@ -460,7 +460,7 @@ def incl_sum.closure.Insts.CoreOpsFunctionFnOncePairUsizeUsizeUsize :
 }
 
 /-- Trait implementation: [iter_std_overrides::incl_sum::{impl core::ops::function::FnMut<(usize, usize), usize> for iter_std_overrides::incl_sum::{closure}}]
-    Source: 'tests/src/iter-std-overrides.rs', lines 70:20-70:32 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 72:20-72:32 -/
 @[reducible]
 def incl_sum.closure.Insts.CoreOpsFunctionFnMutPairUsizeUsizeUsize :
   core.ops.function.FnMut incl_sum.closure (Std.Usize × Std.Usize) Std.Usize
@@ -471,7 +471,7 @@ def incl_sum.closure.Insts.CoreOpsFunctionFnMutPairUsizeUsizeUsize :
 }
 
 /-- [iter_std_overrides::incl_sum]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 69:0-71:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 71:0-73:1
     Visibility: public -/
 def incl_sum (a : Std.Usize) (b : Std.Usize) : Result Std.Usize := do
   let ri ← core.ops.range.RangeInclusive.new a b
@@ -481,7 +481,7 @@ def incl_sum (a : Std.Usize) (b : Std.Usize) : Result Std.Usize := do
     ()
 
 /-- [iter_std_overrides::incl_max]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 73:0-75:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 75:0-77:1
     Visibility: public -/
 def incl_max (a : Std.Usize) (b : Std.Usize) : Result (Option Std.Usize) := do
   let ri ← core.ops.range.RangeInclusive.new a b
@@ -489,7 +489,7 @@ def incl_max (a : Std.Usize) (b : Std.Usize) : Result (Option Std.Usize) := do
     core.iter.range.StepUsize core.cmp.OrdUsize ri
 
 /-- [iter_std_overrides::range_twice]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 77:0-79:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 79:0-81:1
     Visibility: public -/
 def range_twice (r : core.ops.range.Range Std.Usize) : Result Std.Usize := do
   let r1 ←
@@ -503,7 +503,7 @@ def range_twice (r : core.ops.range.Range Std.Usize) : Result Std.Usize := do
   i + i1
 
 /-- [iter_std_overrides::incl_twice]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 81:0-83:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 83:0-85:1
     Visibility: public -/
 def incl_twice
   (r : core.ops.range.RangeInclusive Std.Usize) : Result Std.Usize := do
@@ -519,7 +519,7 @@ def incl_twice
   i + i1
 
 /-- [iter_std_overrides::chunk_count]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 85:0-87:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 87:0-89:1
     Visibility: public -/
 def chunk_count (v : Slice Std.U32) (n : Std.Usize) : Result Std.Usize := do
   let c ← core.slice.Slice.chunks v n
@@ -527,7 +527,7 @@ def chunk_count (v : Slice Std.U32) (n : Std.Usize) : Result Std.Usize := do
     c
 
 /-- [iter_std_overrides::chunk_hint]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 89:0-91:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 91:0-93:1
     Visibility: public -/
 def chunk_hint
   (v : Slice Std.U32) (n : Std.Usize) :
@@ -538,7 +538,7 @@ def chunk_hint
     c
 
 /-- [iter_std_overrides::last_chunk]: loop body 0:
-    Source: 'tests/src/iter-std-overrides.rs', lines 96:4-98:5
+    Source: 'tests/src/iter-std-overrides.rs', lines 98:4-100:5
     Visibility: public -/
 @[rust_loop_body]
 def last_chunk_loop.body
@@ -555,7 +555,7 @@ def last_chunk_loop.body
               ok (cont (iter1, last1))
 
 /-- [iter_std_overrides::last_chunk]: loop 0:
-    Source: 'tests/src/iter-std-overrides.rs', lines 96:4-98:5
+    Source: 'tests/src/iter-std-overrides.rs', lines 98:4-100:5
     Visibility: public -/
 @[rust_loop]
 def last_chunk_loop
@@ -567,14 +567,14 @@ def last_chunk_loop
     (iter, last)
 
 /-- [iter_std_overrides::last_chunk]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 94:0-100:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 96:0-102:1
     Visibility: public -/
 def last_chunk (v : Slice Std.U32) (n : Std.Usize) : Result Std.Usize := do
   let iter ← core.slice.Slice.chunks v n
   last_chunk_loop iter 0#usize
 
 /-- [iter_std_overrides::mut_len]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 105:0-107:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 107:0-109:1
     Visibility: public -/
 def mut_len (v : Slice Std.U32) : Result (Std.Usize × (Slice Std.U32)) := do
   let (im, iter_mut_back) ← core.slice.Slice.iter_mut v
@@ -584,7 +584,7 @@ def mut_len (v : Slice Std.U32) : Result (Std.Usize × (Slice Std.U32)) := do
   ok (i, v1)
 
 /-- [iter_std_overrides::mut_hint]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 109:0-111:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 111:0-113:1
     Visibility: public -/
 def mut_hint
   (v : Slice Std.U32) :
@@ -598,12 +598,12 @@ def mut_hint
   ok (p, v1)
 
 /-- [iter_std_overrides::halve_checked::{closure}]
-    Source: 'tests/src/iter-std-overrides.rs', lines 114:17-114:65 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 117:13-117:61 -/
 @[reducible]
 def halve_checked.closure := Unit
 
 /-- [iter_std_overrides::halve_checked::{impl core::ops::function::FnMut<(&'_0 u32,), core::result::Result<u32, u32>> for iter_std_overrides::halve_checked::{closure}}::call_mut]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 114:17-114:65 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 117:13-117:61 -/
 def
   halve_checked.closure.Insts.CoreOpsFunctionFnMutTupleShared0U32ResultU32U32.call_mut
   (c : halve_checked.closure) (tupled_args : Std.U32) :
@@ -617,7 +617,7 @@ def
   else ok (core.result.Result.Err tupled_args, c)
 
 /-- [iter_std_overrides::halve_checked::{impl core::ops::function::FnOnce<(&'_0 u32,), core::result::Result<u32, u32>> for iter_std_overrides::halve_checked::{closure}}::call_once]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 114:17-114:65 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 117:13-117:61 -/
 def
   halve_checked.closure.Insts.CoreOpsFunctionFnOnceTupleShared0U32ResultU32U32.call_once
   (c : halve_checked.closure) (i : Std.U32) :
@@ -629,7 +629,7 @@ def
   ok r
 
 /-- Trait implementation: [iter_std_overrides::halve_checked::{impl core::ops::function::FnOnce<(&'_0 u32,), core::result::Result<u32, u32>> for iter_std_overrides::halve_checked::{closure}}]
-    Source: 'tests/src/iter-std-overrides.rs', lines 114:17-114:65 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 117:13-117:61 -/
 @[reducible]
 def
   halve_checked.closure.Insts.CoreOpsFunctionFnOnceTupleShared0U32ResultU32U32
@@ -640,7 +640,7 @@ def
 }
 
 /-- Trait implementation: [iter_std_overrides::halve_checked::{impl core::ops::function::FnMut<(&'_0 u32,), core::result::Result<u32, u32>> for iter_std_overrides::halve_checked::{closure}}]
-    Source: 'tests/src/iter-std-overrides.rs', lines 114:17-114:65 -/
+    Source: 'tests/src/iter-std-overrides.rs', lines 117:13-117:61 -/
 @[reducible]
 def halve_checked.closure.Insts.CoreOpsFunctionFnMutTupleShared0U32ResultU32U32
   : core.ops.function.FnMut halve_checked.closure Std.U32 (core.result.Result
@@ -652,7 +652,7 @@ def halve_checked.closure.Insts.CoreOpsFunctionFnMutTupleShared0U32ResultU32U32
 }
 
 /-- [iter_std_overrides::halve_checked]:
-    Source: 'tests/src/iter-std-overrides.rs', lines 113:0-115:1
+    Source: 'tests/src/iter-std-overrides.rs', lines 115:0-119:1
     Visibility: public -/
 def halve_checked
   (v : Slice Std.U32) :

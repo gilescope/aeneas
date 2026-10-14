@@ -78,12 +78,12 @@ def Columns.is_simple (self : Columns) (i : Std.Usize) : Result Bool := do
   ok (i1 > i)
 
 /-- [ctor_closure_adapter::{ctor_closure_adapter::Columns}::first_fixed::{closure}]
-    Source: 'tests/src/ctor-closure-adapter.rs', lines 25:27-25:50 -/
+    Source: 'tests/src/ctor-closure-adapter.rs', lines 26:20-26:43 -/
 @[reducible]
 def Columns.first_fixed.closure := Columns
 
 /-- [ctor_closure_adapter::{ctor_closure_adapter::Columns}::first_fixed::{impl core::ops::function::FnMut<(&'_1 usize,), bool> for ctor_closure_adapter::{ctor_closure_adapter::Columns}::first_fixed::{closure}<'_0>}::call_mut]:
-    Source: 'tests/src/ctor-closure-adapter.rs', lines 25:27-25:50 -/
+    Source: 'tests/src/ctor-closure-adapter.rs', lines 26:20-26:43 -/
 def
   Columns.first_fixed.closure.Insts.CoreOpsFunctionFnMutTupleShared1UsizeBool.call_mut
   (c : Columns.first_fixed.closure) (tupled_args : Std.Usize) :
@@ -93,7 +93,7 @@ def
   ok (¬ b, c)
 
 /-- [ctor_closure_adapter::{ctor_closure_adapter::Columns}::first_fixed::{impl core::ops::function::FnOnce<(&'_1 usize,), bool> for ctor_closure_adapter::{ctor_closure_adapter::Columns}::first_fixed::{closure}<'_0>}::call_once]:
-    Source: 'tests/src/ctor-closure-adapter.rs', lines 25:27-25:50 -/
+    Source: 'tests/src/ctor-closure-adapter.rs', lines 26:20-26:43 -/
 def
   Columns.first_fixed.closure.Insts.CoreOpsFunctionFnOnceTupleShared1UsizeBool.call_once
   (c : Columns.first_fixed.closure) (i : Std.Usize) : Result Bool := do
@@ -103,7 +103,7 @@ def
   ok b
 
 /-- Trait implementation: [ctor_closure_adapter::{ctor_closure_adapter::Columns}::first_fixed::{impl core::ops::function::FnOnce<(&'_1 usize,), bool> for ctor_closure_adapter::{ctor_closure_adapter::Columns}::first_fixed::{closure}<'_0>}]
-    Source: 'tests/src/ctor-closure-adapter.rs', lines 25:27-25:50 -/
+    Source: 'tests/src/ctor-closure-adapter.rs', lines 26:20-26:43 -/
 @[reducible]
 def
   Columns.first_fixed.closure.Insts.CoreOpsFunctionFnOnceTupleShared1UsizeBool
@@ -113,7 +113,7 @@ def
 }
 
 /-- Trait implementation: [ctor_closure_adapter::{ctor_closure_adapter::Columns}::first_fixed::{impl core::ops::function::FnMut<(&'_1 usize,), bool> for ctor_closure_adapter::{ctor_closure_adapter::Columns}::first_fixed::{closure}<'_0>}]
-    Source: 'tests/src/ctor-closure-adapter.rs', lines 25:27-25:50 -/
+    Source: 'tests/src/ctor-closure-adapter.rs', lines 26:20-26:43 -/
 @[reducible]
 def Columns.first_fixed.closure.Insts.CoreOpsFunctionFnMutTupleShared1UsizeBool
   : core.ops.function.FnMut Columns.first_fixed.closure Std.Usize Bool := {
@@ -124,7 +124,7 @@ def Columns.first_fixed.closure.Insts.CoreOpsFunctionFnMutTupleShared1UsizeBool
 }
 
 /-- [ctor_closure_adapter::{ctor_closure_adapter::Columns}::first_fixed]:
-    Source: 'tests/src/ctor-closure-adapter.rs', lines 24:4-26:5
+    Source: 'tests/src/ctor-closure-adapter.rs', lines 24:4-29:5
     Visibility: public -/
 def Columns.first_fixed (self : Columns) : Result (Option Label) := do
   let f ←

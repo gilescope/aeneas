@@ -44,7 +44,10 @@ pub fn renamed() -> &'static str {
 }
 
 pub fn check(i: usize, b: bool) -> Result<usize, &'static str> {
-    let c = Column { index: i, column_type: if b { Any::Advice } else { Any::Fixed } };
+    let c = Column {
+        index: i,
+        column_type: if b { Any::Advice } else { Any::Fixed },
+    };
     advice_index(c)
 }
 

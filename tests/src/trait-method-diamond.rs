@@ -58,5 +58,9 @@ where
 
 /// Recurses through `Kzg`'s impl, which is then inlined as a literal
 pub fn sizes<S: Scheme>(n: usize) -> usize {
-    if n == 0 { 0 } else { S::size() }
+    if n == 0 {
+        0
+    } else {
+        S::size()
+    }
 }

@@ -35,7 +35,9 @@ pub fn ref_vec_sum(v: &Vec<u32>) -> u32 {
 }
 
 pub fn indexed(v: &[u32]) -> usize {
-    v.iter().enumerate().fold(0, |s, (i, x)| s + i * (*x as usize))
+    v.iter()
+        .enumerate()
+        .fold(0, |s, (i, x)| s + i * (*x as usize))
 }
 
 pub fn indexed_len(v: &[u32]) -> usize {
@@ -111,7 +113,9 @@ pub fn mut_hint(v: &mut [u32]) -> (usize, Option<usize>) {
 }
 
 pub fn halve_checked(v: &[u32]) -> Result<Vec<u32>, u32> {
-    v.iter().map(|x| if x % 2 == 0 { Ok(x / 2) } else { Err(*x) }).collect()
+    v.iter()
+        .map(|x| if x % 2 == 0 { Ok(x / 2) } else { Err(*x) })
+        .collect()
 }
 
 #[cfg(test)]

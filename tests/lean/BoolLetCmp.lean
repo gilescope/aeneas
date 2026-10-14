@@ -20,7 +20,7 @@ set_option maxRecDepth 2048
 namespace bool_let_cmp
 
 /-- [bool_let_cmp::step]:
-    Source: 'tests/src/bool-let-cmp.rs', lines 7:0-12:1
+    Source: 'tests/src/bool-let-cmp.rs', lines 7:0-16:1
     Visibility: public -/
 def step (rem : Std.U128) (lam : Std.U128) : Result Std.U128 := do
   let carry ← rem >>> 127#i32
@@ -33,7 +33,7 @@ def step (rem : Std.U128) (lam : Std.U128) : Result Std.U128 := do
   else ok rem1
 
 /-- [bool_let_cmp::ge_let]:
-    Source: 'tests/src/bool-let-cmp.rs', lines 14:0-17:1
+    Source: 'tests/src/bool-let-cmp.rs', lines 18:0-25:1
     Visibility: public -/
 def ge_let (a : Std.U32) (b : Std.U32) : Result Std.U32 := do
   if a >= b
