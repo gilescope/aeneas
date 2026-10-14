@@ -26,7 +26,11 @@ pub fn dedup(keys: &[u32]) -> usize {
     fresh
 }
 
-pub fn sets(a: &BTreeSet<u32>, b: &BTreeSet<u32>, m: &BTreeMap<u32, u32>) -> (bool, bool, Option<u32>, usize) {
+pub fn sets(
+    a: &BTreeSet<u32>,
+    b: &BTreeSet<u32>,
+    m: &BTreeMap<u32, u32>,
+) -> (bool, bool, Option<u32>, usize) {
     let c = a.clone();
     let same = c == *b && a.cmp(b).is_eq() && a.partial_cmp(b).is_some();
     let largest = a.iter().max().copied();

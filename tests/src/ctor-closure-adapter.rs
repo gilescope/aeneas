@@ -22,6 +22,9 @@ impl Columns {
     }
 
     pub fn first_fixed(&self) -> Option<Label> {
-        (0..self.n).filter(|&i| !self.is_simple(i)).map(Label::Fixed).next()
+        (0..self.n)
+            .filter(|&i| !self.is_simple(i))
+            .map(Label::Fixed)
+            .next()
     }
 }

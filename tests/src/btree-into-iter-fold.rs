@@ -5,7 +5,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 pub fn sum_map(m: BTreeMap<u32, u32>) -> u32 {
-    m.into_iter().fold(0, |a, (k, v)| a.wrapping_add(k).wrapping_add(v))
+    m.into_iter()
+        .fold(0, |a, (k, v)| a.wrapping_add(k).wrapping_add(v))
 }
 
 pub fn sum_set(s: BTreeSet<u32>) -> u32 {

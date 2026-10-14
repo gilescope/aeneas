@@ -19,13 +19,13 @@ set_option maxRecDepth 2048
 
 namespace iter_adapters
 
-/-- Trait implementation: [core::slice::iter::{impl core::iter::traits::double_ended::DoubleEndedIterator<&'_ T> for core::slice::iter::Iter<'a, T>}]
+/-- Trait implementation: [core::slice::iter::{impl core::iter::traits::double_ended::DoubleEndedIterator<&'a T> for core::slice::iter::Iter<'a, T>}]
     Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 431:8-431:56
-    Name pattern: [core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'_ @T>] -/
+    Name pattern: [core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'a @T>] -/
 @[reducible, rust_trait_impl
-  "core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'_ @T>"]
+  "core::iter::traits::double_ended::DoubleEndedIterator<core::slice::iter::Iter<'a, @T>, &'a @T>"]
 def
-  core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+  core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
   (T : Type) : core.iter.traits.double_ended.DoubleEndedIterator
   (core.slice.iter.Iter T) T := {
   iteratorInst := core.iter.traits.iterator.IteratorSliceIter T
@@ -1047,29 +1047,29 @@ def test_rev_slice : Result Unit := do
   let it ←
     core.iter.traits.iterator.Iterator.rev.trait_default
       (core.iter.traits.iterator.IteratorSliceIter Std.U32)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32) i
   let (o, it1) ←
     core.iter.adapters.rev.Rev.Insts.CoreIterTraitsIteratorIterator.next
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32) it
   let i1 ← core.option.Option.unwrap o
   massert (i1 = 3#u32)
   let (o1, it2) ←
     core.iter.adapters.rev.Rev.Insts.CoreIterTraitsIteratorIterator.next
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32) it1
   let i2 ← core.option.Option.unwrap o1
   massert (i2 = 2#u32)
   let (o2, it3) ←
     core.iter.adapters.rev.Rev.Insts.CoreIterTraitsIteratorIterator.next
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32) it2
   let i3 ← core.option.Option.unwrap o2
   massert (i3 = 1#u32)
   let (o3, _) ←
     core.iter.adapters.rev.Rev.Insts.CoreIterTraitsIteratorIterator.next
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32) it3
   let b : Bool := core.option.Option.is_none o3
   massert b
@@ -1086,11 +1086,11 @@ def test_rev_empty_slice : Result Unit := do
   let it ←
     core.iter.traits.iterator.Iterator.rev.trait_default
       (core.iter.traits.iterator.IteratorSliceIter Std.U32)
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32) i
   let (o, _) ←
     core.iter.adapters.rev.Rev.Insts.CoreIterTraitsIteratorIterator.next
-      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedT
+      (core.slice.iter.Iter.Insts.CoreIterTraitsDouble_endedDoubleEndedIteratorSharedAT
       Std.U32) it
   let b : Bool := core.option.Option.is_none o
   massert b

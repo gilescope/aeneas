@@ -5,8 +5,9 @@ NEW_CHARON_PIN="$(cat flake.lock | jq -r .nodes.charon.locked.rev)"
 OLD_CHARON_PIN="$(git show origin/main:flake.lock | jq -r .nodes.charon.locked.rev)"
 echo "This PR updates the charon pin from $OLD_CHARON_PIN to $NEW_CHARON_PIN"
 
-git clone https://github.com/AeneasVerif/charon
-cd charon
+# On a fork, the pin lives in the fork's Charon (`<owner>/charon`); Actions sets the owner.
+git clone "https://github.com/${GITHUB_REPOSITORY_OWNER:-AeneasVerif}/charon"
+cd charon || exit 1
 
 # Fetch commits in PRs
 git config remote.origin.fetch "+refs/pull/*/head:refs/remotes/origin/pr/*"

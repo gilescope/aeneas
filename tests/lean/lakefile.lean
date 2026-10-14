@@ -23,6 +23,7 @@ package «tests» {}
 @[default_target] lean_lib Bitwise
 @[default_target] lean_lib BlanketImpl
 @[default_target] lean_lib BoolCmp
+@[default_target] lean_lib BoolLetCmp
 @[default_target] lean_lib BorrowAssignNested
 @[default_target] lean_lib Bst
 @[default_target] lean_lib Btree

@@ -33,19 +33,19 @@ def join
   ok (t, t1)
 
 /-- [issue_1264_join::sum::{closure#1}]
-    Source: 'tests/src/issue-1264-join.rs', lines 15:37-15:46 -/
+    Source: 'tests/src/issue-1264-join.rs', lines 19:37-19:46 -/
 @[reducible]
 def sum.closure_1 := Slice Std.U32
 
 /-- [issue_1264_join::sum::{closure}]
-    Source: 'tests/src/issue-1264-join.rs', lines 15:26-15:35 -/
+    Source: 'tests/src/issue-1264-join.rs', lines 19:26-19:35 -/
 @[reducible]
 def sum.closure := Slice Std.U32
 
 mutual
 
 /-- [issue_1264_join::sum]:
-    Source: 'tests/src/issue-1264-join.rs', lines 10:0-18:1
+    Source: 'tests/src/issue-1264-join.rs', lines 10:0-22:1
     Visibility: public -/
 def sum (s : Slice Std.U32) : Result Std.U32 := do
   let i := Slice.len s
@@ -71,14 +71,14 @@ def sum (s : Slice Std.U32) : Result Std.U32 := do
 partial_fixpoint monotonicity by aeneas_monotonicity [join]
 
 /-- [issue_1264_join::sum::{impl core::ops::function::FnOnce<(), u32> for issue_1264_join::sum::{closure}<'_0>}::call_once]:
-    Source: 'tests/src/issue-1264-join.rs', lines 15:26-15:35 -/
+    Source: 'tests/src/issue-1264-join.rs', lines 19:26-19:35 -/
 def sum.closure.Insts.CoreOpsFunctionFnOnceTupleU32.call_once
   (c : sum.closure) (_ : Unit) : Result Std.U32 := do
   sum c
 partial_fixpoint monotonicity by aeneas_monotonicity [join]
 
 /-- [issue_1264_join::sum::{impl core::ops::function::FnOnce<(), u32> for issue_1264_join::sum::{closure#1}<'_0>}::call_once]:
-    Source: 'tests/src/issue-1264-join.rs', lines 15:37-15:46 -/
+    Source: 'tests/src/issue-1264-join.rs', lines 19:37-19:46 -/
 def sum.closure_1.Insts.CoreOpsFunctionFnOnceTupleU32.call_once
   (c : sum.closure_1) (_ : Unit) : Result Std.U32 := do
   sum c
@@ -87,7 +87,7 @@ partial_fixpoint monotonicity by aeneas_monotonicity [join]
 end
 
 /-- Trait implementation: [issue_1264_join::sum::{impl core::ops::function::FnOnce<(), u32> for issue_1264_join::sum::{closure}<'_0>}]
-    Source: 'tests/src/issue-1264-join.rs', lines 15:26-15:35 -/
+    Source: 'tests/src/issue-1264-join.rs', lines 19:26-19:35 -/
 @[reducible]
 def sum.closure.Insts.CoreOpsFunctionFnOnceTupleU32 : core.ops.function.FnOnce
   sum.closure Unit Std.U32 := {
@@ -95,7 +95,7 @@ def sum.closure.Insts.CoreOpsFunctionFnOnceTupleU32 : core.ops.function.FnOnce
 }
 
 /-- Trait implementation: [issue_1264_join::sum::{impl core::ops::function::FnOnce<(), u32> for issue_1264_join::sum::{closure#1}<'_0>}]
-    Source: 'tests/src/issue-1264-join.rs', lines 15:37-15:46 -/
+    Source: 'tests/src/issue-1264-join.rs', lines 19:37-19:46 -/
 @[reducible]
 def sum.closure_1.Insts.CoreOpsFunctionFnOnceTupleU32 :
   core.ops.function.FnOnce sum.closure_1 Unit Std.U32 := {
@@ -103,7 +103,7 @@ def sum.closure_1.Insts.CoreOpsFunctionFnOnceTupleU32 :
 }
 
 /-- [issue_1264_join::sum_direct]:
-    Source: 'tests/src/issue-1264-join.rs', lines 20:0-29:1
+    Source: 'tests/src/issue-1264-join.rs', lines 24:0-37:1
     Visibility: public -/
 def sum_direct (s : Slice Std.U32) : Result Std.U32 := do
   let i := Slice.len s
@@ -123,19 +123,19 @@ def sum_direct (s : Slice Std.U32) : Result Std.U32 := do
 partial_fixpoint
 
 /-- [issue_1264_join::tree::{closure#1}]
-    Source: 'tests/src/issue-1264-join.rs', lines 36:42-36:56 -/
+    Source: 'tests/src/issue-1264-join.rs', lines 44:42-44:56 -/
 @[reducible]
 def tree.closure_1 := Std.U32
 
 /-- [issue_1264_join::tree::{closure}]
-    Source: 'tests/src/issue-1264-join.rs', lines 36:26-36:40 -/
+    Source: 'tests/src/issue-1264-join.rs', lines 44:26-44:40 -/
 @[reducible]
 def tree.closure := Std.U32
 
 mutual
 
 /-- [issue_1264_join::tree]:
-    Source: 'tests/src/issue-1264-join.rs', lines 32:0-39:1
+    Source: 'tests/src/issue-1264-join.rs', lines 40:0-47:1
     Visibility: public -/
 def tree (n : Std.U32) : Result Std.U32 := do
   if n = 0#u32
@@ -153,7 +153,7 @@ def tree (n : Std.U32) : Result Std.U32 := do
 partial_fixpoint monotonicity by aeneas_monotonicity [join]
 
 /-- [issue_1264_join::tree::{impl core::ops::function::FnOnce<(), u32> for issue_1264_join::tree::{closure}<'_0>}::call_once]:
-    Source: 'tests/src/issue-1264-join.rs', lines 36:26-36:40 -/
+    Source: 'tests/src/issue-1264-join.rs', lines 44:26-44:40 -/
 def tree.closure.Insts.CoreOpsFunctionFnOnceTupleU32.call_once
   (c : tree.closure) (_ : Unit) : Result Std.U32 := do
   let i ← c - 1#u32
@@ -161,7 +161,7 @@ def tree.closure.Insts.CoreOpsFunctionFnOnceTupleU32.call_once
 partial_fixpoint monotonicity by aeneas_monotonicity [join]
 
 /-- [issue_1264_join::tree::{impl core::ops::function::FnOnce<(), u32> for issue_1264_join::tree::{closure#1}<'_0>}::call_once]:
-    Source: 'tests/src/issue-1264-join.rs', lines 36:42-36:56 -/
+    Source: 'tests/src/issue-1264-join.rs', lines 44:42-44:56 -/
 def tree.closure_1.Insts.CoreOpsFunctionFnOnceTupleU32.call_once
   (c : tree.closure_1) (_ : Unit) : Result Std.U32 := do
   let i ← c - 1#u32
@@ -171,7 +171,7 @@ partial_fixpoint monotonicity by aeneas_monotonicity [join]
 end
 
 /-- Trait implementation: [issue_1264_join::tree::{impl core::ops::function::FnOnce<(), u32> for issue_1264_join::tree::{closure}<'_0>}]
-    Source: 'tests/src/issue-1264-join.rs', lines 36:26-36:40 -/
+    Source: 'tests/src/issue-1264-join.rs', lines 44:26-44:40 -/
 @[reducible]
 def tree.closure.Insts.CoreOpsFunctionFnOnceTupleU32 : core.ops.function.FnOnce
   tree.closure Unit Std.U32 := {
@@ -179,7 +179,7 @@ def tree.closure.Insts.CoreOpsFunctionFnOnceTupleU32 : core.ops.function.FnOnce
 }
 
 /-- Trait implementation: [issue_1264_join::tree::{impl core::ops::function::FnOnce<(), u32> for issue_1264_join::tree::{closure#1}<'_0>}]
-    Source: 'tests/src/issue-1264-join.rs', lines 36:42-36:56 -/
+    Source: 'tests/src/issue-1264-join.rs', lines 44:42-44:56 -/
 @[reducible]
 def tree.closure_1.Insts.CoreOpsFunctionFnOnceTupleU32 :
   core.ops.function.FnOnce tree.closure_1 Unit Std.U32 := {
@@ -187,7 +187,7 @@ def tree.closure_1.Insts.CoreOpsFunctionFnOnceTupleU32 :
 }
 
 /-- [issue_1264_join::tree_direct]:
-    Source: 'tests/src/issue-1264-join.rs', lines 41:0-49:1
+    Source: 'tests/src/issue-1264-join.rs', lines 49:0-57:1
     Visibility: public -/
 def tree_direct (n : Std.U32) : Result Std.U32 := do
   if n = 0#u32

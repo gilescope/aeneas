@@ -30,32 +30,32 @@ def powers.closure := Std.U32
 def sum_cloned.closure := Unit
 
 /-- [iter_extra::horner::{closure}]
-    Source: 'tests/src/iter-extra.rs', lines 20:35-20:80 -/
+    Source: 'tests/src/iter-extra.rs', lines 23:20-23:65 -/
 @[reducible]
 def horner.closure := Std.U32
 
 /-- [iter_extra::last_pair::{closure}]
-    Source: 'tests/src/iter-extra.rs', lines 24:44-24:61 -/
+    Source: 'tests/src/iter-extra.rs', lines 27:44-27:61 -/
 @[reducible]
 def last_pair.closure := Unit
 
 /-- [iter_extra::total::{closure}]
-    Source: 'tests/src/iter-extra.rs', lines 32:29-32:53 -/
+    Source: 'tests/src/iter-extra.rs', lines 35:29-35:53 -/
 @[reducible]
 def total.closure := Unit
 
 /-- [iter_extra::order::{closure}]
-    Source: 'tests/src/iter-extra.rs', lines 37:22-37:39 -/
+    Source: 'tests/src/iter-extra.rs', lines 40:22-40:39 -/
 @[reducible]
 def order.closure := Slice Std.Usize
 
 /-- [iter_extra::first_big::{closure}]
-    Source: 'tests/src/iter-extra.rs', lines 42:34-42:46 -/
+    Source: 'tests/src/iter-extra.rs', lines 45:34-45:46 -/
 @[reducible]
 def first_big.closure := Unit
 
 /-- [iter_extra::first_big_index::{closure}]
-    Source: 'tests/src/iter-extra.rs', lines 46:16-46:32 -/
+    Source: 'tests/src/iter-extra.rs', lines 49:16-49:32 -/
 @[reducible]
 def first_big_index.closure := Unit
 

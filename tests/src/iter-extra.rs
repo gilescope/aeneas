@@ -17,7 +17,10 @@ pub fn sum_cloned(v: &[u32]) -> u32 {
 }
 
 pub fn horner(coeffs: &[u32], x: u32) -> u32 {
-    coeffs.iter().rev().fold(0u32, |acc, c| acc.wrapping_mul(x).wrapping_add(*c))
+    coeffs
+        .iter()
+        .rev()
+        .fold(0u32, |acc, c| acc.wrapping_mul(x).wrapping_add(*c))
 }
 
 pub fn last_pair(a: &[u32], b: &[u32]) -> Option<(u32, u32)> {

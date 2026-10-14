@@ -103,17 +103,41 @@ mod tests {
     fn values() {
         assert_eq!(sum_checked(&[vec![1, 2], vec![3]]), Ok(6));
         assert_eq!(sum_checked(&[vec![1, 2], vec![0, 3]]), Err(7));
-        let mut t = Reader { buf: vec![10, 20, 30, 40], pos: 0 };
-        assert_eq!(evaluate(&[1, 5], &mut t), Ok(vec![vec![11, 22], vec![35, 46]]));
-        let mut t = Reader { buf: vec![10, 20, 30], pos: 0 };
+        let mut t = Reader {
+            buf: vec![10, 20, 30, 40],
+            pos: 0,
+        };
+        assert_eq!(
+            evaluate(&[1, 5], &mut t),
+            Ok(vec![vec![11, 22], vec![35, 46]])
+        );
+        let mut t = Reader {
+            buf: vec![10, 20, 30],
+            pos: 0,
+        };
         assert_eq!(evaluate(&[1, 5], &mut t), Err(1));
-        let mut t = Reader { buf: vec![10, 20, 30, 40], pos: 0 };
-        assert_eq!(evaluate_checked(&[1, 5], &mut t), Ok(vec![vec![11, 22], vec![35, 46]]));
-        let mut t = Reader { buf: vec![10, 9, 30, 40], pos: 0 };
+        let mut t = Reader {
+            buf: vec![10, 20, 30, 40],
+            pos: 0,
+        };
+        assert_eq!(
+            evaluate_checked(&[1, 5], &mut t),
+            Ok(vec![vec![11, 22], vec![35, 46]])
+        );
+        let mut t = Reader {
+            buf: vec![10, 9, 30, 40],
+            pos: 0,
+        };
         assert_eq!(evaluate_checked(&[1, 5], &mut t), Err(2));
-        let mut t = Reader { buf: vec![10, 20, 30], pos: 0 };
+        let mut t = Reader {
+            buf: vec![10, 20, 30],
+            pos: 0,
+        };
         assert_eq!(evaluate_checked(&[1, 5], &mut t), Err(1));
-        assert_eq!(absorb(&[1, 2], &[vec![3], vec![4, 5]]), Ok(vec![1, 1, 3, 2, 4, 5]));
+        assert_eq!(
+            absorb(&[1, 2], &[vec![3], vec![4, 5]]),
+            Ok(vec![1, 1, 3, 2, 4, 5])
+        );
         assert_eq!(absorb(&[1, 0], &[vec![3]]), Err(7));
         assert_eq!(absorb(&[1], &[vec![3], vec![]]), Err(7));
         assert_eq!(absorb(&[1], &[vec![3, 0]]), Err(7));

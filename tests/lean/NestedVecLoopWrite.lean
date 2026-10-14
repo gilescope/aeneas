@@ -29,12 +29,12 @@ structure Assembly where
   sizes : alloc.vec.Vec (alloc.vec.Vec Std.Usize)
 
 /-- [nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{closure#1}]
-    Source: 'tests/src/nested-vec-loop-write.rs', lines 17:56-17:78 -/
+    Source: 'tests/src/nested-vec-loop-write.rs', lines 29:22-29:44 -/
 @[reducible]
 def Assembly.merge.closure_1 := Std.U64
 
 /-- [nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{impl core::ops::function::FnMut<(&'_1 u64,), bool> for nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{closure#1}<'_0>}::call_mut]:
-    Source: 'tests/src/nested-vec-loop-write.rs', lines 17:56-17:78 -/
+    Source: 'tests/src/nested-vec-loop-write.rs', lines 29:22-29:44 -/
 def
   Assembly.merge.closure_1.Insts.CoreOpsFunctionFnMutTupleShared1U64Bool.call_mut
   (c : Assembly.merge.closure_1) (tupled_args : Std.U64) :
@@ -44,7 +44,7 @@ def
   ok (b, c)
 
 /-- [nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{impl core::ops::function::FnOnce<(&'_1 u64,), bool> for nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{closure#1}<'_0>}::call_once]:
-    Source: 'tests/src/nested-vec-loop-write.rs', lines 17:56-17:78 -/
+    Source: 'tests/src/nested-vec-loop-write.rs', lines 29:22-29:44 -/
 def
   Assembly.merge.closure_1.Insts.CoreOpsFunctionFnOnceTupleShared1U64Bool.call_once
   (c : Assembly.merge.closure_1) (i : Std.U64) : Result Bool := do
@@ -54,7 +54,7 @@ def
   ok b
 
 /-- Trait implementation: [nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{impl core::ops::function::FnOnce<(&'_1 u64,), bool> for nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{closure#1}<'_0>}]
-    Source: 'tests/src/nested-vec-loop-write.rs', lines 17:56-17:78 -/
+    Source: 'tests/src/nested-vec-loop-write.rs', lines 29:22-29:44 -/
 @[reducible]
 def Assembly.merge.closure_1.Insts.CoreOpsFunctionFnOnceTupleShared1U64Bool :
   core.ops.function.FnOnce Assembly.merge.closure_1 Std.U64 Bool := {
@@ -63,7 +63,7 @@ def Assembly.merge.closure_1.Insts.CoreOpsFunctionFnOnceTupleShared1U64Bool :
 }
 
 /-- Trait implementation: [nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{impl core::ops::function::FnMut<(&'_1 u64,), bool> for nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{closure#1}<'_0>}]
-    Source: 'tests/src/nested-vec-loop-write.rs', lines 17:56-17:78 -/
+    Source: 'tests/src/nested-vec-loop-write.rs', lines 29:22-29:44 -/
 @[reducible]
 def Assembly.merge.closure_1.Insts.CoreOpsFunctionFnMutTupleShared1U64Bool :
   core.ops.function.FnMut Assembly.merge.closure_1 Std.U64 Bool := {
@@ -74,12 +74,12 @@ def Assembly.merge.closure_1.Insts.CoreOpsFunctionFnMutTupleShared1U64Bool :
 }
 
 /-- [nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{closure}]
-    Source: 'tests/src/nested-vec-loop-write.rs', lines 16:55-16:76 -/
+    Source: 'tests/src/nested-vec-loop-write.rs', lines 24:22-24:43 -/
 @[reducible]
 def Assembly.merge.closure := Std.U64
 
 /-- [nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{impl core::ops::function::FnMut<(&'_1 u64,), bool> for nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{closure}<'_0>}::call_mut]:
-    Source: 'tests/src/nested-vec-loop-write.rs', lines 16:55-16:76 -/
+    Source: 'tests/src/nested-vec-loop-write.rs', lines 24:22-24:43 -/
 def
   Assembly.merge.closure.Insts.CoreOpsFunctionFnMutTupleShared1U64Bool.call_mut
   (c : Assembly.merge.closure) (tupled_args : Std.U64) :
@@ -89,7 +89,7 @@ def
   ok (b, c)
 
 /-- [nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{impl core::ops::function::FnOnce<(&'_1 u64,), bool> for nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{closure}<'_0>}::call_once]:
-    Source: 'tests/src/nested-vec-loop-write.rs', lines 16:55-16:76 -/
+    Source: 'tests/src/nested-vec-loop-write.rs', lines 24:22-24:43 -/
 def
   Assembly.merge.closure.Insts.CoreOpsFunctionFnOnceTupleShared1U64Bool.call_once
   (c : Assembly.merge.closure) (i : Std.U64) : Result Bool := do
@@ -99,7 +99,7 @@ def
   ok b
 
 /-- Trait implementation: [nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{impl core::ops::function::FnOnce<(&'_1 u64,), bool> for nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{closure}<'_0>}]
-    Source: 'tests/src/nested-vec-loop-write.rs', lines 16:55-16:76 -/
+    Source: 'tests/src/nested-vec-loop-write.rs', lines 24:22-24:43 -/
 @[reducible]
 def Assembly.merge.closure.Insts.CoreOpsFunctionFnOnceTupleShared1U64Bool :
   core.ops.function.FnOnce Assembly.merge.closure Std.U64 Bool := {
@@ -108,7 +108,7 @@ def Assembly.merge.closure.Insts.CoreOpsFunctionFnOnceTupleShared1U64Bool :
 }
 
 /-- Trait implementation: [nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{impl core::ops::function::FnMut<(&'_1 u64,), bool> for nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge::{closure}<'_0>}]
-    Source: 'tests/src/nested-vec-loop-write.rs', lines 16:55-16:76 -/
+    Source: 'tests/src/nested-vec-loop-write.rs', lines 24:22-24:43 -/
 @[reducible]
 def Assembly.merge.closure.Insts.CoreOpsFunctionFnMutTupleShared1U64Bool :
   core.ops.function.FnMut Assembly.merge.closure Std.U64 Bool := {
@@ -119,7 +119,7 @@ def Assembly.merge.closure.Insts.CoreOpsFunctionFnMutTupleShared1U64Bool :
 }
 
 /-- [nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge]: loop body 0:
-    Source: 'tests/src/nested-vec-loop-write.rs', lines 24:8-30:9
+    Source: 'tests/src/nested-vec-loop-write.rs', lines 37:8-43:9
     Visibility: public -/
 @[rust_loop_body]
 def Assembly.merge_loop.body
@@ -159,7 +159,7 @@ def Assembly.merge_loop.body
     ok (cont (v5, i3))
 
 /-- [nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge]: loop 0:
-    Source: 'tests/src/nested-vec-loop-write.rs', lines 24:8-30:9
+    Source: 'tests/src/nested-vec-loop-write.rs', lines 37:8-43:9
     Visibility: public -/
 @[rust_loop]
 def Assembly.merge_loop
@@ -174,7 +174,7 @@ def Assembly.merge_loop
     (v1, i)
 
 /-- [nested_vec_loop_write::{nested_vec_loop_write::Assembly}::merge]:
-    Source: 'tests/src/nested-vec-loop-write.rs', lines 14:4-32:5
+    Source: 'tests/src/nested-vec-loop-write.rs', lines 14:4-45:5
     Visibility: public -/
 def Assembly.merge
   (self : Assembly) (left_column : Std.U64) (left_row : Std.Usize)

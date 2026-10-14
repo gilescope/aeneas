@@ -72,7 +72,10 @@ mod tests {
         assert!(std::panic::catch_unwind(|| index(&m, 4)).is_err());
         assert_eq!(largest(&m), Some((3, 3)));
         assert_eq!(largest(&BTreeMap::new()), None);
-        assert_eq!(flatten(from_pairs(&[(2, 20), (1, 10), (2, 21)])), vec![1, 10, 2, 21]);
+        assert_eq!(
+            flatten(from_pairs(&[(2, 20), (1, 10), (2, 21)])),
+            vec![1, 10, 2, 21]
+        );
         assert_eq!(sorted_unique(&[3, 1, 3, 2]), vec![1, 2, 3]);
     }
 }

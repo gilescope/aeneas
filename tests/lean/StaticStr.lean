@@ -118,7 +118,7 @@ def renamed : Result Str := do
   first s (toStr "other")
 
 /-- [static_str::check]:
-    Source: 'tests/src/static-str.rs', lines 46:0-49:1
+    Source: 'tests/src/static-str.rs', lines 46:0-52:1
     Visibility: public -/
 def check
   (i : Std.Usize) (b : Bool) : Result (core.result.Result Std.Usize Str) := do
@@ -128,7 +128,7 @@ def check
   advice_index { index := i, column_type := a }
 
 /-- [static_str::advice_or_panic]:
-    Source: 'tests/src/static-str.rs', lines 52:0-54:1
+    Source: 'tests/src/static-str.rs', lines 55:0-57:1
     Visibility: public -/
 def advice_or_panic (i : Std.Usize) : Result Std.Usize := do
   let r ← check i true

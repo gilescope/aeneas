@@ -81,7 +81,10 @@ mod tests {
         assert_eq!(option_order(&None, &Some(0)), Ordering::Less);
         assert_eq!(option_order(&Some(2), &Some(1)), Ordering::Greater);
         assert_eq!(option_order(&None, &None), Ordering::Equal);
-        assert_eq!(option_partial_order(&Some(1), &Some(2)), Some(Ordering::Less));
+        assert_eq!(
+            option_partial_order(&Some(1), &Some(2)),
+            Some(Ordering::Less)
+        );
         assert!(option_same(&Some(3), &Some(3)));
         assert!(!option_same(&Some(3), &None));
         assert_eq!(or_default(None), 0);
