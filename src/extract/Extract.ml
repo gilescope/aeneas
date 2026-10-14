@@ -3572,11 +3572,15 @@ type fn_trait = FnOnce | FnMut | Fn
     region with a function [Self → Self], which nothing outside the call can
     observe, so the adapter applies it to the [self] given back at once. Such a
     closure has one [Output] for [FnMut] and [FnOnce], so its [call_once], which
-    would give back the captured state, always fails. *)
+    would give back the captured state, always fails - under the [Output] the
+    [call_mut] adjusted, which the [FnMut] instance's [FnOnceInst] field names.
+*)
 type method_adapter =
   | NoAdapter
   | FnAdapter of fn_trait * method_shape * ty  (** The adjusted [Output] *)
   | Unsupported of int  (** The number of inputs *)
+  | UnsupportedWithOutput of int * ty
+      (** A failing method under an adjusted [Output] (see {!FnAdapter}) *)
 
 let builtin_trait_name (ctx : extraction_ctx) (impl : trait_impl) :
     string option =
@@ -3637,9 +3641,25 @@ let compute_method_adapter (ctx : extraction_ctx) (impl : trait_impl)
             (not (has_role BackSelfValue))
             || not (kind = Some FnOnce && self_has_fn_mut ctx impl)
           in
+          let output_of others =
+            if others = [] then shape.fwd_output
+            else
+              mk_simpl_tuple_ty [ shape.fwd_output; mk_simpl_tuple_ty others ]
+          in
           match kind with
           | _ when not self_fun_ok -> Unsupported shape.num_inputs
-          | _ when not self_value_ok -> Unsupported shape.num_inputs
+          | _ when not self_value_ok ->
+              (* The [Output] its [FnMut] sibling has: the backs of the
+                 arguments, without the captured state *)
+              let others =
+                List.filter_map
+                  (fun (ty, role) ->
+                    match role with
+                    | BackSelf | BackSelfValue | BackSelfFun -> None
+                    | _ -> Some ty)
+                  shape.backs
+              in
+              UnsupportedWithOutput (shape.num_inputs, output_of others)
           | None -> NoAdapter
           | Some kind ->
               let others =
@@ -3655,14 +3675,7 @@ let compute_method_adapter (ctx : extraction_ctx) (impl : trait_impl)
                 others = [] && (not shape.out_ignored) && shape.can_fail
                 && not (has_role BackSelfFun)
               then NoAdapter
-              else
-                let output =
-                  if others = [] then shape.fwd_output
-                  else
-                    mk_simpl_tuple_ty
-                      [ shape.fwd_output; mk_simpl_tuple_ty others ]
-                in
-                FnAdapter (kind, shape, output)))
+              else FnAdapter (kind, shape, output_of others)))
   | _ -> NoAdapter
 
 (** The impl's trait ref, with the [Output] of an [Fn*] trait adjusted for the
@@ -3672,7 +3685,8 @@ let fn_impl_trait (ctx : extraction_ctx) (impl : trait_impl) : trait_decl_ref =
     List.filter_map
       (fun (_, _, fn) ->
         match compute_method_adapter ctx impl fn with
-        | FnAdapter (_, _, output) -> Some output
+        | FnAdapter (_, _, output) | UnsupportedWithOutput (_, output) ->
+            Some output
         | _ -> None)
       impl.methods
   in
@@ -3690,7 +3704,7 @@ let extract_adapted_method (fmt : F.formatter) (adapter : method_adapter)
     (print_fun : unit -> unit) : unit =
   match adapter with
   | NoAdapter -> print_fun ()
-  | Unsupported n ->
+  | Unsupported n | UnsupportedWithOutput (n, _) ->
       F.pp_print_string fmt
         ("fun"
         ^ String.concat "" (List.init n (fun _ -> " _"))
