@@ -4,7 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 module
 public meta import Lean.Elab.Deriving.Basic
-public meta import Lean.Elab.Tactic.BVDecide.Frontend.Normalize.Enums
+public meta import Lean.Meta.Tactic.BVDecide.Normalize.Enums
+public meta import Lean.ReservedNameAction
 public section
 
 /-!
@@ -46,7 +47,6 @@ module, turning the lazy per-use realisation into a single deterministic one.
 namespace Aeneas
 
 open Lean Meta Elab
-open Lean.Elab.Tactic.BVDecide.Frontend.Normalize
 
 /-- Marker class enabling `deriving BvEnumToBitVec` on an enum inductive.
 
@@ -71,11 +71,9 @@ meta def realizeBvEnumToBitVec (declName : Name) : CoreM Unit := do
       (parameter-free with only nullary constructors); \
       `bv_decide` only synthesises `enumToBitVec` for such types."
   enableRealizationsForConst declName
-  let act : MetaM Unit := do
-    discard <| getEnumToBitVecFor declName
-    discard <| getEnumToBitVecLeFor declName
-    discard <| getEqIffEnumToBitVecEqFor declName
-  discard <| act.run' {} {}
+  -- The realisers are private to `bv_decide`; its reserved-name action runs them.
+  for suffix in ["enumToBitVec", "enumToBitVec_le", "eq_iff_enumToBitVec_eq"] do
+    executeReservedNameAction (.str declName suffix)
 
 /-- `#define_bv_decide_toBitVec T` eagerly realises `bv_decide`'s enum
 conversion constants for the enum inductive `T` in the current module.

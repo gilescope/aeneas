@@ -8,6 +8,7 @@ public import Aeneas.Std.Scalar.CloneCopy
 public import Aeneas.Std.Scalar.EqOrd
 public import Aeneas.Std.Scalar.CheckedOps
 public import Aeneas.Std.Core.Core
+public import Aeneas.Std.Core.Ops
 public section
 
 @[expose] section
@@ -51,6 +52,12 @@ structure core.iter.adapters.take.Take (I : Type u) where
 structure core.iter.adapters.rev.Rev (T : Type u) where
   iter : T
 
+@[rust_type "core::iter::adapters::take_while::TakeWhile"]
+structure core.iter.adapters.take_while.TakeWhile (I : Type u) (P : Type u) where
+  iter : I
+  flag : Bool
+  predicate : P
+
 /-- `core::iter::adapters::zip::Zip` — the `a.zip(b)` adapter.
 
     The real Rust struct also carries `index`/`len` fields used for instance
@@ -81,6 +88,9 @@ def core.iter.traits.iterator.Iterator.take.default
 structure core.iter.traits.iterator.Iterator (Self : Type) (Self_Item : Type)
   where
   next : Self → Result ((Option Self_Item) × Self)
+  /-- No default: Rust's `(0, None)` is wrong for most std iterators, so each model states
+  its own (adapters such as `Map` forward to it). -/
+  size_hint : Self → Result (Usize × Option Usize)
   step_by : Self → Usize → Result (core.iter.adapters.step_by.StepBy Self) := core.iter.traits.iterator.Iterator.step_by.default
   enumerate : Self → Result (core.iter.adapters.enumerate.Enumerate Self) := core.iter.traits.iterator.Iterator.enumerate.default
   take : Self → Usize → Result (core.iter.adapters.take.Take Self) := core.iter.traits.iterator.Iterator.take.default
@@ -91,6 +101,14 @@ structure core.iter.traits.iterator.Iterator (Self : Type) (Self_Item : Type)
   -- `Iterator` to `SimpleIterator`.
   -- rev : Self → Result (core.iter.adapters.rev.Rev Self) -- this leads to a circularity
   -- TODO: collect
+
+/-- `Iterator::size_hint`'s provided body: no bounds. -/
+@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::size_hint"]
+def core.iter.traits.iterator.Iterator.size_hint.trait_default
+  {Self Item : Type}
+  (_IteratorInst : core.iter.traits.iterator.Iterator Self Item)
+  (_self : Self) : Result (Usize × Option Usize) :=
+  ok (0#usize, none)
 
 @[trait_default, rust_fun "core::iter::traits::iterator::Iterator::step_by"]
 def core.iter.traits.iterator.Iterator.step_by.trait_default
@@ -143,12 +161,31 @@ def core.iter.adapters.step_by.IteratorStepBy.next
       let iter ← core.iter.adapters.step_by.skipN IteratorInst iter (self.step_by.val - 1)
       .ok (some item, { iter, step_by := self.step_by })
 
+/-- `1 + (n - 1) / step` items (none if `n = 0`): `StepBy`'s count when it takes its first
+item next, which this model always does (it skips eagerly after each item). -/
+def core.iter.adapters.step_by.firstSize (step n : Usize) : Usize :=
+  if n.val = 0 then 0#usize
+  else UScalar.ofNatCore (1 + (n.val - 1) / step.val)
+    (by have := Nat.div_le_self (n.val - 1) step.val; have := n.hBounds; scalar_tac)
+
+/-- Core's `spec_size_hint` (`step_by.rs`), with `first_take` always set -/
+@[rust_fun
+  "core::iter::adapters::step_by::{core::iter::traits::iterator::Iterator<core::iter::adapters::step_by::StepBy<@I>, @Clause0_Item>}::size_hint"]
+def core.iter.adapters.step_by.IteratorStepBy.size_hint
+  {I : Type} {Item : Type}
+  (IteratorInst : core.iter.traits.iterator.Iterator I Item)
+  (self : core.iter.adapters.step_by.StepBy I) : Result (Usize × Option Usize) := do
+  let (lo, hi) ← IteratorInst.size_hint self.iter
+  let f := core.iter.adapters.step_by.firstSize self.step_by
+  ok (f lo, hi.map f)
+
 @[reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<core::iter::adapters::step_by::StepBy<@I>, @Clause0_Item>"]
 impl_def core.iter.traits.iterator.IteratorStepBy {I : Type} {Item : Type}
   (IteratorInst : core.iter.traits.iterator.Iterator I Item) :
   core.iter.traits.iterator.Iterator (core.iter.adapters.step_by.StepBy I) Item := {
   next := core.iter.adapters.step_by.IteratorStepBy.next IteratorInst
+  size_hint := core.iter.adapters.step_by.IteratorStepBy.size_hint IteratorInst
   step_by := core.iter.traits.iterator.Iterator.step_by.trait_default
     (core.iter.traits.iterator.IteratorStepBy IteratorInst)
   enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default
@@ -195,14 +232,43 @@ def core.iter.traits.collect.IntoIterator.Blanket {I : Type} {Item : Type}
   into_iter := core.iter.traits.collect.IntoIterator.Blanket.into_iter IteratorInst
 }
 
+/-! ## Values given back by generic functions
+
+A value holding a `&mut` (e.g. a closure capturing one) which is moved into a generic function
+is given back from the function's output: Aeneas's call site expects `map(it, f)` to return
+`(Map it f, back)` and `collect(m)` to return `(v, m)`, the final `Map` from which `back` gives
+the closure back. Aeneas emits `GivesBack T` for each such type `T` (with one `&mut` region),
+and the models below pick the shape of their output from it. -/
+
+/-- `T` holds a `&mut` (in one region): generic functions it is moved into give it back. -/
+class GivesBack (T : Type u) : Prop where
+
+/-- `FromIterator::from_iter`, which also gives back the iterator in its final state: how far
+the collection read it, which a closure the iterator holds must be given back from. -/
+class FromIterBack (B : Type) (A : Type) where
+  fromIterBack : {I : Type} → core.iter.traits.iterator.Iterator I A → I → Result (B × I)
+
+/-- The output of `collect`: `B`, and the iterator in its final state when it gives back. -/
+class CollectShape (Self B Item : Type) where
+  Out : Type
+  collect : core.iter.traits.iterator.Iterator Self Item →
+    core.iter.traits.collect.FromIterator B Item → Self → Result Out
+
+instance (priority := low) {Self B Item : Type} : CollectShape Self B Item :=
+  ⟨B, fun it fromIter self =>
+    fromIter.from_iter (core.iter.traits.collect.IntoIterator.Blanket it) self⟩
+
+instance {Self B Item : Type} [GivesBack Self] [FromIterBack B Item] :
+    CollectShape Self B Item :=
+  ⟨B × Self, fun it _ self => FromIterBack.fromIterBack it self⟩
+
 @[rust_fun "core::iter::traits::iterator::Iterator::collect"]
 def core.iter.traits.iterator.Iterator.collect.default
-  {Self : Type} {B : Type} {Item : Type} (IteratorInst :
+  {Self : Type} {B : Type} {Item : Type} [S : CollectShape Self B Item] (IteratorInst :
   core.iter.traits.iterator.Iterator Self Item)
   (collectFromIteratorInst : core.iter.traits.collect.FromIterator B Item) :
-  Self → Result B :=
-  fun self => collectFromIteratorInst.from_iter
-    (core.iter.traits.collect.IntoIterator.Blanket IteratorInst) self
+  Self → Result S.Out :=
+  S.collect IteratorInst collectFromIteratorInst
 
 @[rust_trait "core::iter::traits::collect::Extend"]
 structure core.iter.traits.collect.Extend (Self : Type) (A : Type) where
@@ -540,12 +606,22 @@ def core.iter.adapters.enumerate.IteratorEnumerate.next
       let count' ← self.count + 1#usize
       ok (some (self.count, a), { iter := iter', count := count' })
 
+/-- The inner iterator's -/
+@[rust_fun
+  "core::iter::adapters::enumerate::{core::iter::traits::iterator::Iterator<core::iter::adapters::enumerate::Enumerate<@I>, (usize, @Clause0_Item)>}::size_hint"]
+def core.iter.adapters.enumerate.IteratorEnumerate.size_hint
+  {I : Type} {Item : Type}
+  (IteratorInst : core.iter.traits.iterator.Iterator I Item)
+  (self : core.iter.adapters.enumerate.Enumerate I) : Result (Usize × Option Usize) :=
+  IteratorInst.size_hint self.iter
+
 @[reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<core::iter::adapters::enumerate::Enumerate<@I>, (usize, @Clause0_Item)>"]
 impl_def core.iter.traits.iterator.IteratorEnumerate {I : Type} {Item : Type}
     (IteratorInst : core.iter.traits.iterator.Iterator I Item) :
     core.iter.traits.iterator.Iterator (core.iter.adapters.enumerate.Enumerate I) (Usize × Item) := {
   next := core.iter.adapters.enumerate.IteratorEnumerate.next IteratorInst
+  size_hint := core.iter.adapters.enumerate.IteratorEnumerate.size_hint IteratorInst
   step_by := core.iter.traits.iterator.Iterator.step_by.trait_default
     (core.iter.traits.iterator.IteratorEnumerate IteratorInst)
   enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default
@@ -573,12 +649,29 @@ def core.iter.adapters.take.IteratorTake.next
     let (opt, iter') ← IteratorInst.next self.iter
     ok (opt, { iter := iter', n := n' })
 
+/-- The inner iterator's, capped at `n` (`take.rs`) -/
+@[rust_fun
+  "core::iter::adapters::take::{core::iter::traits::iterator::Iterator<core::iter::adapters::take::Take<@I>, @Clause0_Item>}::size_hint"]
+def core.iter.adapters.take.IteratorTake.size_hint
+  {I : Type} {Item : Type}
+  (IteratorInst : core.iter.traits.iterator.Iterator I Item)
+  (self : core.iter.adapters.take.Take I) : Result (Usize × Option Usize) := do
+  if self.n.val = 0 then ok (0#usize, some 0#usize)
+  else
+    let (lo, hi) ← IteratorInst.size_hint self.iter
+    let lo := if lo.val ≤ self.n.val then lo else self.n
+    let hi := match hi with
+      | some x => if x.val < self.n.val then some x else some self.n
+      | none => some self.n
+    ok (lo, hi)
+
 @[reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<core::iter::adapters::take::Take<@I>, @Clause0_Item>"]
 impl_def core.iter.traits.iterator.IteratorTake {I : Type} {Item : Type}
     (IteratorInst : core.iter.traits.iterator.Iterator I Item) :
     core.iter.traits.iterator.Iterator (core.iter.adapters.take.Take I) Item := {
   next := core.iter.adapters.take.IteratorTake.next IteratorInst
+  size_hint := core.iter.adapters.take.IteratorTake.size_hint IteratorInst
   step_by := core.iter.traits.iterator.Iterator.step_by.trait_default
     (core.iter.traits.iterator.IteratorTake IteratorInst)
   enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default
@@ -602,12 +695,22 @@ def core.iter.range.IteratorRange.next
       | some n => ok ⟨ some range', {range with start := n} ⟩
     else ok ⟨ none, range ⟩
 
+/-- `Step::steps_between(start, end)` if `start < end`, else none (`range.rs`) -/
+@[rust_fun
+  "core::iter::range::{core::iter::traits::iterator::Iterator<core::ops::range::Range<@A>, @A>}::size_hint"]
+def core.iter.range.IteratorRange.size_hint {A : Type} (StepInst : core.iter.range.Step A)
+  (range : core.ops.range.Range A) : Result (Usize × Option Usize) := do
+  if ← StepInst.partialOrdInst.lt range.start range.end then
+    StepInst.steps_between range.start range.end
+  else ok (0#usize, some 0#usize)
+
 @[reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<core::ops::range::Range<@A>, @A>"]
 impl_def core.iter.traits.iterator.IteratorRange {A : Type}
   (StepInst : core.iter.range.Step A) : core.iter.traits.iterator.Iterator
   (core.ops.range.Range A) A := {
   next := core.iter.range.IteratorRange.next StepInst
+  size_hint := core.iter.range.IteratorRange.size_hint StepInst
   step_by := core.iter.traits.iterator.Iterator.step_by.trait_default
     (core.iter.traits.iterator.IteratorRange StepInst)
   enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default
@@ -623,9 +726,7 @@ impl_def core.iter.traits.iterator.IteratorRange {A : Type}
     Some((x, y))
     ```
     `?` short-circuits: if A yields `none`, B is *not* advanced. -/
-@[rust_fun
-  "core::iter::adapters::zip::{core::iter::traits::iterator::Iterator<core::iter::adapters::zip::Zip<@A, @B>, (@Clause0_Item, @Clause1_Item)>}::next"]
-def core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.next
+def core.iter.adapters.zip.Zip.nextPlain
   {A B Item_A Item_B : Type}
   (IA : core.iter.traits.iterator.Iterator A Item_A)
   (IB : core.iter.traits.iterator.Iterator B Item_B)
@@ -639,6 +740,25 @@ def core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.next
       match ob with
       | none => ok (none, ⟨a', b'⟩)
       | some b => ok (some (a, b), ⟨a', b'⟩)
+
+/-- The output of `Zip::next`: with a `B` yielding `&mut` items (`IterMut`), also the backward
+function writing the item back. -/
+class ZipNextShape (A B Item_A Item_B : Type) where
+  Out : Type
+  next : core.iter.traits.iterator.Iterator A Item_A →
+    core.iter.traits.iterator.Iterator B Item_B → core.iter.adapters.zip.Zip A B → Result Out
+
+instance (priority := low) {A B Item_A Item_B : Type} : ZipNextShape A B Item_A Item_B :=
+  ⟨_, core.iter.adapters.zip.Zip.nextPlain⟩
+
+@[rust_fun
+  "core::iter::adapters::zip::{core::iter::traits::iterator::Iterator<core::iter::adapters::zip::Zip<@A, @B>, (@Clause0_Item, @Clause1_Item)>}::next"]
+def core.iter.adapters.zip.Zip.Insts.CoreIterTraitsIteratorIteratorPair.next
+  {A B Item_A Item_B : Type} [S : ZipNextShape A B Item_A Item_B]
+  (IA : core.iter.traits.iterator.Iterator A Item_A)
+  (IB : core.iter.traits.iterator.Iterator B Item_B)
+  (z : core.iter.adapters.zip.Zip A B) : Result S.Out :=
+  S.next IA IB z
 
 @[rust_fun "core::ops::range::{core::ops::range::RangeInclusive<@Idx>}::new"]
 def core.ops.range.RangeInclusive.new {Idx : Type}
@@ -701,13 +821,26 @@ def core.iter.traits.iterator.Iterator.zip.default
     let b ← into_iter other
     ok ⟨self, b⟩
 
+/-- The output of `zip(self, other)`: the `Zip`, and `other` given back from its final state
+when it holds a `&mut` (e.g. `iter_mut()`, its own `IntoIterator`). -/
+class ZipShape (Self U IntoIter : Type) where
+  Out : Type
+  ofZip : core.iter.adapters.zip.Zip Self IntoIter → Out
+
+instance (priority := low) {Self U IntoIter : Type} : ZipShape Self U IntoIter := ⟨_, id⟩
+
+instance {Self U : Type} [GivesBack U] : ZipShape Self U U :=
+  ⟨core.iter.adapters.zip.Zip Self U × (core.iter.adapters.zip.Zip Self U → U),
+    fun z => (z, (·.snd))⟩
+
 @[trait_default, rust_fun "core::iter::traits::iterator::Iterator::zip"]
 def core.iter.traits.iterator.Iterator.zip.trait_default
-  {Self U Item0 Item1 IntoIter : Type}
+  {Self U Item0 Item1 IntoIter : Type} [S : ZipShape Self U IntoIter]
   (_IteratorInst : core.iter.traits.iterator.Iterator Self Item0)
   (IntoIterInst : core.iter.traits.collect.IntoIterator U Item1 IntoIter) :
-  Self → U → Result (core.iter.adapters.zip.Zip Self IntoIter) :=
-  core.iter.traits.iterator.Iterator.zip.default IntoIterInst.into_iter
+  Self → U → Result S.Out := fun self other => do
+  let z ← core.iter.traits.iterator.Iterator.zip.default IntoIterInst.into_iter self other
+  ok (S.ofZip z)
 
 /-- `Iterator::rev` default body: `Rev { iter: self }`. -/
 def core.iter.traits.iterator.Iterator.rev.default
@@ -722,6 +855,20 @@ def core.iter.traits.iterator.Iterator.rev.trait_default
   (_DEInst : core.iter.traits.double_ended.DoubleEndedIterator Self Item1) :
   Self → Result (core.iter.adapters.rev.Rev Self) :=
   core.iter.traits.iterator.Iterator.rev.default
+
+/-- `Iterator::take_while` default body: `TakeWhile { iter: self, flag: false, predicate }`. -/
+def core.iter.traits.iterator.Iterator.take_while.default
+  {Self P : Type} :
+  Self → P → Result (core.iter.adapters.take_while.TakeWhile Self P) :=
+  fun self predicate => ok ⟨self, false, predicate⟩
+
+@[trait_default, rust_fun "core::iter::traits::iterator::Iterator::take_while"]
+def core.iter.traits.iterator.Iterator.take_while.trait_default
+  {Self P Item : Type}
+  (_IteratorInst : core.iter.traits.iterator.Iterator Self Item)
+  (_PredInst : core.ops.function.FnMut P Item Bool) :
+  Self → P → Result (core.iter.adapters.take_while.TakeWhile Self P) :=
+  core.iter.traits.iterator.Iterator.take_while.default
 
 /-! ## `@[step]` specs for the default-method constructors -/
 
@@ -785,6 +932,25 @@ theorem core.iter.traits.iterator.Iterator.rev.default.spec
   simp [WP.spec_ok]
 
 @[step]
+theorem core.iter.traits.iterator.Iterator.take_while.default.spec
+    {Self P : Type} (self : Self) (predicate : P) :
+    core.iter.traits.iterator.Iterator.take_while.default self predicate
+    ⦃ t => t.iter = self ∧ t.flag = false ∧ t.predicate = predicate ⦄ := by
+  unfold core.iter.traits.iterator.Iterator.take_while.default
+  simp [WP.spec_ok]
+
+@[step]
+theorem core.iter.traits.iterator.Iterator.take_while.trait_default.spec
+    {Self P Item : Type}
+    (inst : core.iter.traits.iterator.Iterator Self Item)
+    (predInst : core.ops.function.FnMut P Item Bool)
+    (self : Self) (predicate : P) :
+    core.iter.traits.iterator.Iterator.take_while.trait_default inst predInst self predicate
+    ⦃ t => t.iter = self ∧ t.flag = false ∧ t.predicate = predicate ⦄ := by
+  unfold core.iter.traits.iterator.Iterator.take_while.trait_default
+  exact core.iter.traits.iterator.Iterator.take_while.default.spec self predicate
+
+@[step]
 theorem core.iter.traits.iterator.Iterator.rev.trait_default.spec
     {Self Item0 Item1 : Type}
     (inst : core.iter.traits.iterator.Iterator Self Item0)
@@ -817,8 +983,30 @@ theorem core.iter.traits.iterator.Iterator.zip.trait_default.spec
     core.iter.traits.iterator.Iterator.zip.trait_default inst IntoIterInst self other
     ⦃ z => ∃ other', IntoIterInst.into_iter other = ok other' ∧ z.fst = self ∧ z.snd = other' ⦄ := by
   unfold core.iter.traits.iterator.Iterator.zip.trait_default
-  exact core.iter.traits.iterator.Iterator.zip.default.spec
-    IntoIterInst.into_iter self other h_into
+    core.iter.traits.iterator.Iterator.zip.default
+  obtain ⟨ other', h_into ⟩ := h_into
+  simp [h_into, WP.spec_ok, ZipShape.ofZip]
+
+/-- `Iterator::next` on `TakeWhile<I, P>`: yields until the predicate first fails,
+    then latches `flag` and yields nothing further. -/
+@[rust_fun
+  "core::iter::adapters::take_while::{core::iter::traits::iterator::Iterator<core::iter::adapters::take_while::TakeWhile<@I, @P>, @Clause0_Item>}::next"]
+def core.iter.adapters.take_while.TakeWhile.Insts.CoreIterTraitsIteratorIterator.next
+  {I P Item : Type}
+  (IterInst : core.iter.traits.iterator.Iterator I Item)
+  (PredInst : core.ops.function.FnMut P Item Bool) :
+  core.iter.adapters.take_while.TakeWhile I P →
+    Result ((Option Item) × core.iter.adapters.take_while.TakeWhile I P) :=
+  fun self =>
+    if self.flag then ok (none, self)
+    else do
+      let (o, it) ← IterInst.next self.iter
+      match o with
+      | none => ok (none, ⟨it, self.flag, self.predicate⟩)
+      | some x => do
+        let (b, p) ← PredInst.call_mut self.predicate x
+        if b then ok (some x, ⟨it, false, p⟩)
+        else ok (none, ⟨it, true, p⟩)
 
 /-- `Iterator::next` on `Rev<I>`: delegates to the inner `next_back`. -/
 @[rust_fun
@@ -890,3 +1078,24 @@ def core.ops.range.RangeInclusive.Insts.CoreIterTraitsDoubleEndedIterator.next_b
 structure core.iter.adapters.map.Map (I : Type u) (F : Type v) where
   iter : I
   f : F
+
+instance {I F : Type} [GivesBack F] : GivesBack (core.iter.adapters.map.Map I F) := ⟨⟩
+
+/-- The output of `map(it, f)`: the `Map`, and the closure's give back from its final state. -/
+class MapShape (Self F : Type) where
+  Out : Type
+  ofMap : core.iter.adapters.map.Map Self F → Out
+
+instance (priority := low) {Self F : Type} : MapShape Self F := ⟨_, id⟩
+
+instance {Self F : Type} [GivesBack F] : MapShape Self F :=
+  ⟨core.iter.adapters.map.Map Self F × (core.iter.adapters.map.Map Self F → F),
+    fun m => (m, (·.f))⟩
+
+/-- The output of `fold(it, init, f)`: the result, and the closure in its final state. -/
+class FoldShape (B F : Type) (Out : outParam Type) where
+  ofFold : B → F → Out
+
+instance (priority := low) {B F : Type} : FoldShape B F B := ⟨fun b _ => b⟩
+
+instance {B F : Type} [GivesBack F] : FoldShape B F (B × F) := ⟨Prod.mk⟩

@@ -14,4 +14,9 @@ structure core.hash.Hasher (Self : Type) where
 structure core.hash.Hash (Self : Type) where
   hash : forall {H : Type}, core.hash.Hasher H → Self → H → Result H
 
+@[rust_trait "core::hash::BuildHasher" (parentClauses := ["HasherInst"])]
+structure core.hash.BuildHasher (Self : Type) (Self_Hasher : Type) where
+  HasherInst : core.hash.Hasher Self_Hasher
+  build_hasher : Self → Result Self_Hasher
+
 end Aeneas.Std

@@ -21,11 +21,21 @@ opaque core.str.iter.IteratorChars.collect
   core.iter.traits.collect.FromIterator B Char) :
   core.str.iter.Chars → Result B
 
+/-- `(len.div_ceil(4), Some(len))` for the `len` bytes left (`str/iter.rs`) -/
+@[expose, rust_fun
+  "core::str::iter::{core::iter::traits::iterator::Iterator<core::str::iter::Chars<'a>, char>}::size_hint"]
+def core.str.iter.IteratorChars.size_hint (it : core.str.iter.Chars) :
+  Result (Usize × Option Usize) := do
+  let len ← UScalar.tryMk .Usize (it.iter.slice.val.length - it.iter.i)
+  let lo ← UScalar.tryMk .Usize ((len.val + 3) / 4)
+  .ok (lo, some len)
+
 @[expose, reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<core::str::iter::Chars<'a>, char>"]
 def core.iter.traits.iterator.IteratorChars :
   core.iter.traits.iterator.Iterator core.str.iter.Chars Char := {
   next := core.str.iter.IteratorChars.next
+  size_hint := core.str.iter.IteratorChars.size_hint
 }
 
 @[expose, rust_fun "core::str::{str}::chars"]

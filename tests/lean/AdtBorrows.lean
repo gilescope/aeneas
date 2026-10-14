@@ -94,6 +94,8 @@ def use_shared_wrapper2 : Result Unit := do
 @[reducible]
 def MutWrapper (T : Type) := T
 
+instance {T : Type} : Aeneas.Std.GivesBack (MutWrapper T) := ⟨⟩
+
 /-- [adt_borrows::{adt_borrows::MutWrapper<'a, T>}::create]:
     Source: 'tests/src/adt-borrows.rs', lines 74:4-76:5 -/
 def MutWrapper.create
@@ -139,6 +141,8 @@ def use_mut_wrapper_id
     Source: 'tests/src/adt-borrows.rs', lines 99:0-101:1 -/
 structure MutWrapper1 (T : Type) where
   x : T
+
+instance {T : Type} : Aeneas.Std.GivesBack (MutWrapper1 T) := ⟨⟩
 
 /-- [adt_borrows::{adt_borrows::MutWrapper1<'a, T>}::create]:
     Source: 'tests/src/adt-borrows.rs', lines 104:4-106:5 -/
@@ -340,6 +344,8 @@ def SharedList.pop
 inductive MutList (T : Type) where
 | Nil : MutList T
 | Cons : T → MutList T → MutList T
+
+instance {T : Type} : Aeneas.Std.GivesBack (MutList T) := ⟨⟩
 
 /-- [adt_borrows::{adt_borrows::MutList<'a, T>}::push]:
     Source: 'tests/src/adt-borrows.rs', lines 234:4-236:5

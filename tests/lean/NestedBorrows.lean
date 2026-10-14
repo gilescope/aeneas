@@ -78,6 +78,8 @@ def incr_inner (x : Std.U32) : Result (Std.U32 × (Std.U32 → Std.U32)) := do
 structure IterMut (T : Type) where
   v : Option T
 
+instance {T : Type} : Aeneas.Std.GivesBack (IterMut T) := ⟨⟩
+
 /-- [nested_borrows::replace_option_mut]:
     Source: 'tests/src/nested-borrows.rs', lines 56:0-61:1 -/
 def replace_option_mut
@@ -194,6 +196,8 @@ inductive List (T : Type) where
     Source: 'tests/src/nested-borrows.rs', lines 100:0-102:1 -/
 structure ListIterMut (T : Type) where
   current : Option (List T)
+
+instance {T : Type} : Aeneas.Std.GivesBack (ListIterMut T) := ⟨⟩
 
 /-- [nested_borrows::{nested_borrows::List<T>}::iter_mut]:
     Source: 'tests/src/nested-borrows.rs', lines 105:4-109:5
@@ -381,6 +385,8 @@ def BitReader.peek
     Visibility: public -/
 structure MutBorrow where
   p : Std.U32
+
+instance : Aeneas.Std.GivesBack MutBorrow := ⟨⟩
 
 /-- [nested_borrows::{nested_borrows::MutBorrow<'a>}::store]:
     Source: 'tests/src/nested-borrows.rs', lines 169:4-171:5

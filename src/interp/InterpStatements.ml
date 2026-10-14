@@ -741,7 +741,6 @@ and eval_statement_raw (config : config) (st : statement) : stl_cm_fun =
                  reserved borrow, we later can't translate it to pure values...) *)
               let cc =
                 match rvalue with
-                | Len _ -> [%craise] st.span "Len is not handled yet"
                 | Repeat _ ->
                     [%craise] st.span
                       "Repeat should have been removed in a micropass"
@@ -758,6 +757,7 @@ and eval_statement_raw (config : config) (st : statement) : stl_cm_fun =
                 | UnaryOp _
                 | BinaryOp _
                 | Discriminant _
+                | Len _
                 | Aggregate _
                 | RawPtr _ ->
                     let p = S.mk_mplace st.span p ctx in
@@ -1396,7 +1396,14 @@ and eval_function_call_symbolic_from_inst_sig (config : config)
   (* Generate a fresh symbolic value for the return value *)
   let ret_sv_ty = inst_sg.output in
   let ret_spc = mk_fresh_symbolic_value span ctx ret_sv_ty in
-  let ret_value = mk_tvalue_from_symbolic_value ret_spc in
+  (* Values have erased types: [mk_tvalue_from_symbolic_value] keeps ['static]
+     (e.g. [fn name() -> &'static str]), which the symbolic value needs *)
+  let ret_value =
+    {
+      (mk_tvalue_from_symbolic_value ret_spc) with
+      ty = Contexts.erase_regions ret_sv_ty;
+    }
+  in
   let args_places =
     List.map (fun p -> S.mk_opt_place_from_op span p ctx) args
   in
@@ -1416,10 +1423,20 @@ and eval_function_call_symbolic_from_inst_sig (config : config)
   let abs_ids = List.map (fun rg -> rg.id) inst_sg.abs_regions_hierarchy in
   let args_with_rtypes = List.combine args inst_sg.inputs in
 
-  (* Check the type of the input arguments *)
+  (* Check the type of the input arguments, modulo all regions: including those a
+     function item binds itself, e.g. [for<'a, 'b> Ord::cmp<'a, 'b>] passed to
+     [max_by], which a body gives as erased (and we as ['static]). *)
+  let erase_all_regions =
+    (object
+       inherit [_] map_ty
+       method! visit_region _ _ = RErased
+    end)
+      #visit_ty
+      ()
+  in
   List.iteri
     (fun i ((arg, rty) : tvalue * rty) ->
-      if not (Subst.erase_regions arg.ty = Subst.erase_regions rty) then (
+      if not (erase_all_regions arg.ty = erase_all_regions rty) then (
         [%ltrace
           "Argument " ^ string_of_int i
           ^ " doesn't have the proper type:\n- arg: " ^ tvalue_to_string ctx arg

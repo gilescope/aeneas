@@ -169,6 +169,51 @@ let reborrow_ashared_loans (span : Meta.span) (loop_id : LoopId.id option)
       }
     in
     fresh_absl := fresh_abs :: !fresh_absl;
+    (* Nested (shared) borrows: if the shared value is a symbolic value whose
+       type has regions (the [&'b T] of a [&'a &'b T]), the borrows it contains
+       are loaned by the abstraction of those regions, as for an input (where the
+       abstraction of ['b] holds an ignored shared loan projecting the value).
+       The fresh value needs the same: a child abstraction, on a fresh region,
+       with the loan projection over it. *)
+    (match nsv.value with
+    | VSymbolic nsv_s ->
+        let inner = RegionId.Set.remove nrid (ty_regions nsv_s.sv_ty) in
+        if not (RegionId.Set.is_empty inner) then begin
+          let crid = ctx.fresh_region_id () in
+          let proj_ty =
+            Substitute.ty_subst_rids span
+              (fun r -> if RegionId.Set.mem r inner then crid else r)
+              nsv_s.sv_ty
+          in
+          let av : tavalue =
+            {
+              value =
+                ASymbolic
+                  ( PNone,
+                    AProjLoans
+                      {
+                        proj = { sv_id = nsv_s.sv_id; proj_ty };
+                        consumed = [];
+                        borrows = [];
+                      } );
+              ty = proj_ty;
+            }
+          in
+          let child_abs =
+            {
+              abs_id = ctx.fresh_abs_id ();
+              kind;
+              can_end;
+              parents = AbsId.Set.singleton fresh_abs.abs_id;
+              ended_subabs = AbsLevelSet.empty;
+              regions = { owned = RegionId.Set.singleton crid };
+              avalues = [ av ];
+              cont;
+            }
+          in
+          fresh_absl := child_abs :: !fresh_absl
+        end
+    | _ -> ());
     (nlid, nsid)
   in
 
@@ -849,7 +894,11 @@ let join_ctxs (span : Meta.span) (fresh_abs_kind : abs_kind)
 
       (* Concatenate the suffixes and append the abstractions introduced while
        joining the prefixes *)
-      let absl = List.map (fun abs -> EAbs abs) (List.rev !nabs) in
+      let absl =
+        List.map
+          (fun abs -> EAbs abs)
+          (abs_list_add_nested_parents (List.rev !nabs))
+      in
       List.concat [ env0; env1; absl ]
     in
 
@@ -969,12 +1018,70 @@ let join_ctxs_list (config : config) (span : Meta.span)
         in
         join_one_aux ctx
   in
+  (* Refresh, in the context [ctx1] we are about to join in, the regions which
+     are dead (ended) in [ctx1] but still live in the joined context [ctx0]
+     (i.e. owned by a live region abstraction there).
+
+     The two contexts may use the *same* region id for *different* purposes.
+     This typically happens in loop fixed points: a loop-carried value can be
+     overwritten in the loop body, so that a given region id designates a live,
+     loop-carried borrow in the entry context [ctx0] but a dead, overwritten
+     borrow (already ended by [simplify_dummy_values_useless_abs]) in the
+     "continue" context [ctx1]. If we joined the two contexts as is, the union
+     of the ended regions would mark that region as ended even though [ctx0]
+     still owns it through a live abstraction - breaking the invariant "a region
+     owned by a live abstraction is never ended" and later making the join
+     incorrectly treat symbolic values mentioning that region as bottom (see
+     {!InterpUtils.bottom_in_value}).
+
+     We fix this at the source by giving those dead regions of [ctx1] fresh
+     region ids, so that they no longer collide with the live regions of [ctx0].
+     After this refresh, the two contexts agree on the meaning of every region
+     id and the join can proceed normally. *)
+  let refresh_dead_regions_colliding_with_live (ctx0 : eval_ctx)
+      (ctx1 : eval_ctx) : eval_ctx =
+    (* Regions owned by a live abstraction in [ctx0] *)
+    let ctx0_live_regions =
+      List.fold_left
+        (fun acc (ee : env_elem) ->
+          match ee with
+          | EAbs abs -> RegionId.Set.union acc abs.regions.owned
+          | _ -> acc)
+        RegionId.Set.empty ctx0.env
+    in
+    (* Regions dead in [ctx1] but live in [ctx0] *)
+    let colliding = RegionId.Set.inter ctx1.ended_regions ctx0_live_regions in
+    if RegionId.Set.is_empty colliding then ctx1
+    else begin
+      (* Map each colliding region to a fresh region id *)
+      let rmap =
+        RegionId.Set.fold
+          (fun rid acc -> RegionId.Map.add rid (ctx1.fresh_region_id ()) acc)
+          colliding RegionId.Map.empty
+      in
+      let r_subst rid =
+        match RegionId.Map.find_opt rid rmap with
+        | Some nrid -> nrid
+        | None -> rid
+      in
+      [%ltrace
+        "refresh_dead_regions_colliding_with_live: refreshing regions "
+        ^ RegionId.Set.to_string None colliding];
+      let env = Substitute.env_subst_rids r_subst ctx1.env in
+      let ended_regions = RegionId.Set.map r_subst ctx1.ended_regions in
+      { ctx1 with env; ended_regions }
+    end
+  in
   let join_one (ctx : eval_ctx) : eval_ctx =
     [%ltrace
       "join_one: initial ctx:\n" ^ eval_ctx_to_string ~span:(Some span) ctx];
 
     (* Simplify the dummy values *)
     let ctx = preprocess_ctx ctx in
+
+    (* Refresh the dead regions of [ctx] which collide with live regions of the
+       joined context, before joining *)
+    let ctx = refresh_dead_regions_colliding_with_live !joined_ctx ctx in
 
     (* Join the two contexts  *)
     let ctx1 = join_one_aux ctx in
@@ -1069,6 +1176,69 @@ let loop_join_origin_with_continue_ctxs (config : config) (span : Meta.span)
   [%sanity_check] span (List.length ctxl' = List.length ctxl + 1);
   ((List.hd ctxl', List.tl ctxl'), joined_ctx)
 
+(** Drop the loan projections over symbolic values which appear nowhere else in
+    the context (continuations included), in the abstractions which only hold
+    shared borrows.
+
+    With nested shared borrows, the abstraction of the inner region of an
+    iterator over [&[&T]] keeps a loan projection over each value of the
+    iterator ([⌊s <: Iter<'a, &'b T>⌋] in ['b]), which nothing ends once the
+    iterator is dead (the projection in the outer region ends with the [&mut]
+    borrow given to [next]). Such a projection lends nothing anyone can still
+    use, and gives nothing back (the abstraction holds no mutable borrow):
+    dropping it changes nothing but lets the contexts be joined. *)
+let drop_orphan_shared_loan_projs (ctx : eval_ctx) : eval_ctx =
+  let is_candidate (abs : abs) (av : tavalue) =
+    abs.can_end
+    && List.for_all
+         (fun (av : tavalue) ->
+           not (TypesUtils.ty_has_mut_borrows ctx.type_ctx.type_infos av.ty))
+         abs.avalues
+    &&
+    match av.value with
+    | ASymbolic (_, AProjLoans { consumed = []; borrows = []; _ }) -> true
+    | _ -> false
+  in
+  let without_candidates =
+    List.map
+      (fun (e : env_elem) ->
+        match e with
+        | EAbs abs ->
+            EAbs
+              {
+                abs with
+                avalues =
+                  List.filter (fun av -> not (is_candidate abs av)) abs.avalues;
+              }
+        | e -> e)
+      ctx.env
+  in
+  let sids =
+    (fst (compute_ctx_ids { ctx with env = without_candidates })).sids
+  in
+  let keep (abs : abs) (av : tavalue) =
+    match av.value with
+    | ASymbolic (_, AProjLoans { proj; _ }) when is_candidate abs av ->
+        let keep = SymbolicValueId.Set.mem proj.sv_id sids in
+        if not keep then
+          [%ltrace
+            "dropping the orphan loan projection over s@"
+            ^ SymbolicValueId.to_string proj.sv_id
+            ^ " in abs@" ^ AbsId.to_string abs.abs_id];
+        keep
+    | _ -> true
+  in
+  let env =
+    List.map
+      (fun (e : env_elem) ->
+        match e with
+        | EAbs abs ->
+            EAbs { abs with avalues = List.filter (keep abs) abs.avalues }
+        | e -> e)
+      ctx.env
+  in
+  { ctx with env }
+
 let loop_join_break_ctxs (config : config) (span : Meta.span)
     (loop_id : LoopId.id) (fixed_aids : AbsId.Set.t)
     (fixed_dids : DummyVarId.Set.t) (ctxl : eval_ctx list) : eval_ctx =
@@ -1088,6 +1258,7 @@ let loop_join_break_ctxs (config : config) (span : Meta.span)
 
     (* Destructure the abstractions introduced in the new context *)
     let ctx = destructure_new_abs span fixed_aids ctx in
+    let ctx = drop_orphan_shared_loan_projs ctx in
     [%ltrace
       "prepare_ctx: after destructure:\n"
       ^ eval_ctx_to_string ~span:(Some span) ctx];
@@ -1097,6 +1268,7 @@ let loop_join_break_ctxs (config : config) (span : Meta.span)
       reduce_ctx config span ~with_abs_conts:false (Loop loop_id) fixed_aids
         fixed_dids ctx
     in
+    let ctx = drop_orphan_shared_loan_projs ctx in
     [%ltrace
       "prepare_ctx: after reduce:\n" ^ eval_ctx_to_string ~span:(Some span) ctx];
     (* Sanity check *)
@@ -1308,7 +1480,10 @@ let destructure_shared_loans (span : Meta.span) (fixed_aids : AbsId.Set.t) :
                 (* Shouldn't find ended borrows in live abstractions *)
                 [%internal_error] span
             | AEndedIgnoredMutBorrow _ -> (bc, [])
-            | AProjSharedBorrow _ -> [%craise] span "Not implemented"
+            | AProjSharedBorrow _ ->
+                (* Projected shared reborrows (nested borrows below a shared
+                   borrow) are frozen: keep them as they are. *)
+                (bc, [])
           in
           (ABorrow bc, avl)
       | ASymbolic _ | AIgnored _ -> (av.value, [])
@@ -1404,6 +1579,7 @@ let match_ctx_with_target (config : config) (span : Meta.span)
     reduce_ctx config span ~with_abs_conts:true fresh_abs_kind fixed_aids
       fixed_dids tgt_ctx
   in
+  let tgt_ctx = drop_orphan_shared_loan_projs tgt_ctx in
   [%ltrace "- tgt_ctx after reduce_ctx:\n" ^ eval_ctx_to_string tgt_ctx];
 
   (* Join the source context with the target context *)

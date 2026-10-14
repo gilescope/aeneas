@@ -44,7 +44,7 @@ def test_chunks_exact_exact_fit : Result Unit := do
   let i5 ← Slice.index_usize c2 2#usize
   massert (i5 = 6#u32)
   let (o2, it3) ← core.slice.iter.IteratorChunksExact.next it2
-  let b := core.option.Option.is_none o2
+  let b : Bool := core.option.Option.is_none o2
   massert b
   let rem ← core.slice.iter.ChunksExact.getRemainder it3
   let i6 := Slice.len rem
@@ -78,7 +78,7 @@ def test_chunks_exact_with_remainder : Result Unit := do
   let i5 ← Slice.index_usize c2 2#usize
   massert (i5 = 6#u32)
   let (o2, it3) ← core.slice.iter.IteratorChunksExact.next it2
-  let b := core.option.Option.is_none o2
+  let b : Bool := core.option.Option.is_none o2
   massert b
   let rem ← core.slice.iter.ChunksExact.getRemainder it3
   let i6 := Slice.len rem
@@ -106,7 +106,7 @@ def test_chunks_exact_remainder_2 : Result Unit := do
   let i2 ← Slice.index_usize c 2#usize
   massert (i2 = 30#u32)
   let (o1, it2) ← core.slice.iter.IteratorChunksExact.next it1
-  let b := core.option.Option.is_none o1
+  let b : Bool := core.option.Option.is_none o1
   massert b
   let rem ← core.slice.iter.ChunksExact.getRemainder it2
   let i3 := Slice.len rem
@@ -139,7 +139,7 @@ def test_chunks_exact_size_1 : Result Unit := do
   let i2 ← Slice.index_usize c3 0#usize
   massert (i2 = 30#u32)
   let (o3, it4) ← core.slice.iter.IteratorChunksExact.next it3
-  let b := core.option.Option.is_none o3
+  let b : Bool := core.option.Option.is_none o3
   massert b
   let rem ← core.slice.iter.ChunksExact.getRemainder it4
   let i3 := Slice.len rem
@@ -155,7 +155,7 @@ def test_chunks_exact_empty : Result Unit := do
   let s ← lift (Array.to_slice (Std.Array.empty Std.U32))
   let it ← core.slice.Slice.chunks_exact s 3#usize
   let (o, it1) ← core.slice.iter.IteratorChunksExact.next it
-  let b := core.option.Option.is_none o
+  let b : Bool := core.option.Option.is_none o
   massert b
   let rem ← core.slice.iter.ChunksExact.getRemainder it1
   let i := Slice.len rem
@@ -171,7 +171,7 @@ def test_chunks_exact_chunk_larger_than_slice : Result Unit := do
   let s ← lift (Array.to_slice (Array.make 2#usize [ 1#u32, 2#u32 ]))
   let it ← core.slice.Slice.chunks_exact s 5#usize
   let (o, it1) ← core.slice.iter.IteratorChunksExact.next it
-  let b := core.option.Option.is_none o
+  let b : Bool := core.option.Option.is_none o
   massert b
   let rem ← core.slice.iter.ChunksExact.getRemainder it1
   let i := Slice.len rem
@@ -199,7 +199,7 @@ def test_chunks_exact_chunk_equals_slice : Result Unit := do
   let i2 ← Slice.index_usize c 2#usize
   massert (i2 = 3#u32)
   let (o1, it2) ← core.slice.iter.IteratorChunksExact.next it1
-  let b := core.option.Option.is_none o1
+  let b : Bool := core.option.Option.is_none o1
   massert b
   let rem ← core.slice.iter.ChunksExact.getRemainder it2
   let i3 := Slice.len rem
@@ -229,7 +229,7 @@ def test_chunks_exact_2_odd : Result Unit := do
   let i3 ← Slice.index_usize c2 1#usize
   massert (i3 = 4#u32)
   let (o2, it3) ← core.slice.iter.IteratorChunksExact.next it2
-  let b := core.option.Option.is_none o2
+  let b : Bool := core.option.Option.is_none o2
   massert b
   let rem ← core.slice.iter.ChunksExact.getRemainder it3
   let i4 := Slice.len rem
@@ -247,7 +247,7 @@ def test_chunks_exact_2_single_element : Result Unit := do
   let s ← lift (Array.to_slice (Array.make 1#usize [ 42#u32 ]))
   let it ← core.slice.Slice.chunks_exact s 2#usize
   let (o, it1) ← core.slice.iter.IteratorChunksExact.next it
-  let b := core.option.Option.is_none o
+  let b : Bool := core.option.Option.is_none o
   massert b
   let rem ← core.slice.iter.ChunksExact.getRemainder it1
   let i := Slice.len rem

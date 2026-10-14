@@ -5,6 +5,7 @@ public import Aeneas.Extract
 public import AeneasMeta.BvEnumToBitVec
 public import Aeneas.Data.Coinductive.ITree
 public import Aeneas.Data.Coinductive.Effect
+import all Init.Internal.Order.Basic
 public section
 
 namespace Aeneas
@@ -65,6 +66,9 @@ def RustEffect : Effect := {
 @[irreducible]
 def Result (α : Type u) : Type u := ITree RustEffect α
 unseal Result
+-- Lean 4.34 no longer unfolds `Result` when unifying implicit arguments (e.g. a `cases`
+-- motive over `Result α` against one over `ITree`); this file's proofs rely on it.
+set_option backward.isDefEq.respectTransparency false
 
 def Result.ok {α} (a : α) : Result α := .ret a
 
@@ -454,6 +458,31 @@ def loop {α : Type u} {β : Type v} (body : α → Result (ControlFlow α β)) 
   | ControlFlow.cont x => loop body x
   | ControlFlow.done x => ok x
 partial_fixpoint
+
+open Lean.Order in
+/-- `loop` is monotone in its body (by fixpoint induction: the least fixpoint is monotone in
+the functional), so a recursive function may reach itself through a loop's body, e.g. through
+a trait impl passed to a function with a loop (aeneas#1264) -/
+@[partial_fixpoint_monotone]
+theorem loop_mono {α β : Type u} {γ : Sort w} [PartialOrder γ]
+    (body : γ → α → Result (ControlFlow α β)) (h : monotone body) (x : α) :
+    monotone (fun g => loop (body g) x) := by
+  intro g1 g2 hg
+  revert x
+  refine loop.fixpoint_induct (body g1) (fun f => ∀ x, f x ⊑ loop (body g2) x) ?_ ?_
+  · apply admissible_pi_apply (P := fun x r => r ⊑ loop (body g2) x)
+    intro x
+    unfold admissible
+    intro c hc hle
+    exact csup_le hc hle
+  · intro f hf x
+    rw [loop]
+    apply PartialOrder.rel_trans (MonoBind.bind_mono_left (h _ _ hg x))
+    apply MonoBind.bind_mono_right
+    intro r
+    cases r with
+    | cont x' => exact hf x'
+    | done y => exact PartialOrder.rel_refl
 
 end
 

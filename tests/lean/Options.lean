@@ -95,7 +95,7 @@ def test_map_none : Result Unit := do
   let o ←
     core.option.Option.map
       test_map_none.closure.Insts.CoreOpsFunctionFnOnceTupleU32U32 none ()
-  let b := core.option.Option.is_none o
+  let b : Bool := core.option.Option.is_none o
   massert b
 
 /- Unit test for [options::test_map_none] -/
@@ -162,7 +162,7 @@ def test_is_some_and_true.closure.Insts.CoreOpsFunctionFnOnceTupleU32Bool :
     Source: 'tests/src/options.rs', lines 45:0-47:1
     Visibility: public -/
 def test_is_some_and_true : Result Unit := do
-  let b ←
+  let b : Bool ←
     core.option.Option.is_some_and
       test_is_some_and_true.closure.Insts.CoreOpsFunctionFnOnceTupleU32Bool
       (some 2#u32) ()
@@ -198,7 +198,7 @@ def test_is_some_and_false.closure.Insts.CoreOpsFunctionFnOnceTupleU32Bool :
     Source: 'tests/src/options.rs', lines 50:0-52:1
     Visibility: public -/
 def test_is_some_and_false : Result Unit := do
-  let b ←
+  let b : Bool ←
     core.option.Option.is_some_and
       test_is_some_and_false.closure.Insts.CoreOpsFunctionFnOnceTupleU32Bool
       (some 0#u32) ()
@@ -234,7 +234,7 @@ def test_is_some_and_none.closure.Insts.CoreOpsFunctionFnOnceTupleU32Bool :
     Source: 'tests/src/options.rs', lines 56:0-59:1
     Visibility: public -/
 def test_is_some_and_none : Result Unit := do
-  let b ←
+  let b : Bool ←
     core.option.Option.is_some_and
       test_is_some_and_none.closure.Insts.CoreOpsFunctionFnOnceTupleU32Bool
       none ()
@@ -303,7 +303,7 @@ def test_bool_then_false : Result Unit := do
   let o ←
     core.bool.Bool.then
       test_bool_then_false.closure.Insts.CoreOpsFunctionFnOnceTupleU32 false ()
-  let b := core.option.Option.is_none o
+  let b : Bool := core.option.Option.is_none o
   massert b
 
 /- Unit test for [options::test_bool_then_false] -/

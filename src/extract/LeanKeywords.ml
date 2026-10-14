@@ -123,6 +123,7 @@ let lean_keywords : string list =
     "initialize_simps_projections";
     "initialize_simps_projections?";
     "insert_to_additive_translation";
+    "insert_to_dual_translation";
     "instance";
     "instance_wanted";
     "irreducible_def";
@@ -138,7 +139,6 @@ let lean_keywords : string list =
     "let_impl_detail";
     "let_tmp";
     "library_note";
-    "library_note2";
     "local";
     "logNamedError";
     "logNamedErrorAt";

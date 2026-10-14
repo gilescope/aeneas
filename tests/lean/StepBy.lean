@@ -58,7 +58,7 @@ def test_step_by_1 : Result Unit := do
   let (o5, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it5
-  let b := core.option.Option.is_none o5
+  let b : Bool := core.option.Option.is_none o5
   massert b
 
 /- Unit test for [step_by::test_step_by_1] -/
@@ -93,7 +93,7 @@ def test_step_by_2 : Result Unit := do
   let (o3, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it3
-  let b := core.option.Option.is_none o3
+  let b : Bool := core.option.Option.is_none o3
   massert b
 
 /- Unit test for [step_by::test_step_by_2] -/
@@ -128,7 +128,7 @@ def test_step_by_3 : Result Unit := do
   let (o3, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it3
-  let b := core.option.Option.is_none o3
+  let b : Bool := core.option.Option.is_none o3
   massert b
 
 /- Unit test for [step_by::test_step_by_3] -/
@@ -151,7 +151,7 @@ def test_step_by_larger_than_len : Result Unit := do
   let (o1, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it1
-  let b := core.option.Option.is_none o1
+  let b : Bool := core.option.Option.is_none o1
   massert b
 
 /- Unit test for [step_by::test_step_by_larger_than_len] -/
@@ -169,7 +169,7 @@ def test_step_by_empty : Result Unit := do
   let (o, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it
-  let b := core.option.Option.is_none o
+  let b : Bool := core.option.Option.is_none o
   massert b
 
 /- Unit test for [step_by::test_step_by_empty] -/
@@ -192,7 +192,7 @@ def test_step_by_single : Result Unit := do
   let (o1, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it1
-  let b := core.option.Option.is_none o1
+  let b : Bool := core.option.Option.is_none o1
   massert b
 
 /- Unit test for [step_by::test_step_by_single] -/
@@ -215,7 +215,7 @@ def test_step_by_single_step_2 : Result Unit := do
   let (o1, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it1
-  let b := core.option.Option.is_none o1
+  let b : Bool := core.option.Option.is_none o1
   massert b
 
 /- Unit test for [step_by::test_step_by_single_step_2] -/
@@ -238,7 +238,7 @@ def test_step_by_eq_len : Result Unit := do
   let (o1, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it1
-  let b := core.option.Option.is_none o1
+  let b : Bool := core.option.Option.is_none o1
   massert b
 
 /- Unit test for [step_by::test_step_by_eq_len] -/
@@ -266,7 +266,7 @@ def test_step_by_len_minus_1 : Result Unit := do
   let (o2, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it2
-  let b := core.option.Option.is_none o2
+  let b : Bool := core.option.Option.is_none o2
   massert b
 
 /- Unit test for [step_by::test_step_by_len_minus_1] -/
@@ -289,7 +289,7 @@ def test_step_by_two_elements : Result Unit := do
   let (o1, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it1
-  let b := core.option.Option.is_none o1
+  let b : Bool := core.option.Option.is_none o1
   massert b
 
 /- Unit test for [step_by::test_step_by_two_elements] -/
@@ -327,7 +327,7 @@ def test_step_by_4_on_longer : Result Unit := do
   let (o3, _) ←
     core.iter.adapters.step_by.IteratorStepBy.next
       (core.iter.traits.iterator.IteratorSliceIter Std.U32) it3
-  let b := core.option.Option.is_none o3
+  let b : Bool := core.option.Option.is_none o3
   massert b
 
 /- Unit test for [step_by::test_step_by_4_on_longer] -/

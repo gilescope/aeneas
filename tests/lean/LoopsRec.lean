@@ -692,7 +692,7 @@ def issue500_1.bar (_a : Bool) : Result Bool := do
 @[rust_loop]
 def issue500_1_loop (a : Bool) : Result Bool := do
   if 0#i32 < 0#i32
-  then let a1 ← issue500_1.bar a
+  then let a1 : Bool ← issue500_1.bar a
        issue500_1_loop a1
   else ok a
 partial_fixpoint
@@ -826,7 +826,7 @@ def issue400_2_loop
   let i1 := Slice.len conds
   if i < i1
   then
-    let b ← Slice.index_usize conds i
+    let b : Bool ← Slice.index_usize conds i
     let (y1, z1, back1) ←
       if b
       then let (a, b1, c) := back y z

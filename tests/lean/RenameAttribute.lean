@@ -51,7 +51,7 @@ def BoolImpl : BoolTest Bool := {
     Source: 'tests/src/rename_attribute.rs', lines 30:0-32:1
     Visibility: public -/
 def BoolFn (T : Type) (x : Bool) : Result Bool := do
-  let b ← BoolImpl.getTest x
+  let b : Bool ← BoolImpl.getTest x
   if b
   then BoolTrait.retTest.default x
   else ok false

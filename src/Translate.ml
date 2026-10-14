@@ -412,9 +412,20 @@ let translate_crate_to_pure (crate : crate) (marked_ids : marked_ids) :
           TraitDeclId.Map.find trait_decl.def_id
             trans_ctx.trait_methods_to_extract
         in
-        List.map
+        (* As for functions above: a method whose signature cannot be translated
+           (e.g. it has an associated-type equality bound, like
+           [Iterator::try_for_each]'s [R: Try<Output = ()>]) is reported and
+           skipped, rather than aborting the whole translation. *)
+        List.filter_map
           (fun (method_id, bound_method) ->
-            translate_method_sig trait_decl method_id bound_method)
+            try Some (translate_method_sig trait_decl method_id bound_method)
+            with CFailure error ->
+              [%warn_opt_span] error.span
+                ("Could not translate the signature of method '"
+                ^ name_to_string trans_ctx trait_decl.item_meta.name
+                ^ "::" ^ bound_method.binder_value.name
+                ^ "' because of previous error");
+              None)
           (TraitMethodId.Map.to_list methods)
       in
       let entries =
@@ -1108,6 +1119,27 @@ let export_trait_impl (fmt : Format.formatter) (_config : gen_config)
     Extract.extract_trait_impl ctx fmt ~is_rec trait_impl;
     EmitJson.record_trait_impl_if_enabled ctx trait_impl)
 
+(** Whether the bodies of [f] (with its loops) refer to the trait impl [id] *)
+let fun_mentions_trait_impl (f : pure_fun_translation) (id : TraitImplId.id) :
+    bool =
+  let found = ref false in
+  let visitor =
+    object
+      inherit [_] Pure.iter_expr as super
+
+      method! visit_TraitImpl env id' generics =
+        if TraitImplId.compare_id id id' = 0 then found := true
+        else super#visit_TraitImpl env id' generics
+    end
+  in
+  List.iter
+    (fun (d : Pure.fun_decl) ->
+      Option.iter
+        (fun (body : Pure.fun_body) -> visitor#visit_texpr () body.body)
+        d.body)
+    (f.loops @ f.bodies @ [ f.f ]);
+  !found
+
 (** A generic utility to generate the extracted definitions: as we may want to
     split the definitions between different files (or not), we can control what
     is precisely extracted. *)
@@ -1184,13 +1216,23 @@ let extract_definitions (fmt : Format.formatter) (config : gen_config)
               () body.body)
           d.body)
       decls;
+    (* With their loops and loop bodies: the impl reaches the loop through
+       the callee's arguments *)
     let callees =
-      List.map
+      List.concat_map
         (fun fid ->
-          let d =
-            (Option.get (ExtractBase.ctx_lookup_fun_decl_info ctx fid)).f
+          let t = Option.get (ExtractBase.ctx_lookup_fun_decl_info ctx fid) in
+          let span = t.f.item_meta.span in
+          let name lp = ExtractBase.ctx_get_local_function span fid lp ctx in
+          let loops =
+            List.concat
+              (List.mapi
+                 (fun i _ ->
+                   let id = Pure.LoopId.of_int i in
+                   [ name (Some (id, false)); name (Some (id, true)) ])
+                 t.loops)
           in
-          ExtractBase.ctx_get_local_function d.item_meta.span fid None ctx)
+          name None :: loops)
         (FunDeclId.Set.elements !callees)
     in
     let ctx = { ctx with inline_trait_impls; mono_unfold = Some callees } in
@@ -1217,6 +1259,15 @@ let extract_definitions (fmt : Format.formatter) (config : gen_config)
             match pure_fun.f.Pure.src with
             (* Global initializers are translated along with the global definition *)
             | _ when pure_fun.f.is_global_decl_body -> ()
+            | TraitImplFun (impl_ref, _, _, _)
+              when Config.backend () = Lean
+                   && fun_mentions_trait_impl pure_fun impl_ref.id ->
+                (* A method recursing through its own impl, e.g. a derived
+                   [Debug] formatting a [Vec<Self>] as [dyn Debug]: Charon
+                   ignores the edges from a method to its parent impl, so we
+                   handle it as a group of functions recursing through trait
+                   impls (aeneas#1264) *)
+                export_fun_impl_group [ id ] [ impl_ref.id ]
             | _ ->
                 (* Translate *)
                 export_functions_group [ pure_fun ])
@@ -1337,8 +1388,12 @@ let extract_definitions (fmt : Format.formatter) (config : gen_config)
                recursive group in which the impls are inlined as structure
                literals, and the impls are defined after it. *)
             export_fun_impl_group fun_ids impl_ids;
+            (* A lone impl may refer to itself (e.g. [ne := ne.trait_default
+               <the impl>]): Lean's special elaboration handles that, as for the
+               singleton [TraitImplGroup (RecGroup _)] above *)
+            let is_rec = List.length impl_ids = 1 in
             if config.extract_trait_impls && config.extract_transparent then
-              List.iter (export_trait_impl ~is_rec:false) impl_ids
+              List.iter (export_trait_impl ~is_rec) impl_ids
         | _ ->
             [%craise_opt_span] None
               "Mixed-recursive declaration groups are not supported")

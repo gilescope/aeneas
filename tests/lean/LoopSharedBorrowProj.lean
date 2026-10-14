@@ -22,15 +22,6 @@ noncomputable section
 
 namespace loop_shared_borrow_proj
 
-/-- [alloc::vec::{impl core::iter::traits::collect::IntoIterator<&'a T, core::slice::iter::Iter<'a, T>> for &'a alloc::vec::Vec<T>}::into_iter]:
-    Source: '/rustc/library/alloc/src/vec/mod.rs', lines 4088:4-4088:40
-    Name pattern: [alloc::vec::{core::iter::traits::collect::IntoIterator<&'a alloc::vec::Vec<@T>, &'a @T, core::slice::iter::Iter<'a, @T>>}::into_iter]
-    Visibility: public -/
-@[rust_fun
-  "alloc::vec::{core::iter::traits::collect::IntoIterator<&'a alloc::vec::Vec<@T>, &'a @T, core::slice::iter::Iter<'a, @T>>}::into_iter"]
-axiom SharedAVec.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
-  {T : Type} (A : Type) : alloc.vec.Vec T → Result (core.slice.iter.Iter T)
-
 /-- [loop_shared_borrow_proj::Cap]
     Source: 'tests/src/loop-shared-borrow-proj.rs', lines 7:0-9:1
     Visibility: public -/
@@ -85,7 +76,7 @@ def carve (cap_ref : Cap) (x : Std.U32) : Result Bool := do
   let c ← Guard.get parent
   let iter ←
     SharedAVec.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
-      Global c.children
+      c.children
   carve_loop iter x
 
 end loop_shared_borrow_proj

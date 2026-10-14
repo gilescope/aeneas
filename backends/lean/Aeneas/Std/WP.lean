@@ -12,14 +12,17 @@ public import Aeneas.Data.Coinductive.ITreeWP
 import all Init.Internal.Order.Basic
 public section
 
+-- See `Primitives.lean`: these proofs unfold `Result` while unifying implicit arguments.
+set_option backward.isDefEq.respectTransparency false
+
 namespace Aeneas.Std.WP
 
 open Std Result
 open Aeneas.Data.Coinductive
 open Lean.Order
 
-@[expose] def Post α := (α -> Prop)
-@[expose] def Pre := Prop
+@[expose] abbrev Post α := (α -> Prop)
+@[expose] abbrev Pre := Prop
 
 @[expose] def Wp α := Post α → Pre
 

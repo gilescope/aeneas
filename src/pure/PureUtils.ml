@@ -290,11 +290,17 @@ class ['self] subst_visitor =
       | Bound _ -> TVar var
       | Free id -> subst.ty_subst id
 
+    (* Bound variables belong to an inner binder (e.g. a generic method's own
+       parameters, in an impl being instantiated): leave them *)
     method! visit_CgVar subst var =
-      subst.cg_subst (Substitute.expect_free_var None var)
+      match var with
+      | Bound _ -> CgVar var
+      | Free id -> subst.cg_subst id
 
     method! visit_Clause subst var =
-      subst.tr_subst (Substitute.expect_free_var None var)
+      match var with
+      | Bound _ -> Clause var
+      | Free id -> subst.tr_subst id
 
     method! visit_Self subst = subst.tr_self
   end
@@ -1747,16 +1753,29 @@ let adjust_explicit_info (explicit : explicit_info) (is_trait_method : bool)
     }
   else explicit
 
-let mk_visited_params_visitor () =
+(** [bound_only]: only the variables bound by the innermost binder, i.e. a trait
+    method's own parameters in its signature, where the trait's (free) ones
+    share their indices *)
+let mk_visited_params_visitor ?(bound_only : bool = false) () =
   let tys = ref Pure.TypeVarId.Set.empty in
   let cgs = ref Pure.ConstGenericVarId.Set.empty in
   let visitor =
     object
-      inherit [_] Pure.iter_type_decl
+      inherit [_] Pure.iter_type_decl as super
       method! visit_type_var_id _ id = tys := Pure.TypeVarId.Set.add id !tys
 
       method! visit_const_generic_var_id _ id =
         cgs := Pure.ConstGenericVarId.Set.add id !cgs
+
+      method! visit_TVar env var =
+        match var with
+        | Free _ when bound_only -> ()
+        | _ -> super#visit_TVar env var
+
+      method! visit_CgVar env var =
+        match var with
+        | Free _ when bound_only -> ()
+        | _ -> super#visit_CgVar env var
     end
   in
   (visitor, tys, cgs)
@@ -1783,9 +1802,11 @@ let mk_visited_params_visitor () =
     For now, we only filter trait clauses of the shape [A : Allocator], while
     filtering the corresponding argument at the same time, so this should not be
     a problem, but it may be in the future. *)
-let compute_explicit_info (generics : Pure.generic_params) (input_tys : ty list)
-    : explicit_info =
-  let visitor, implicit_tys, implicit_cgs = mk_visited_params_visitor () in
+let compute_explicit_info ?(bound_only : bool = false)
+    (generics : Pure.generic_params) (input_tys : ty list) : explicit_info =
+  let visitor, implicit_tys, implicit_cgs =
+    mk_visited_params_visitor ~bound_only ()
+  in
   List.iter (visitor#visit_trait_param ()) generics.trait_clauses;
   List.iter (visitor#visit_ty ()) input_tys;
   let make_explicit_ty (v : type_param) : Pure.explicit =
@@ -1808,9 +1829,11 @@ let explicit_info_has_explicit (info : explicit_info) : bool =
     the trait refs are provided.
 
     This is similar to [compute_explicit_info]. *)
-let compute_known_info (explicit : explicit_info)
+let compute_known_info ?(bound_only : bool = false) (explicit : explicit_info)
     (generics : Pure.generic_params) : known_info =
-  let visitor, known_tys, known_cgs = mk_visited_params_visitor () in
+  let visitor, known_tys, known_cgs =
+    mk_visited_params_visitor ~bound_only ()
+  in
   List.iter (visitor#visit_trait_param ()) generics.trait_clauses;
   let make_known_ty ((e, v) : explicit * type_param) : Pure.known =
     if e = Explicit || Pure.TypeVarId.Set.mem v.index !known_tys then Known
@@ -2444,6 +2467,14 @@ let filter_generic_params_used_in_texpr (generic : generic_params) (e : texpr) :
     end
   in
   visitor#visit_texpr () e;
+  (* A trait clause we keep must keep the parameters it mentions too: a loop
+     calling [next] through an [IntoIterator I Item IntoIter] clause uses [I] only
+     there, and dropping [I] left the clause dangling. *)
+  List.iter
+    (fun (clause : trait_param) ->
+      if TraitClauseId.Set.mem clause.clause_id !clause_ids then
+        visitor#visit_trait_param () clause)
+    generic.trait_clauses;
 
   (* Filter *)
   let { types; const_generics; trait_clauses } : generic_params = generic in

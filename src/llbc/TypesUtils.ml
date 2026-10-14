@@ -371,6 +371,10 @@ let raise_if_not_rty_visitor =
       (* Ignore dyn traits by default *)
       if Config.type_analysis_ignore_dyn then ()
       else super#visit_TDynTrait env tr
+
+    (* A function item holds no borrows: the regions of its signature, including
+       those it binds itself ([for<'a, 'b> Ord::cmp<'a, 'b>]), do not matter. *)
+    method! visit_TFnDef _ _ = ()
   end
 
 (** Return [true] if the type is a region type (i.e., it doesn't contain erased
@@ -419,6 +423,18 @@ let ty_erase_regions ty =
     object
       inherit [_] map_ty
       method! visit_region _ _ = RErased
+    end
+  in
+  visitor#visit_ty () ty
+
+(** Erase every region inside function-item types. A function item holds no
+    borrows, and the type normalizer leaves ['static] in some of its generics
+    and erased regions in others, so comparisons ignore them. *)
+let ty_erase_fn_def_regions ty =
+  let visitor =
+    object
+      inherit [_] map_ty
+      method! visit_TFnDef _ f = ty_erase_regions (TFnDef f)
     end
   in
   visitor#visit_ty () ty
@@ -529,3 +545,44 @@ let check_non_normalizable_trait_ref_kind (trait_id : trait_ref_kind) : bool =
   match trait_id with
   | BuiltinOrAuto _ -> true
   | _ -> false
+
+(** For each free region of [ty], the free regions it is nested in: ['a] for
+    ['b] in [&'a &'b T] or [Iter<'a, &'b T>] (['b] outlives ['a]). With nested
+    borrows, the region abstraction of ['b] has the one of ['a] as parent. *)
+let ty_enclosing_regions (ty : ty) : RegionId.Set.t RegionId.Map.t =
+  let acc = ref RegionId.Map.empty in
+  let rid_of (r : region) =
+    match r with
+    | RVar (Free rid) -> [ rid ]
+    | _ -> []
+  in
+  let add (outer : RegionId.Set.t) (r : region) =
+    List.iter
+      (fun rid ->
+        acc :=
+          RegionId.Map.update rid
+            (fun s ->
+              Some
+                (RegionId.Set.union outer
+                   (Option.value ~default:RegionId.Set.empty s)))
+            !acc)
+      (rid_of r)
+  in
+  let rec go (outer : RegionId.Set.t) (ty : ty) =
+    match ty with
+    | TRef (r, ty, _) ->
+        add outer r;
+        go (RegionId.Set.union outer (RegionId.Set.of_list (rid_of r))) ty
+    | TAdt tref ->
+        List.iter (add outer) tref.generics.regions;
+        let outer =
+          RegionId.Set.union outer
+            (RegionId.Set.of_list
+               (List.concat_map rid_of tref.generics.regions))
+        in
+        List.iter (go outer) tref.generics.types
+    | TArray (ty, _, _) | TSlice (ty, _) -> go outer ty
+    | _ -> ()
+  in
+  go RegionId.Set.empty ty;
+  !acc

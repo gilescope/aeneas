@@ -626,13 +626,15 @@ def do_match_cross_arm_used (t : Two) : Result Nat := do
 
 /-- warning: Variable name `n` is not explicitly referenced.
 
-The binding can be removed (if unused) or named `_` (if used implicitly).
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _n
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
 ---
 warning: Variable name `n` is not explicitly referenced.
 
-The binding can be removed (if unused) or named `_` (if used implicitly).
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _n
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false` -/
 #guard_msgs in
@@ -648,7 +650,8 @@ def do_let_arrow_id_used : Result Nat := do
 
 /-- warning: Variable name `x` is not explicitly referenced.
 
-The binding can be removed (if unused) or named `_` (if used implicitly).
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _x
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false` -/
 #guard_msgs in
@@ -669,25 +672,29 @@ def do_let_arrow_pat_used : Result Nat := do
 /--
 warning: Variable name `a` is not explicitly referenced.
 
-The binding can be removed (if unused) or named `_` (if used implicitly).
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _a
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
 ---
 warning: Variable name `b` is not explicitly referenced.
 
-The binding can be removed (if unused) or named `_` (if used implicitly).
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _b
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
 ---
 warning: Variable name `c` is not explicitly referenced.
 
-The binding can be removed (if unused) or named `_` (if used implicitly).
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _c
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
 ---
 warning: Variable name `d` is not explicitly referenced.
 
-The binding can be removed (if unused) or named `_` (if used implicitly).
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _d
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
 -/
@@ -700,25 +707,29 @@ def do_let_arrow_pat_unused : Result Nat := do
 /--
 warning: Variable name `a` is not explicitly referenced.
 
-The binding can be removed (if unused) or named `_` (if used implicitly).
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _a
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
 ---
 warning: Variable name `b` is not explicitly referenced.
 
-The binding can be removed (if unused) or named `_` (if used implicitly).
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _b
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
 ---
 warning: Variable name `c` is not explicitly referenced.
 
-The binding can be removed (if unused) or named `_` (if used implicitly).
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _c
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
 ---
 warning: Variable name `d` is not explicitly referenced.
 
-The binding can be removed (if unused) or named `_` (if used implicitly).
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _d
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
 -/
@@ -730,6 +741,40 @@ def do_let_pat_unused : Result Nat := do
 def unit_bind : Result Nat := do
   let () ← ok ()
   ok 1
+
+/-- `let (a, b) := match …`: the `match` is postponed until its type is known, which only the
+destructuring needs (Aeneas emits this for an `Option`'s give back). -/
+def let_pat_match_test (o : Option Nat × Nat) (d : Nat) : Result Nat := do
+  let (a, b) :=
+    match o with
+    | (some t, n) => (t, n)
+    | _ => (d, d)
+  ok (a + b)
+
+example : let_pat_match_test (some 1, 2) 5 = ok 3 := rfl
+example : let_pat_match_test (none, 2) 5 = ok 10 := rfl
+
+/-- A shape class whose output a default instance fills in when the call site leaves it open
+(Aeneas's give-back shapes: one function, a plain output where the type is known, a pair with
+a backward function at a call site that destructures it). -/
+class ArrowShape (Out : Type) where
+  run : Nat → Result Out
+
+instance : ArrowShape Nat := ⟨fun n => ok n⟩
+
+@[default_instance]
+instance : ArrowShape (Nat × Nat) := ⟨fun n => ok (n, n + 1)⟩
+
+def arrowShape {Out : Type} [S : ArrowShape Out] (n : Nat) : Result Out := S.run n
+
+/-- `let (a, b) ← f x` where `f`'s output type is a default instance's: forced before the
+pattern needs it. -/
+def let_arrow_pat_default_test (n : Nat) : Result Nat := do
+  let (a, b) ← arrowShape n
+  ok (a + b)
+
+example : let_arrow_pat_default_test 2 = ok 5 := by
+  simp [let_arrow_pat_default_test, arrowShape, ArrowShape.run]
 
 end Tests
 
@@ -981,5 +1026,25 @@ example (b : Bool) (m : Result Nat) :
         | .Err f => f 0) := rfl
 
 end CrossUniverseTests
+
+/-! Implicit constructor parameters that the discriminant's type instantiates with the same
+local (`X` twice): the holes Lean elaborates for them are not pattern binders. -/
+namespace RepeatedImplicitTests
+
+open Aeneas Aeneas.Std Result
+
+structure Cls (A B C : Type) where
+  x : Unit
+
+inductive Ind {A B C : Type} (inst : Cls A B C) where
+  | mk : A → B → Ind inst
+  | two : C → Nat → Ind inst
+
+def clone {X Y : Type} (inst : Cls X X Y) (t : Ind inst) : Result (Ind inst) := do
+  match t with
+  | Ind.mk a b => ok (Ind.mk a b)
+  | Ind.two c n => ok (Ind.two c n)
+
+end RepeatedImplicitTests
 
 end Do

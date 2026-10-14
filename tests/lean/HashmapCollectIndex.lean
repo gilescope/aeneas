@@ -1,0 +1,2 @@
+import HashmapCollectIndex.Funs
+import HashmapCollectIndex.Properties

@@ -46,6 +46,49 @@ let rec decompose_shared_value span pm (rid : RegionId.id) (v : tvalue) :
         "Nested borrows are not supported yet";
       ([], v)
 
+(** With nested (shared) borrows, the abstraction of a region nested in another
+    one in the types of its values (['b] in [Iter<'a, &'b T>], which outlives
+    ['a]) has the abstraction of the outer region as parent, as for the
+    abstractions introduced by function calls: ending it ends the outer one
+    first. Add those parents among the abstractions of [absl], which were just
+    introduced. *)
+let abs_list_add_nested_parents (absl : abs list) : abs list =
+  let owner =
+    List.concat_map
+      (fun (abs : abs) ->
+        List.map
+          (fun rid -> (rid, abs.abs_id))
+          (RegionId.Set.elements abs.regions.owned))
+      absl
+  in
+  List.map
+    (fun (abs : abs) ->
+      let outer =
+        List.fold_left
+          (fun acc (av : tavalue) ->
+            let enclosing = ty_enclosing_regions av.ty in
+            RegionId.Set.fold
+              (fun rid acc ->
+                match RegionId.Map.find_opt rid enclosing with
+                | Some s -> RegionId.Set.union s acc
+                | None -> acc)
+              abs.regions.owned acc)
+          RegionId.Set.empty abs.avalues
+      in
+      let outer = RegionId.Set.diff outer abs.regions.owned in
+      let parents =
+        List.filter_map
+          (fun (rid, aid) ->
+            if RegionId.Set.mem rid outer && aid <> abs.abs_id then Some aid
+            else None)
+          owner
+      in
+      {
+        abs with
+        parents = AbsId.Set.union abs.parents (AbsId.Set.of_list parents);
+      })
+    absl
+
 let convert_value_to_abstractions (span : Meta.span) (abs_kind : abs_kind)
     ~(can_end : bool) (ctx : eval_ctx) (v : tvalue) : abs list =
   [%ltrace tvalue_to_string ctx v];
@@ -147,12 +190,17 @@ let convert_value_to_abstractions (span : Meta.span) (abs_kind : abs_kind)
     | VAdt { variant_id = _; fields } -> List.iter to_abs fields
     | VBorrow bc -> (
         let _, ref_ty, kind = ty_as_ref v.ty in
-        [%cassert] span (ty_no_regions ref_ty)
-          "Nested borrows are not supported yet";
         match bc with
         | VSharedBorrow (bid, sid) ->
-            (* Push a region abstraction for this borrow *)
+            (* The pointee type may contain (frozen) borrows: this is a nested
+               borrow below a shared borrow. As everything below a shared borrow
+               is frozen, we simply keep the shared borrow; we refresh the
+               regions of the pointee type to obtain a proper region type for the
+               avalue. *)
             let rid = ctx.fresh_region_id () in
+            let _, ref_ty =
+              ty_refresh_regions (Some span) ctx.fresh_region_id ref_ty
+            in
             let ty = TRef (RVar (Free rid), ref_ty, kind) in
             let value = ABorrow (ASharedBorrow (PNone, bid, sid)) in
             let value : tavalue = { value; ty } in
@@ -160,6 +208,8 @@ let convert_value_to_abstractions (span : Meta.span) (abs_kind : abs_kind)
             let ev_in = Some (mk_etuple ~borrow_proj:false []) in
             push_abs rid [ value ] ev_out ev_in
         | VMutBorrow (bid, bv) ->
+            [%cassert] span (ty_no_regions ref_ty)
+              "Nested borrows are not supported yet";
             (* We don't support nested borrows for now *)
             [%cassert] span
               (not (value_has_borrows (Some span) ctx bv.value))
@@ -229,7 +279,44 @@ let convert_value_to_abstractions (span : Meta.span) (abs_kind : abs_kind)
             let input = { value = EValue (ctx.env, v); ty } in
             (* *)
             push_abs rid [ nv ] (Some output) (Some input))
-          regions
+          regions;
+        (* With nested (shared) borrows, the abstraction of a region nested in
+           another one has the abstraction of the outer one as parent (see
+           [ty_enclosing_regions]) *)
+        let enclosing = ty_enclosing_regions ty in
+        let new_rids = RegionId.Set.of_list (RegionId.Map.values regions) in
+        let abs_of_rid =
+          List.filter_map
+            (fun (abs : abs) ->
+              match RegionId.Set.elements abs.regions.owned with
+              | [ rid ] when RegionId.Set.mem rid new_rids ->
+                  Some (rid, abs.abs_id)
+              | _ -> None)
+            !absl
+        in
+        absl :=
+          List.map
+            (fun (abs : abs) ->
+              match RegionId.Set.elements abs.regions.owned with
+              | [ rid ] when RegionId.Set.mem rid new_rids ->
+                  let outer =
+                    Option.value ~default:RegionId.Set.empty
+                      (RegionId.Map.find_opt rid enclosing)
+                  in
+                  let parents =
+                    List.filter_map
+                      (fun (r, aid) ->
+                        if r <> rid && RegionId.Set.mem r outer then Some aid
+                        else None)
+                      abs_of_rid
+                  in
+                  {
+                    abs with
+                    parents =
+                      AbsId.Set.union abs.parents (AbsId.Set.of_list parents);
+                  }
+              | _ -> abs)
+            !absl
   in
 
   (* Apply *)
@@ -610,7 +697,7 @@ type merge_duplicates_funcs = {
 
     We assume the value has been destructured (there are no nested loans, adts,
     the children are ignored, etc.). *)
-let tavalue_split_marker (span : Meta.span) (ctx : eval_ctx) (av : tavalue) :
+let tavalue_split_marker (span : Meta.span) (_ctx : eval_ctx) (av : tavalue) :
     tavalue list =
   let mk_split mk_value = [ mk_value PLeft; mk_value PRight ] in
   let mk_opt_split pm mk_value =
@@ -634,6 +721,11 @@ let tavalue_split_marker (span : Meta.span) (ctx : eval_ctx) (av : tavalue) :
             { av with value = ABorrow (ASharedBorrow (pm, bid, sid)) }
           in
           mk_opt_split pm mk_value
+      | AProjSharedBorrow _ ->
+          (* Projected shared reborrows (nested borrows below a shared borrow)
+             carry no projection marker and are frozen: keep them as a single
+             value rather than splitting them. *)
+          [ av ]
       | _ -> [%internal_error] span)
   | ALoan lc -> (
       match lc with
@@ -645,8 +737,8 @@ let tavalue_split_marker (span : Meta.span) (ctx : eval_ctx) (av : tavalue) :
           mk_opt_split pm mk_value
       | ASharedLoan (pm, bids, sv, child) ->
           [%sanity_check] span (is_aignored child.value);
-          [%sanity_check] span
-            (not (value_has_borrows (Some span) ctx sv.value));
+          (* Note that [sv] may contain (frozen) borrows: nested borrows below a
+             shared borrow. *)
           let mk_value pm =
             { av with value = ALoan (ASharedLoan (pm, bids, sv, child)) }
           in
@@ -826,10 +918,11 @@ let merge_abstractions_merge_loan_borrow_pairs (span : Meta.span)
           | AEndedIgnoredMutBorrow { child; given_back; given_back_meta = _ } ->
               add_avalue given_back;
               add_avalue child
-          | AIgnoredMutBorrow _
-          | AEndedMutBorrow _
-          | AEndedSharedBorrow
           | AProjSharedBorrow _ ->
+              (* Projected shared reborrows (nested borrows below a shared
+                 borrow) don't have a matching loan to eliminate: keep them. *)
+              push_right_avalue av
+          | AIgnoredMutBorrow _ | AEndedMutBorrow _ | AEndedSharedBorrow ->
               [%ltrace "Unexpected avalue: " ^ tavalue_to_string ctx av];
               [%craise] span "Unreachable"
         end
@@ -1957,6 +2050,57 @@ let merge_abs_conts_aux (span : Meta.span) (ctx : eval_ctx) (abs0 : abs)
     ^ "\n- bound_inputs_outputs:\n"
     ^ bound_inputs_outputs_to_string ctx !bound];
 
+  (* A loan of [abs0] whose borrow is an output of [abs1] disappears from the
+     merged abstraction together with that borrow, even when the continuation of
+     [abs0] does not read it (e.g. a loan projection over a region holding only
+     shared borrows, whose continuation gives nothing back). Consume such outputs
+     here: otherwise the composed continuation outputs a borrow which is no
+     longer in the abstraction, still carrying its marker. Dropping the value is
+     exactly what the continuation of [abs0] does with it. *)
+  List.iter
+    (fun (av : tavalue) ->
+      match av.value with
+      | ALoan (AMutLoan (pm, bid, _))
+        when List.mem (Either.Left bid) bindings1
+             &&
+             match BorrowId.Map.find_opt bid !bound.borrows with
+             | Some l ->
+                 List.exists
+                   (fun (pm', _, _) -> proj_markers_intersect pm pm')
+                   l
+             | None -> false ->
+          let bound', _ =
+            bound_inputs_outputs_update_input_loan span bid av.ty pm !bound
+          in
+          [%ltrace "consumed the unread output l@" ^ BorrowId.to_string bid];
+          bound := bound'
+      | ASymbolic (pm, AProjLoans { proj; _ })
+        when List.mem (Either.Right proj.sv_id) bindings1 ->
+          let ty = proj.proj_ty in
+          let norm_proj_ty = normalize_proj_ty abs0.regions.owned ty in
+          let unread =
+            match SymbolicValueId.Map.find_opt proj.sv_id !bound.symbolic with
+            | Some l ->
+                List.exists
+                  (fun (pm', proj_ty', _, _) ->
+                    proj_markers_intersect pm pm'
+                    && norm_proj_tys_intersect span ctx norm_proj_ty proj_ty')
+                  l
+            | None -> false
+          in
+          if unread then begin
+            let bound', _ =
+              bound_inputs_outputs_update_input_symbolic span ctx proj.sv_id pm
+                ty norm_proj_ty !bound
+            in
+            [%ltrace
+              "consumed the unread output s@"
+              ^ SymbolicValueId.to_string proj.sv_id];
+            bound := bound'
+          end
+      | _ -> ())
+    abs0.avalues;
+
   (* Create the outputs for the composed continuation, and its corresponding inputs.
 
      We simply list all the bound outputs which were not consumed (the free variables
@@ -2110,6 +2254,46 @@ let merge_abstractions (span : Meta.span) (abs_kind : abs_kind)
     "avalues after removing markers:\n"
     ^ String.concat "\n" (List.map (tavalue_to_string ctx) avalues)];
 
+  (* Phase 4: deduplicate the projected shared reborrows.
+
+     Nested borrows below a shared borrow may lead to several
+     [AProjSharedBorrow] avalues that project the *same* underlying borrows but
+     with distinct shared borrow instance ids (e.g. the loop-carried reborrow
+     coming from the previous fixed-point candidate, and its freshly recomputed
+     copy coming from the loop body). Contrary to concrete/symbolic borrows and
+     loans, [AProjSharedBorrow] avalues carry no projection marker, so the
+     marker-merging phase above does not collapse them. Keeping both would make
+     the loop abstraction grow at every iteration and prevent the fixed point
+     from converging, so we keep a single representative per set of projected
+     borrows (comparing borrow ids and reborrow projections, but ignoring the
+     shared borrow instance ids). *)
+  let avalues =
+    let asb_key (asb : abstract_shared_borrows) : string =
+      String.concat ","
+        (List.map
+           (function
+             | AsbBorrow (bid, _) -> "b" ^ BorrowId.to_string bid
+             | AsbProjReborrows { sv_id; _ } ->
+                 "p" ^ SymbolicValueId.to_string sv_id)
+           asb)
+    in
+    let seen = ref [] in
+    List.filter
+      (fun (av : tavalue) ->
+        match av.value with
+        | ABorrow (AProjSharedBorrow asb) ->
+            let key = asb_key asb in
+            if List.mem key !seen then false
+            else (
+              seen := key :: !seen;
+              true)
+        | _ -> true)
+      avalues
+  in
+  [%ldebug
+    "avalues after deduplicating the projected shared borrows:\n"
+    ^ String.concat "\n" (List.map (tavalue_to_string ctx) avalues)];
+
   (* Merge the expressions used for the pure translation. *)
   let cont = merge_abs_conts span ctx ~with_abs_conts abs0 abs1 in
 
@@ -2199,6 +2383,31 @@ let merge_into_first_abstraction (span : Meta.span) (abs_kind : abs_kind)
   let ctx = fst (ctx_subst_abs span ctx abs_id0 nabs) in
   let ctx = fst (ctx_remove_abs span ctx abs_id1) in
 
+  (* The abstractions whose parent was one of the merged ones now have the
+     merged abstraction as parent (with nested borrows, e.g. an iterator over
+     [&[&T]], the abstraction of the inner region has the outer one as parent) *)
+  let ctx =
+    let merged = AbsId.Set.of_list [ abs_id0; abs_id1 ] in
+    let update (abs : abs) : abs =
+      if AbsId.Set.disjoint abs.parents merged then abs
+      else
+        {
+          abs with
+          parents =
+            AbsId.Set.add nabs.abs_id (AbsId.Set.diff abs.parents merged);
+        }
+    in
+    let env =
+      List.map
+        (fun (e : env_elem) ->
+          match e with
+          | EAbs abs -> EAbs (update abs)
+          | e -> e)
+        ctx.env
+    in
+    { ctx with env }
+  in
+
   (* Merge all the regions from the abstraction into one (the first - i.e., the
      one with the smallest id). Note that we need to do this in the whole
      environment, as those regions may be referenced as ancestor regions by
@@ -2277,10 +2486,25 @@ let reorder_loans_borrows_in_fresh_abs (span : Meta.span) (allow_markers : bool)
               [%cassert] span (is_aignored child.value) "Not supported yet";
               [%cassert] span (is_aignored given_back.value) "Not supported yet";
               false
-          | AProjSharedBorrow _ -> [%craise] span "Not supported yet")
+          | AProjSharedBorrow _ ->
+              (* Projected shared reborrows (nested borrows below a shared
+                 borrow): they are live borrows, we keep them. *)
+              true)
       | AIgnored _ -> false
     in
     let avalues = List.filter filter abs.avalues in
+
+    (* Projected shared reborrows (nested borrows below a shared borrow) are
+       frozen and carry several borrow ids: we don't sort them, we simply keep
+       them (appended among the borrows). *)
+    let proj_shared_borrows, avalues =
+      List.partition
+        (fun (av : tavalue) ->
+          match av.value with
+          | ABorrow (AProjSharedBorrow _) -> true
+          | _ -> false)
+        avalues
+    in
 
     (* Split between the loans and borrows, and between the concrete
        and symbolic values. *)
@@ -2369,7 +2593,10 @@ let reorder_loans_borrows_in_fresh_abs (span : Meta.span) (allow_markers : bool)
     let loan_projs =
       reorder get_symbolic_id compare_symbolic_value_id loan_projs
     in
-    let avalues = List.concat [ aborrows; borrow_projs; aloans; loan_projs ] in
+    let avalues =
+      List.concat
+        [ aborrows; proj_shared_borrows; borrow_projs; aloans; loan_projs ]
+    in
     { abs with avalues }
   in
 
@@ -2694,11 +2921,15 @@ let add_abs_cont_to_abs span (ctx : eval_ctx) (abs : abs) (abs_fun : abs_fun) :
             in
             borrows := { value; ty } :: !borrows
         | ASharedBorrow _ -> (* We ignore shared borrows *) ()
+        | AProjSharedBorrow _ ->
+            (* We ignore projected shared borrows (nested borrows below a shared
+               borrow): like shared borrows, they are frozen and don't
+               contribute to the abstraction continuation. *)
+            ()
         | AIgnoredMutBorrow _
         | AEndedMutBorrow _
         | AEndedSharedBorrow
-        | AEndedIgnoredMutBorrow _
-        | AProjSharedBorrow _ -> [%internal_error] span)
+        | AEndedIgnoredMutBorrow _ -> [%internal_error] span)
     | ASymbolic (pm, aproj) -> (
         match aproj with
         | AProjLoans { proj = { sv_id; proj_ty }; consumed; borrows } ->

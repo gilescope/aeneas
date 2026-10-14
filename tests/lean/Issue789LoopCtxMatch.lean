@@ -54,7 +54,7 @@ def the_loop_loop.body
   then let a := to_slice_mut_back s2
        ok (done (i, a, next_in1, done1))
   else
-    let b ← core.slice.Slice.is_empty next_in1
+    let b : Bool ← core.slice.Slice.is_empty next_in1
     if b
     then let a := to_slice_mut_back s2
          ok (done (i, a, next_in1, done1))

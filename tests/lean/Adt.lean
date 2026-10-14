@@ -41,6 +41,7 @@ def BigStructName := Unit
 
 /-- [adt::BigStruct]
     Source: 'tests/src/adt.rs', lines 17:0-24:2 -/
+@[reducible]
 def BigStruct :=
   BigStructName × BigStructName × BigStructName × BigStructName ×
   BigStructName × BigStructName

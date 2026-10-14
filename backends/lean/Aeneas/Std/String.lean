@@ -26,15 +26,15 @@ theorem ByteArray.length_toList (bs : ByteArray) :
   rw [loop_length 0 [] (Nat.zero_le _)]
   simp
 
-/-- TODO: we shouldn't use `decide +native` but it seems we can't reduce it otherwise. -/
-def toStr (s : String) (h : s.toByteArray.size ≤ U32.max := by decide +native) : Str :=
-  .from (s.toByteArray.toList.map
-    (fun x => ⟨ x.toNat, by cases x; simp only [UInt8.toNat_ofBitVec, UScalarTy.U8_numBits_eq, Nat.reducePow]; omega  ⟩))
-    (by
-      simp only [UScalarTy.U8_numBits_eq, Nat.reducePow, Fin.mk_uInt8ToNat, BitVec.ofFin_uInt8ToFin,
-        List.length_map]
-      rw [ByteArray.length_toList]
-      exact h.trans (by scalar_tac))
+/-- A string literal as a `Str`. No bound proof at each literal: `decide` cannot prove one
+(`U32.max` is an `irreducible_def`, opaque to the kernel), and `decide +native` added a
+`native_decide` axiom per literal, which axiom audits reject. Rust literals are under `u32::MAX`
+bytes, so the `take` keeps them whole. It is a `take`, not an `if`: the `if`'s compiled helper
+(`toStr._redArg`) was unknown to `#eval` in importing modules. -/
+def toStr (s : String) : Str :=
+  .from ((s.toByteArray.toList.map
+      (fun x => ⟨ x.toNat, by cases x; simp only [UInt8.toNat_ofBitVec, UScalarTy.U8_numBits_eq, Nat.reducePow]; omega  ⟩)).take U32.max)
+    ((List.length_take_le _ _).trans (by scalar_tac))
 
 example : Str := toStr "hello"
 

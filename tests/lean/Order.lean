@@ -137,15 +137,15 @@ def wrap_cmp (x : Wrap) (y : Wrap) : Result Ordering := do
     Source: 'tests/src/order.rs', lines 39:0-43:1
     Visibility: public -/
 def test_wrap_lt : Result Unit := do
-  let b ←
+  let b : Bool ←
     core.cmp.PartialOrd.lt.trait_default Wrap.Insts.CoreCmpPartialOrdWrap 1#u64
       2#u64
   massert b
-  let b1 ←
+  let b1 : Bool ←
     core.cmp.PartialOrd.lt.trait_default Wrap.Insts.CoreCmpPartialOrdWrap 2#u64
       2#u64
   massert (¬ b1)
-  let b2 ←
+  let b2 : Bool ←
     core.cmp.PartialOrd.lt.trait_default Wrap.Insts.CoreCmpPartialOrdWrap 2#u64
       1#u64
   massert (¬ b2)
@@ -157,15 +157,15 @@ def test_wrap_lt : Result Unit := do
     Source: 'tests/src/order.rs', lines 46:0-50:1
     Visibility: public -/
 def test_wrap_le : Result Unit := do
-  let b ←
+  let b : Bool ←
     core.cmp.PartialOrd.le.trait_default Wrap.Insts.CoreCmpPartialOrdWrap 1#u64
       2#u64
   massert b
-  let b1 ←
+  let b1 : Bool ←
     core.cmp.PartialOrd.le.trait_default Wrap.Insts.CoreCmpPartialOrdWrap 2#u64
       2#u64
   massert b1
-  let b2 ←
+  let b2 : Bool ←
     core.cmp.PartialOrd.le.trait_default Wrap.Insts.CoreCmpPartialOrdWrap 2#u64
       1#u64
   massert (¬ b2)
@@ -177,15 +177,15 @@ def test_wrap_le : Result Unit := do
     Source: 'tests/src/order.rs', lines 53:0-57:1
     Visibility: public -/
 def test_wrap_gt : Result Unit := do
-  let b ←
+  let b : Bool ←
     core.cmp.PartialOrd.gt.trait_default Wrap.Insts.CoreCmpPartialOrdWrap 2#u64
       1#u64
   massert b
-  let b1 ←
+  let b1 : Bool ←
     core.cmp.PartialOrd.gt.trait_default Wrap.Insts.CoreCmpPartialOrdWrap 2#u64
       2#u64
   massert (¬ b1)
-  let b2 ←
+  let b2 : Bool ←
     core.cmp.PartialOrd.gt.trait_default Wrap.Insts.CoreCmpPartialOrdWrap 1#u64
       2#u64
   massert (¬ b2)
@@ -197,15 +197,15 @@ def test_wrap_gt : Result Unit := do
     Source: 'tests/src/order.rs', lines 60:0-64:1
     Visibility: public -/
 def test_wrap_ge : Result Unit := do
-  let b ←
+  let b : Bool ←
     core.cmp.PartialOrd.ge.trait_default Wrap.Insts.CoreCmpPartialOrdWrap 2#u64
       1#u64
   massert b
-  let b1 ←
+  let b1 : Bool ←
     core.cmp.PartialOrd.ge.trait_default Wrap.Insts.CoreCmpPartialOrdWrap 2#u64
       2#u64
   massert b1
-  let b2 ←
+  let b2 : Bool ←
     core.cmp.PartialOrd.ge.trait_default Wrap.Insts.CoreCmpPartialOrdWrap 1#u64
       2#u64
   massert (¬ b2)
@@ -218,13 +218,13 @@ def test_wrap_ge : Result Unit := do
     Visibility: public -/
 def test_wrap_max : Result Unit := do
   let w ← core.cmp.Ord.max.trait_default Wrap.Insts.CoreCmpOrd 1#u64 2#u64
-  let b ← Wrap.Insts.CoreCmpPartialEqWrap.eq w 2#u64
+  let b : Bool ← Wrap.Insts.CoreCmpPartialEqWrap.eq w 2#u64
   massert b
   let w1 ← core.cmp.Ord.max.trait_default Wrap.Insts.CoreCmpOrd 2#u64 1#u64
-  let b1 ← Wrap.Insts.CoreCmpPartialEqWrap.eq w1 2#u64
+  let b1 : Bool ← Wrap.Insts.CoreCmpPartialEqWrap.eq w1 2#u64
   massert b1
   let w2 ← core.cmp.Ord.max.trait_default Wrap.Insts.CoreCmpOrd 2#u64 2#u64
-  let b2 ← Wrap.Insts.CoreCmpPartialEqWrap.eq w2 2#u64
+  let b2 : Bool ← Wrap.Insts.CoreCmpPartialEqWrap.eq w2 2#u64
   massert b2
 
 /- Unit test for [order::test_wrap_max] -/
@@ -235,13 +235,13 @@ def test_wrap_max : Result Unit := do
     Visibility: public -/
 def test_wrap_min : Result Unit := do
   let w ← core.cmp.Ord.min.trait_default Wrap.Insts.CoreCmpOrd 1#u64 2#u64
-  let b ← Wrap.Insts.CoreCmpPartialEqWrap.eq w 1#u64
+  let b : Bool ← Wrap.Insts.CoreCmpPartialEqWrap.eq w 1#u64
   massert b
   let w1 ← core.cmp.Ord.min.trait_default Wrap.Insts.CoreCmpOrd 2#u64 1#u64
-  let b1 ← Wrap.Insts.CoreCmpPartialEqWrap.eq w1 1#u64
+  let b1 : Bool ← Wrap.Insts.CoreCmpPartialEqWrap.eq w1 1#u64
   massert b1
   let w2 ← core.cmp.Ord.min.trait_default Wrap.Insts.CoreCmpOrd 2#u64 2#u64
-  let b2 ← Wrap.Insts.CoreCmpPartialEqWrap.eq w2 2#u64
+  let b2 : Bool ← Wrap.Insts.CoreCmpPartialEqWrap.eq w2 2#u64
   massert b2
 
 /- Unit test for [order::test_wrap_min] -/
@@ -253,15 +253,15 @@ def test_wrap_min : Result Unit := do
 def test_wrap_clamp : Result Unit := do
   let w ←
     core.cmp.Ord.clamp.trait_default Wrap.Insts.CoreCmpOrd 0#u64 1#u64 3#u64
-  let b ← Wrap.Insts.CoreCmpPartialEqWrap.eq w 1#u64
+  let b : Bool ← Wrap.Insts.CoreCmpPartialEqWrap.eq w 1#u64
   massert b
   let w1 ←
     core.cmp.Ord.clamp.trait_default Wrap.Insts.CoreCmpOrd 2#u64 1#u64 3#u64
-  let b1 ← Wrap.Insts.CoreCmpPartialEqWrap.eq w1 2#u64
+  let b1 : Bool ← Wrap.Insts.CoreCmpPartialEqWrap.eq w1 2#u64
   massert b1
   let w2 ←
     core.cmp.Ord.clamp.trait_default Wrap.Insts.CoreCmpOrd 4#u64 1#u64 3#u64
-  let b2 ← Wrap.Insts.CoreCmpPartialEqWrap.eq w2 3#u64
+  let b2 : Bool ← Wrap.Insts.CoreCmpPartialEqWrap.eq w2 3#u64
   massert b2
 
 /- Unit test for [order::test_wrap_clamp] -/
@@ -353,15 +353,15 @@ impl_def Rank.Insts.CoreCmpOrd : core.cmp.Ord Rank := {
     Source: 'tests/src/order.rs', lines 95:0-99:1
     Visibility: public -/
 def test_rank_lt : Result Unit := do
-  let b ←
+  let b : Bool ←
     core.cmp.PartialOrd.lt.trait_default Rank.Insts.CoreCmpPartialOrdRank
       Rank.Low Rank.High
   massert b
-  let b1 ←
+  let b1 : Bool ←
     core.cmp.PartialOrd.lt.trait_default Rank.Insts.CoreCmpPartialOrdRank
       Rank.Mid Rank.Mid
   massert (¬ b1)
-  let b2 ←
+  let b2 : Bool ←
     core.cmp.PartialOrd.lt.trait_default Rank.Insts.CoreCmpPartialOrdRank
       Rank.High Rank.Low
   massert (¬ b2)
@@ -424,23 +424,23 @@ impl_def Num.Insts.CoreCmpPartialOrdNum : core.cmp.PartialOrd Num Num := {
     Source: 'tests/src/order.rs', lines 129:0-135:1
     Visibility: public -/
 def test_num_incomparable : Result Unit := do
-  let b ←
+  let b : Bool ←
     core.cmp.PartialOrd.lt.trait_default Num.Insts.CoreCmpPartialOrdNum Num.Nan
       (Num.Val 1#u8)
   massert (¬ b)
-  let b1 ←
+  let b1 : Bool ←
     core.cmp.PartialOrd.le.trait_default Num.Insts.CoreCmpPartialOrdNum Num.Nan
       (Num.Val 1#u8)
   massert (¬ b1)
-  let b2 ←
+  let b2 : Bool ←
     core.cmp.PartialOrd.gt.trait_default Num.Insts.CoreCmpPartialOrdNum Num.Nan
       (Num.Val 1#u8)
   massert (¬ b2)
-  let b3 ←
+  let b3 : Bool ←
     core.cmp.PartialOrd.ge.trait_default Num.Insts.CoreCmpPartialOrdNum Num.Nan
       (Num.Val 1#u8)
   massert (¬ b3)
-  let b4 ←
+  let b4 : Bool ←
     core.cmp.PartialOrd.le.trait_default Num.Insts.CoreCmpPartialOrdNum Num.Nan
       Num.Nan
   massert (¬ b4)
@@ -452,11 +452,11 @@ def test_num_incomparable : Result Unit := do
     Source: 'tests/src/order.rs', lines 142:0-147:1
     Visibility: public -/
 def test_wrap_ref_lt : Result Unit := do
-  let b ←
+  let b : Bool ←
     core.cmp.impls.PartialOrdShared.lt Wrap.Insts.CoreCmpPartialOrdWrap 1#u64
       2#u64
   massert b
-  let b1 ←
+  let b1 : Bool ←
     core.cmp.impls.PartialOrdShared.lt Wrap.Insts.CoreCmpPartialOrdWrap 2#u64
       1#u64
   massert (¬ b1)
@@ -468,11 +468,11 @@ def test_wrap_ref_lt : Result Unit := do
     Source: 'tests/src/order.rs', lines 150:0-155:1
     Visibility: public -/
 def test_wrap_ref_le : Result Unit := do
-  let b ←
+  let b : Bool ←
     core.cmp.impls.PartialOrdShared.le Wrap.Insts.CoreCmpPartialOrdWrap 1#u64
       2#u64
   massert b
-  let b1 ←
+  let b1 : Bool ←
     core.cmp.impls.PartialOrdShared.le Wrap.Insts.CoreCmpPartialOrdWrap 2#u64
       1#u64
   massert (¬ b1)
@@ -484,11 +484,11 @@ def test_wrap_ref_le : Result Unit := do
     Source: 'tests/src/order.rs', lines 158:0-163:1
     Visibility: public -/
 def test_wrap_ref_gt : Result Unit := do
-  let b ←
+  let b : Bool ←
     core.cmp.impls.PartialOrdShared.gt Wrap.Insts.CoreCmpPartialOrdWrap 2#u64
       1#u64
   massert b
-  let b1 ←
+  let b1 : Bool ←
     core.cmp.impls.PartialOrdShared.gt Wrap.Insts.CoreCmpPartialOrdWrap 1#u64
       2#u64
   massert (¬ b1)
@@ -500,11 +500,11 @@ def test_wrap_ref_gt : Result Unit := do
     Source: 'tests/src/order.rs', lines 166:0-171:1
     Visibility: public -/
 def test_wrap_ref_ge : Result Unit := do
-  let b ←
+  let b : Bool ←
     core.cmp.impls.PartialOrdShared.ge Wrap.Insts.CoreCmpPartialOrdWrap 2#u64
       1#u64
   massert b
-  let b1 ←
+  let b1 : Bool ←
     core.cmp.impls.PartialOrdShared.ge Wrap.Insts.CoreCmpPartialOrdWrap 1#u64
       2#u64
   massert (¬ b1)
@@ -519,7 +519,7 @@ def test_wrap_ref_partial_cmp : Result Unit := do
   let o ←
     core.cmp.impls.PartialOrdShared.partial_cmp
       Wrap.Insts.CoreCmpPartialOrdWrap 1#u64 2#u64
-  let b ←
+  let b : Bool ←
     match o with
     | none => ok false
     | some o1 =>

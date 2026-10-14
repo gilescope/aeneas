@@ -10,6 +10,29 @@ open InterpBorrowsCore
 (** The local logger *)
 let log = Logging.projectors_log
 
+(** Whether projecting [ty] over [regions] reaches a borrow of the symbolic
+    value of type [sv_ty] which may be given back or ended: we skip the borrows
+    which are shared and ['static] in [sv_ty] (e.g. the error of a
+    [Result<_, &'static str>] passed to [unwrap], whose erased region a callee
+    instantiates with one of its own). Nothing owns ['static], so there is no
+    projector of loans to match, and the data is immutable and never ends, so
+    nothing could be given back. Region parameters of ADTs are kept: they may
+    hide a mutable borrow. *)
+let rec projects_non_static_borrows (sv_ty : rty) (regions : RegionId.Set.t)
+    (ty : rty) : bool =
+  match (sv_ty, ty) with
+  | TRef (RStatic, _, RShared), TRef (_, _, _) -> false
+  | TRef (_, sv_ty, _), TRef (r, ty, _) ->
+      region_in_set r regions || projects_non_static_borrows sv_ty regions ty
+  | TAdt tref1, TAdt tref2 ->
+      List.exists (fun r -> region_in_set r regions) tref2.generics.regions
+      || List.exists2
+           (fun sv_ty ty -> projects_non_static_borrows sv_ty regions ty)
+           tref1.generics.types tref2.generics.types
+  | TArray (sv_ty, _, _), TArray (ty, _, _) | TSlice (sv_ty, _), TSlice (ty, _)
+    -> projects_non_static_borrows sv_ty regions ty
+  | _ -> ty_has_regions_in_set regions ty
+
 (** [ty] shouldn't contain erased regions *)
 let rec apply_proj_borrows_on_shared_borrow (span : Meta.span) (ctx : eval_ctx)
     (regions : RegionId.Set.t) (v : tvalue) (ty : ty) : abstract_shared_borrows
@@ -91,7 +114,9 @@ let rec apply_proj_borrows_on_shared_borrow (span : Meta.span) (ctx : eval_ctx)
           (not
              (projections_intersect span ctx ctx.ended_regions s.sv_ty regions
                 ty));
-        [ AsbProjReborrows { sv_id = s.sv_id; proj_ty = ty } ]
+        if projects_non_static_borrows s.sv_ty regions ty then
+          [ AsbProjReborrows { sv_id = s.sv_id; proj_ty = ty } ]
+        else []
     | VAdt adt, TArray (ty, _, _) ->
         List.flatten
           (List.map
@@ -106,7 +131,8 @@ let rec apply_proj_borrows (span : Meta.span) (check_symbolic_no_ended : bool)
   (* Sanity check - TODO: move this elsewhere (here we perform the check at every
    * recursive call which is a bit overkill...) *)
   let ety = Substitute.erase_regions ty in
-  [%sanity_check] span (ty_is_rty ty && ety = v.ty);
+  [%sanity_check] span
+    (ty_is_rty ty && ty_erase_fn_def_regions ety = ty_erase_fn_def_regions v.ty);
   (* Project - if there are no regions from the abstraction in the type, return [_] *)
   if not (ty_has_regions_in_set regions ty) then
     { value = AIgnored (Some v); ty }
@@ -240,10 +266,12 @@ let rec apply_proj_borrows (span : Meta.span) (check_symbolic_no_ended : bool)
               ^ "\n"];
             [%sanity_check] span
               (not (projections_intersect span ctx rset1 ty1 rset2 ty2)));
-          ASymbolic
-            ( PNone,
-              AProjBorrows
-                { proj = { sv_id = s.sv_id; proj_ty = ty }; loans = [] } )
+          if projects_non_static_borrows s.sv_ty regions ty then
+            ASymbolic
+              ( PNone,
+                AProjBorrows
+                  { proj = { sv_id = s.sv_id; proj_ty = ty }; loans = [] } )
+          else AIgnored (Some v)
       | _ ->
           [%ltrace
             "unexpected inputs:\n- input value: "
@@ -259,7 +287,8 @@ let rec apply_eproj_borrows (span : Meta.span) (check_symbolic_no_ended : bool)
   (* Sanity check - TODO: move this elsewhere (here we perform the check at every
    * recursive call which is a bit overkill...) *)
   let ety = Substitute.erase_regions ty in
-  [%sanity_check] span (ty_is_rty ty && ety = v.ty);
+  [%sanity_check] span
+    (ty_is_rty ty && ty_erase_fn_def_regions ety = ty_erase_fn_def_regions v.ty);
   (* Project - if there are no regions from the abstraction in the type, return [_] *)
   if not (ty_has_regions_in_set regions ty) then
     { value = EIgnored (Some (ctx.env, v)); ty }

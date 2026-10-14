@@ -865,6 +865,7 @@ let pure_builtin_fun_id_to_string (fid : pure_builtin_fun_id) : string =
       | Slice -> "@sliceIndexMut"
     end
   | Discriminant -> "@discriminant"
+  | SliceLen -> "@slice_len"
   | ResultUnwrapMut -> "@resultUnwrapMut"
   | GetTarget -> "@getTarget"
   | TargetFeatureEnabled -> "@targetFeatureEnabled"

@@ -26,6 +26,8 @@ namespace opaque_mut_region
     Source: 'tests/src/opaque-mut-region.rs', lines 6:0-6:33 -/
 axiom Wrapper (T : Type) : Type
 
+instance {T : Type} : Aeneas.Std.GivesBack (Wrapper T) := ⟨⟩
+
 /-- [opaque_mut_region::{opaque_mut_region::Wrapper<'a, T>}::id]:
     Source: 'tests/src/opaque-mut-region.rs', lines 9:4-11:5 -/
 def Wrapper.id
@@ -38,6 +40,8 @@ def Wrapper.id
     Source: 'tests/src/opaque-mut-region.rs', lines 15:0-19:1
     Visibility: public -/
 axiom WrapperRaw (T : Type) : Type
+
+instance {T : Type} : Aeneas.Std.GivesBack (WrapperRaw T) := ⟨⟩
 
 /-- [opaque_mut_region::{opaque_mut_region::WrapperRaw<'a, T>}::id]:
     Source: 'tests/src/opaque-mut-region.rs', lines 22:4-24:5 -/

@@ -135,6 +135,7 @@ type pure_builtin_fun_id =
           We use this when using `ok ...` would result in let-bindings getting
           simplified away (in a backend like Lean). *)
   | Discriminant  (** Discriminant read *)
+  | SliceLen  (** The length of a slice, read by slice patterns *)
   | ResultUnwrapMut
       (** Temporary fix: the
           [core::result::{core::result::Result<@T, @E>}::unwrap] instantiated

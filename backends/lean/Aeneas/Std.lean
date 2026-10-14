@@ -1,12 +1,19 @@
 module
 public import Aeneas.Std.Alloc
+public import Aeneas.Std.AllocString
 public import Aeneas.Std.Array
 public import Aeneas.Std.Core
+public import Aeneas.Std.CoreMisc
+public import Aeneas.Std.Core.IterAdapters
+public import Aeneas.Std.Core.IterOverrides
+public import Aeneas.Std.BTree
+public import Aeneas.Std.HashMap
 public import Aeneas.Std.Primitives
 public import Aeneas.Std.PrimitivesLemmas
 public import Aeneas.Std.RawPtr
 public import Aeneas.Std.Scalar
 public import Aeneas.Std.Slice
+public import Aeneas.Std.SliceChunks
 public import Aeneas.Std.SliceDef
 public import Aeneas.Std.SliceIter
 public import Aeneas.Std.Std
@@ -15,6 +22,13 @@ public import Aeneas.Std.StringDef
 public import Aeneas.Std.StringIter
 public import Aeneas.Std.Target
 public import Aeneas.Std.Vec
+public import Aeneas.Std.VecExtra
+public import Aeneas.Std.MiscExtra
+public import Aeneas.Std.IterExtra
+public import Aeneas.Std.CollectionsExtra
 public import Aeneas.Std.VecIter
 public import Aeneas.Data.Tuples
 public import Aeneas.Std.RangeIter
+public import Aeneas.Std.IterSpecs
+public import Aeneas.Std.CollectionsSpecs
+public import Aeneas.Std.SetSpecs

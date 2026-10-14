@@ -349,3 +349,44 @@ pub fn test_range_inclusive_empty() {
     let mut it = 5usize..=3usize;
     assert!(it.next().is_none());
 }
+
+// ============================================================================
+// TakeWhile
+// ============================================================================
+
+// Not `#[verify::test]`: a closure predicate is noncomputable, and a named `fn` one
+// aborts under `-checks` (TypesAnalysis.ml:968).
+
+pub fn take_while_lt_ten(v: &[u32]) -> Option<u32> {
+    let mut it = v.iter().take_while(|x| **x < 10);
+    it.next().copied()
+}
+
+pub fn take_while_twice(v: &[u32]) -> (Option<u32>, Option<u32>) {
+    let mut it = v.iter().take_while(|x| **x < 10);
+    let a = it.next().copied();
+    let b = it.next().copied();
+    (a, b)
+}
+
+// ============================================================================
+// Rev / next_back
+// ============================================================================
+
+/// `rev` on a slice iterator delegates to `next_back`.
+#[verify::test]
+pub fn test_rev_slice() {
+    let v: [u32; 3] = [1, 2, 3];
+    let mut it = v.iter().rev();
+    assert!(*it.next().unwrap() == 3);
+    assert!(*it.next().unwrap() == 2);
+    assert!(*it.next().unwrap() == 1);
+    assert!(it.next().is_none());
+}
+
+#[verify::test]
+pub fn test_rev_empty_slice() {
+    let v: [u32; 0] = [];
+    let mut it = v.iter().rev();
+    assert!(it.next().is_none());
+}

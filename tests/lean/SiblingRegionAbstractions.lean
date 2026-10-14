@@ -27,6 +27,8 @@ namespace sibling_region_abstractions
     Visibility: public -/
 axiom It : Type
 
+instance : Aeneas.Std.GivesBack It := ⟨⟩
+
 /-- [sibling_region_abstractions::Two]
     Source: 'tests/src/sibling-region-abstractions.rs', lines 11:0-14:1
     Visibility: public -/

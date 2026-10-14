@@ -394,8 +394,9 @@ let rec translate_fwd_ty (span : Meta.span option) (decls_ctx : C.decls_ctx)
         "Unimplemented";
       let trait_ref = translate_fwd_trait_ref span decls_ctx trait_ref in
       TTraitType (trait_ref, type_name)
-  | TFnDef { binder_regions; binder_value = { kind; generics } } -> (
-      [%cassert_opt_span] span (binder_regions = []) "Unimplemented";
+  | TFnDef { binder_regions = _; binder_value = { kind; generics } } -> (
+      (* The regions the item binds (e.g. [for<'a, 'b> Ord::cmp<'a, 'b>]) vanish
+         with the others in the pure type. *)
       let generics = translate_fwd_generic_args span decls_ctx generics in
       match kind with
       | T.Fun fid ->
@@ -406,10 +407,9 @@ let rec translate_fwd_ty (span : Meta.span option) (decls_ctx : C.decls_ctx)
           in
           let sigs = translate_fun_sigs_from_decl decls_ctx fdecl in
           let sg = sigs.sg in
-          (* Check that the function lives in the expected effect - otherwise we
-                 have to lift it *)
-          [%cassert_opt_span] span sg.fwd_info.effect_info.can_fail
-            "Unimplemented";
+          (* The item's type is its function's, fallible or not (e.g. the pure
+             [usize::cmp] passed to [max_by]): only the [Fn*] instance's
+             [call_*] live in [Result]. *)
           [%cassert_opt_span] span
             (RegionGroupId.Map.for_all
                (fun _ (e : fun_effect_info) -> not e.can_fail)
@@ -536,8 +536,10 @@ and compute_back_ty_num_levels (span : Meta.span option)
           (generics = TypesUtils.empty_generic_args)
           "Unimplemented";
         save_count outer_regions
-    | TFnDef _ | TFnPtr _ ->
-        [%craise_opt_span] span "Arrow types are not supported yet"
+    | TFnDef _ ->
+        (* A function item holds no borrows (see [RegionsHierarchy]) *)
+        save_count outer_regions
+    | TFnPtr _ -> [%craise_opt_span] span "Arrow types are not supported yet"
     | TDynTrait _ ->
         [%craise_opt_span] span "Dynamic trait types are not supported yet"
     | TError _ ->
@@ -671,8 +673,10 @@ and translate_back_ty_aux (span : Meta.span option) (decls_ctx : C.decls_ctx)
           (generics = TypesUtils.empty_generic_args)
           "Unimplemented";
         stop outer_regions ty
-    | TFnDef _ | TFnPtr _ ->
-        [%craise_opt_span] span "Arrow types are not supported yet"
+    | TFnDef _ ->
+        (* A function item holds no borrows (see [RegionsHierarchy]) *)
+        stop outer_regions ty
+    | TFnPtr _ -> [%craise_opt_span] span "Arrow types are not supported yet"
     | TDynTrait _ ->
         [%craise_opt_span] span "Dynamic trait types are not supported yet"
     | TError _ ->
@@ -1100,9 +1104,13 @@ and translate_trait_method_sig (decls_ctx : C.decls_ctx)
   let inputs = List.map (ty_substitute subst) flat_sig.inputs in
   let output = ty_substitute subst flat_sig.output in
 
-  let explicit_info = compute_explicit_info method_generics inputs in
+  (* The inputs mention the trait's parameters too (free variables), whose
+     indices the method's (bound) ones reuse *)
+  let explicit_info =
+    compute_explicit_info ~bound_only:true method_generics inputs
+  in
   let known_from_trait_refs =
-    compute_known_info explicit_info method_generics
+    compute_known_info ~bound_only:true explicit_info method_generics
   in
   {
     flat_sig with

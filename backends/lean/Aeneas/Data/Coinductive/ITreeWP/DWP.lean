@@ -33,6 +33,7 @@ local infix:50 " ≤ " => entails
 def DWP (θ : EffectWP E) [θ.Monotonic] (m : ITree E α) (Q : θ.Post α) : θ.Pre :=
   (FunctionalWP.hom False θ Q).lfp m
 
+set_option backward.isDefEq.respectTransparency false in
 /-- Unfolding of `DWP` into its impredicative definition. -/
 theorem DWP.def :
     DWP θ m Q s ↔ ∀ X : ITreePred θ α, FunctionalWP False θ Q X ≤ X → X m s := by

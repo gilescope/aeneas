@@ -1268,6 +1268,7 @@ let builtin_pure_functions () : (pure_builtin_fun_id * string) list =
         (Fail, "fail_");
         (Assert, "massert");
         (Discriminant, "read_discriminant");
+        (SliceLen, "Slice.len");
         (UpdateAtIndex Slice, "Slice.update");
         (UpdateAtIndex Array, "Array.update");
         (IndexAtIndex Slice, "Slice.index_usize");
@@ -1836,6 +1837,21 @@ let ctx_compute_trait_impl_name_raw (ctx : extraction_ctx)
                       name_with_generics_to_simple_name ctx.trans_ctx name
                         params generics
                       |> flatten_name)
+              | TFnDef { binder_value = { kind = Fun fid; generics }; _ }
+                when FunDeclId.Map.mem fid ctx.crate.fun_decls ->
+                  (* A function item used as a closure, e.g. an enum constructor
+                     passed to [map]: name the impl after the function, as the
+                     pattern of its type does not distinguish two of them (all
+                     [Label::A], [Label::B]... would get the same name). *)
+                  let decl = FunDeclId.Map.find fid ctx.crate.fun_decls in
+                  let name =
+                    opt_ctx_prepare_name decl.item_meta ctx decl.item_meta.name
+                  in
+                  (* Regions are not part of the name (they are ['static], see
+                     [PrePasses.normalize_fn_def_types]) *)
+                  name_with_generics_to_simple_name ctx.trans_ctx name params
+                    { generics with regions = [] }
+                  |> flatten_name
               | _ ->
                   let name =
                     NameMatcher.ty_to_pattern nm_ctx
@@ -1934,11 +1950,26 @@ let ctx_compute_trait_parent_clause_name (ctx : extraction_ctx)
      we generate a name along the lines of "fooU32Inst".
   *)
   (* We need to lookup the LLBC definitions, to have the original instantiation *)
-  let clause =
+  let name_of clause_id =
     let current_def_name = trait_decl.item_meta.name in
     let params = trait_decl.llbc_generics in
     ctx_compute_trait_clause_name ctx current_def_name params
-      trait_decl.llbc_parent_clauses clause.clause_id
+      trait_decl.llbc_parent_clauses clause_id
+  in
+  (* The name only shows the trait and its arguments, which [Self] and an
+     associated type ([trait T: Clone { type U: Clone; }]) share: number the
+     repeats, in declaration order *)
+  let clause =
+    let name = name_of clause.clause_id in
+    let rec earlier n = function
+      | [] -> n
+      | (c : Types.trait_param) :: rest ->
+          if c.clause_id = clause.clause_id then n
+          else earlier (if name_of c.clause_id = name then n + 1 else n) rest
+    in
+    match earlier 0 trait_decl.llbc_parent_clauses with
+    | 0 -> name
+    | n -> name ^ string_of_int n
   in
   let clause =
     if !Config.record_fields_short_names then clause

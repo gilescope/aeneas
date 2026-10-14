@@ -92,11 +92,13 @@ meta def inRange (r : Syntax.Range) (s : Syntax) : Bool :=
   s.getRange?.any fun inner => r.start ≤ inner.start && inner.stop ≤ r.stop
 
 /-- Extract the `(userName, syntax)` binder entry from `info` when it's a
-    binder `TermInfo` -/
+    binder `TermInfo` for an identifier the user wrote. The holes Lean elaborates
+    for implicit constructor arguments are binders too, named after the locals
+    they unify with, which may repeat (`Ind (inst : Cls X X)`): they are skipped. -/
 meta def binderEntry? (patRange : Syntax.Range) (info : Info) : Option (Name × Syntax) := do
   let .ofTermInfo ti := info | none
   let .fvar fid := ti.expr | none
-  if ti.isBinder && inRange patRange ti.stx then
+  if ti.isBinder && ti.stx.isIdent && inRange patRange ti.stx then
     let decl ← ti.lctx.find? fid
     (decl.userName, ti.stx)
   else
@@ -430,7 +432,12 @@ meta partial def elabDoLetArrowPat (pat : Term) (rhs : DoElem) (rest : List DoEl
       if let some a := eType.getAppArgs[0]? then
         discard <| isDefEq α a
       pure e
-  let α ← instantiateMVars α
+  let mut α ← instantiateMVars α
+  -- Still unknown (a stuck instance, a postponed `match`): the pattern needs it, so synthesize
+  -- now, default instances included.
+  if α.getAppFn.isMVar then
+    synthesizeSyntheticMVarsNoPostponing
+    α ← instantiateMVars α
   let shape ← analyzePat pat α
   let k ← mkPatContinuation shape α fun _ => elabDoSeqCore rest
   synthesizeSyntheticMVarsNoPostponing
@@ -455,7 +462,11 @@ meta partial def elabDoLetPat (pat : Term) (rhs : Term)
     (rest : List DoElem) : ElabM Expr := do
   let α ← mkFreshTypeMVar
   let val ← elabTermEnsuringType rhs α
-  let α ← instantiateMVars α
+  let mut α ← instantiateMVars α
+  -- A `match` with no expected type is postponed, leaving `α` unknown; the pattern needs it.
+  if α.getAppFn.isMVar then
+    synthesizeSyntheticMVarsNoPostponing
+    α ← instantiateMVars α
   let shape ← analyzePat pat α
   let k ← mkPatContinuation shape α fun _ => elabDoSeqCore rest
   synthesizeSyntheticMVarsNoPostponing

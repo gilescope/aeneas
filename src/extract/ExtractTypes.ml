@@ -10,10 +10,27 @@ module T = Types
 let extract_str (_span : Meta.span) (fmt : F.formatter) ~(inside : bool)
     (s : string) : unit =
   let chars = StringUtils.string_to_chars s in
-  (* Using the OCaml escape conventions for now.
+  let escape =
+    match backend () with
+    | Lean -> (
+        (* Lean sources are UTF-8, so the bytes of non-ASCII characters are
+           kept as they are; Lean has no decimal escapes ([\207]) *)
+        function
+        | '"' -> "\\\""
+        | '\\' -> "\\\\"
+        | '\n' -> "\\n"
+        | '\t' -> "\\t"
+        | '\r' -> "\\r"
+        | c when Char.code c < 0x20 || Char.code c = 0x7f ->
+            Printf.sprintf "\\x%02x" (Char.code c)
+        | c -> String.make 1 c)
+    | _ ->
+        (* Using the OCaml escape conventions for now.
 
-     TODO: does this really work? *)
-  let s = String.concat "" (List.map Char.escaped chars) in
+           TODO: does this really work? *)
+        Char.escaped
+  in
+  let s = String.concat "" (List.map escape chars) in
   let s = "\"" ^ s ^ "\"" in
 
   (* We need to convert the string to a str (the conversion inserts a static check
@@ -459,7 +476,13 @@ let rec extract_ty (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
   | TLiteral lty -> extract_literal_type ctx fmt lty
   | TArrow (arg_ty, ret_ty) ->
       if inside then F.pp_print_string fmt "(";
-      extract_rec ~inside:false arg_ty;
+      (* An arrow argument needs parentheses: [(A → B) → C] *)
+      let arg_inside =
+        match arg_ty with
+        | TArrow _ -> true
+        | _ -> false
+      in
+      extract_rec ~inside:arg_inside arg_ty;
       F.pp_print_space fmt ();
       extract_arrow fmt ();
       F.pp_print_space fmt ();
@@ -882,6 +905,11 @@ let extract_type_decl_register_names (ctx : extraction_ctx) (def : type_decl) :
                   (fun variant_id (variant : variant) ->
                     (variant_id, StringMap.find variant.variant_name variant_map))
                   variants
+            | Some { body_info = None; _ } ->
+                (* An opaque model (e.g. [BTreeMap]'s [Entry]): no variant
+                   names, so code which builds or matches the variants fails
+                   to extract rather than meaning something else. *)
+                []
             | Some info ->
                 [%craise] span
                   ("Invalid builtin information for type "
@@ -899,6 +927,20 @@ let extract_type_decl_register_names (ctx : extraction_ctx) (def : type_decl) :
   in
   (* Return *)
   ctx
+
+(** The arguments to apply a type declaration to, in its own scope, in Lean: its
+    explicit type and const generic parameters, then its trait clauses. The
+    implicit parameters are inferred from the clauses. *)
+let type_decl_explicit_args (decl : type_decl) (type_params : string list)
+    (cg_params : string list) (trait_clauses : string list) : string list =
+  let explicit l e =
+    List.filter_map
+      (fun (e, x) -> if e = Explicit then Some x else None)
+      (List.combine e l)
+  in
+  explicit type_params decl.explicit_info.explicit_types
+  @ explicit cg_params decl.explicit_info.explicit_const_generics
+  @ trait_clauses
 
 (** Print the variants *)
 let extract_type_decl_variant (span : Meta.span) (ctx : extraction_ctx)
@@ -1453,13 +1495,6 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
     TypesUtils.type_decl_from_decl_id_is_tuple_struct
       ctx.trans_ctx.type_ctx.type_infos def.def_id
   in
-  let is_tuple_struct_one_or_zero_field =
-    is_tuple_struct
-    &&
-    match def.kind with
-    | Struct [] | Struct [ _ ] -> true
-    | _ -> false
-  in
   let type_kind =
     if extract_body then
       if is_tuple_struct then Some Tuple
@@ -1502,11 +1537,13 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
    (* Extract the attributes.
 
       Note that we need the [reducible] attribute in Lean, otherwise Lean sometimes
-      doesn't manage to typecheck the expressions when it needs to coerce the type. *)
+      doesn't manage to typecheck the expressions when it needs to coerce the type.
+      This holds for every tuple struct (e.g. a closure's state, extracted as a
+      product): since Lean 4.34, unification no longer unfolds a semireducible
+      [def X := A * B] when checking implicit arguments, so a tuple literal
+      [(a, b)] would not match a parameter of type [X]. *)
    let reducible_attr =
-     if is_tuple_struct_one_or_zero_field && backend () = Lean then
-       [ "reducible" ]
-     else []
+     if is_tuple_struct && backend () = Lean then [ "reducible" ] else []
    in
    (* The attribute to automatically generate the [read_discriminant] function *)
    let discr_attr =
@@ -1646,6 +1683,16 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
            extract_type_decl_struct_body ctx_body fmt type_decl_group kind def
              type_params cg_params fields
      | Enum variants ->
+         (* In Lean the constructors' result type is the inductive applied to
+            its explicit parameters only, trait clauses included: the
+            implicit ones are inferred from the clauses. *)
+         let type_params, cg_params =
+           if backend () = Lean then
+             ( [],
+               type_decl_explicit_args def type_params cg_params trait_clauses
+             )
+           else (type_params, cg_params)
+         in
          extract_type_decl_enum_body ctx_body fmt type_decl_group def def_name
            type_params cg_params variants
      | Opaque -> [%craise] span "Unreachable");
@@ -2154,6 +2201,47 @@ let extract_type_decl_record_field_projectors_simp_lemmas (ctx : extraction_ctx)
 
         FieldId.iteri extract_field_proj_simp_lemma fields
 
+(** [instance : GivesBack T := ⟨⟩] for a type [T] holding a [&mut] in one
+    region, e.g. a closure capturing a [&mut].
+
+    Passed to a generic function (e.g. [Iterator::map]), such a value is given
+    back from the function's output, and the models of the generic functions of
+    the standard library pick the shape of their output with this class. Types
+    with several [&mut] regions get no instance: their call sites give back one
+    value per region, which no model has the shape for. *)
+let extract_type_decl_gives_back (ctx : extraction_ctx) (fmt : F.formatter)
+    (decl : type_decl) : unit =
+  let mut_regions =
+    match
+      TypeDeclId.Map.find_opt decl.def_id ctx.trans_ctx.type_ctx.type_infos
+    with
+    | Some info -> T.RegionId.Set.cardinal info.mut_regions
+    | None -> 0
+  in
+  if backend () = Lean && mut_regions = 1 then (
+    let span = decl.item_meta.span in
+    let ctx, type_params, cg_params, trait_clauses =
+      ctx_add_generic_params span decl.item_meta.name Item decl.llbc_generics
+        decl.generics ctx
+    in
+    let def_name = ctx_get_local_type span decl.def_id ctx in
+    F.pp_print_space fmt ();
+    F.pp_open_hovbox fmt ctx.indent_incr;
+    F.pp_print_string fmt "instance";
+    extract_generic_params span ctx fmt TypeDeclId.Set.empty Item
+      ~as_implicits:true decl.generics None type_params cg_params trait_clauses;
+    F.pp_print_space fmt ();
+    F.pp_print_string fmt ": Aeneas.Std.GivesBack";
+    F.pp_print_space fmt ();
+    let args =
+      type_decl_explicit_args decl type_params cg_params trait_clauses
+    in
+    if args = [] then F.pp_print_string fmt def_name
+    else F.pp_print_string fmt ("(" ^ String.concat " " (def_name :: args) ^ ")");
+    F.pp_print_string fmt " := ⟨⟩";
+    F.pp_close_box fmt ();
+    F.pp_print_break fmt 0 0)
+
 (** Extract extra information for a type (e.g., [Arguments] instructions in
     Coq).
 
@@ -2161,6 +2249,7 @@ let extract_type_decl_record_field_projectors_simp_lemmas (ctx : extraction_ctx)
     registered. *)
 let extract_type_decl_extra_info (ctx : extraction_ctx) (fmt : F.formatter)
     (kind : decl_kind) (decl : type_decl) : unit =
+  extract_type_decl_gives_back ctx fmt decl;
   match backend () with
   | FStar | HOL4 -> ()
   | Lean | Coq ->

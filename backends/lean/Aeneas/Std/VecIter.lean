@@ -7,7 +7,8 @@ namespace Aeneas.Std
 
 open Result
 
-@[expose, rust_type "alloc::vec::into_iter::IntoIter" (keepParams := [true, false])]
+/-- Reducible, so `into_iter v = ok v` typechecks where specs are matched (`simp only`, `step`). -/
+@[expose, reducible, rust_type "alloc::vec::into_iter::IntoIter" (keepParams := [true, false])]
 def alloc.vec.into_iter.IntoIter (T : Type) : Type := alloc.vec.Vec T
 
 @[expose, rust_fun
@@ -19,12 +20,22 @@ def alloc.vec.into_iter.IteratorIntoIter.next {T : Type} (it: alloc.vec.into_ite
   | []  => ok (none, it)
   | hd :: tl => ok (hd, .from tl (by grind) )
 
+/-- Exact: the elements left -/
+@[expose, rust_fun
+  "alloc::vec::into_iter::{core::iter::traits::iterator::Iterator<alloc::vec::into_iter::IntoIter<@T, @A>, @T>}::size_hint"
+  (keepParams := [true, false])]
+def alloc.vec.into_iter.IteratorIntoIter.size_hint {T : Type} (it : alloc.vec.into_iter.IntoIter T) :
+  Result (Usize × Option Usize) :=
+  let n : Usize := UScalar.ofNatCore it.val.length (by have := Vec.property it; scalar_tac)
+  ok (n, some n)
+
 @[reducible, rust_trait_impl
   "core::iter::traits::iterator::Iterator<alloc::vec::into_iter::IntoIter<@T, @A>, @T>"
   (keepParams := [true, false])]
 impl_def core.iter.traits.iterator.IteratorVecIntoIter (T : Type) :
   core.iter.traits.iterator.Iterator (alloc.vec.into_iter.IntoIter T) T := {
   next := alloc.vec.into_iter.IteratorIntoIter.next
+  size_hint := alloc.vec.into_iter.IteratorIntoIter.size_hint
   step_by := core.iter.traits.iterator.Iterator.step_by.trait_default
     (core.iter.traits.iterator.IteratorVecIntoIter T)
   enumerate := core.iter.traits.iterator.Iterator.enumerate.trait_default
@@ -49,7 +60,7 @@ def core.iter.traits.collect.IntoIteratorVec (T : Type) :
 }
 
 /-- Iterate and collect elements into a list -/
-def alloc.vec.FromIteratorVec.iterToList
+@[expose] def alloc.vec.FromIteratorVec.iterToList
     {T : Type} {IntoIter : Type}
     (iterInst : core.iter.traits.iterator.Iterator IntoIter T)
     (iter : IntoIter) (acc : List T) : Result (List T) := do
@@ -69,6 +80,24 @@ def alloc.vec.FromIteratorVec.from_iter
     let iter ← IntoIteratorInst.into_iter input
     let list ← alloc.vec.FromIteratorVec.iterToList IntoIteratorInst.iteratorInst iter []
     if h : list.length ≤ Usize.max then .ok (.from list h)
+    else .fail .panic
+
+/-- `iterToList`, also giving back the exhausted iterator -/
+@[expose] def alloc.vec.FromIteratorVec.iterToListBack
+    {T : Type} {I : Type}
+    (iterInst : core.iter.traits.iterator.Iterator I T)
+    (iter : I) (acc : List T) : Result (List T × I) := do
+  let (opt, iter) ← iterInst.next iter
+  match opt with
+  | none => .ok (acc.reverse, iter)
+  | some item => alloc.vec.FromIteratorVec.iterToListBack iterInst iter (item :: acc)
+partial_fixpoint
+
+/-- `Vec::from_iter` reads to the end -/
+instance {T : Type} : FromIterBack (alloc.vec.Vec T) T where
+  fromIterBack iterInst iter := do
+    let (list, iter) ← alloc.vec.FromIteratorVec.iterToListBack iterInst iter []
+    if h : list.length ≤ Usize.max then .ok (.from list h, iter)
     else .fail .panic
 
 @[expose, reducible, rust_trait_impl
