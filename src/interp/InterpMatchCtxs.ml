@@ -447,9 +447,13 @@ module MakeMatcher (M : PrimMatcher) : Matcher = struct
             M.match_shared_loans match_rec ctx0 ctx1 ty id0 id1 sv
         | VMutLoan id0, VMutLoan id1 ->
             M.match_mut_loans match_rec ctx0 ctx1 ty id0 id1
-        | VSharedLoan _, VMutLoan _ | VMutLoan _, VSharedLoan _ ->
-            (* TODO: *)
-            [%craise_recover] M.recover M.span "Unimplemented"
+        | VSharedLoan (id0, _), VMutLoan _ ->
+            (* A shared loan (e.g. a pending index read) against a mutable one: end the
+               shared loan and retry, as for the other loan mismatches (the join catches
+               [ValueMatchFailure] and ends the loan it names) *)
+            raise (ValueMatchFailure (LoanInLeft id0))
+        | VMutLoan _, VSharedLoan (id1, _) ->
+            raise (ValueMatchFailure (LoanInRight id1))
       end
     | VSymbolic sv0, VSymbolic sv1 ->
         [%cassert_recover] M.recover M.span

@@ -9,9 +9,11 @@ package «tests» {}
 
 @[default_target] lean_lib Adt
 @[default_target] lean_lib AdtBorrows
+@[default_target] lean_lib ArrayFromFn
 @[default_target] lean_lib Arrays
 @[default_target] lean_lib ArraysDefs
 @[default_target] lean_lib ArraySliceIndex
+@[default_target] lean_lib AsChunks
 @[default_target] lean_lib AsMut
 @[default_target] lean_lib AssertCfg
 @[default_target] lean_lib AssocTypeConstraint
@@ -115,6 +117,7 @@ package «tests» {}
 @[default_target] lean_lib LoopAfterMapFnItem
 @[default_target] lean_lib LoopGenericIntoIter
 @[default_target] lean_lib LoopIterMutNestedIndex
+@[default_target] lean_lib LoopJoinSharedMutLoan
 @[default_target] lean_lib LoopPushSharedRefsFromMap
 @[default_target] lean_lib Loops
 @[default_target] lean_lib LoopsAdts
@@ -147,6 +150,7 @@ package «tests» {}
 @[default_target] lean_lib PoloniusList
 @[default_target] lean_lib Print
 @[default_target] lean_lib Range
+@[default_target] lean_lib RangeSignedSpecs
 @[default_target] lean_lib RecursiveDeriveClone
 @[default_target] lean_lib RecursiveImplGenericMethod
 @[default_target] lean_lib RefOps
