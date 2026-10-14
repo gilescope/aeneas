@@ -608,6 +608,14 @@ module MakeMatcher (M : PrimMatcher) : Matcher = struct
             (* Those should have been filtered when destructuring the abstractions -
                they are necessary only when there are nested borrows *)
             [%craise_recover] M.recover M.span "Unreachable"
+        | AEndedSharedLoan (sv0, child0), AEndedSharedLoan (sv1, child1) ->
+            (* Both ended: no borrow refers to them any more, so they match as their
+               values and children do. Left in a fixed abstraction by a call returning
+               several shared borrows of which some were dropped (e.g. the unused half
+               of [split_at]'s result) *)
+            let sv = match_rec sv0 sv1 in
+            let child = match_arec child0 child1 in
+            { value = ALoan (AEndedSharedLoan (sv, child)); ty }
         | _ -> [%craise_recover] M.recover M.span "Unreachable")
     | ASymbolic (pm0, proj0), ASymbolic (pm1, proj1) -> begin
         [%ldebug "Matching symbolic avalues"];
