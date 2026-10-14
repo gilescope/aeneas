@@ -115,6 +115,7 @@ package «tests» {}
 @[default_target] lean_lib LoopAfterMapFnItem
 @[default_target] lean_lib LoopGenericIntoIter
 @[default_target] lean_lib LoopIterMutNestedIndex
+@[default_target] lean_lib LoopJoinSharedMutLoan
 @[default_target] lean_lib LoopPushSharedRefsFromMap
 @[default_target] lean_lib Loops
 @[default_target] lean_lib LoopsAdts
