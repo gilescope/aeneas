@@ -145,6 +145,7 @@ package «tests» {}
 @[default_target] lean_lib PoloniusList
 @[default_target] lean_lib Print
 @[default_target] lean_lib Range
+@[default_target] lean_lib RangeSignedSpecs
 @[default_target] lean_lib RecursiveDeriveClone
 @[default_target] lean_lib RecursiveImplGenericMethod
 @[default_target] lean_lib RefOps
