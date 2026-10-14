@@ -102,6 +102,8 @@ package «tests» {}
 @[default_target] lean_lib IteratorsArray
 @[default_target] lean_lib IteratorsScalar
 @[default_target] lean_lib IterExtra
+@[default_target] lean_lib IterMutAdapters
+@[default_target] lean_lib IterMutRev
 @[default_target] lean_lib IterRevDefault
 @[default_target] lean_lib IterSpecs
 @[default_target] lean_lib IterStdOverrides
