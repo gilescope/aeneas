@@ -310,6 +310,10 @@ and let_expr = {
       (** The abstractions introduced in the joined environment (those are
           output by the bound expression) *)
   next_expr : expr;  (** The expression for *after* the let *)
+  with_exits : bool;
+      (** Some branches of the bound expression leave through a [break],
+          [continue] or [return] instead of reaching the join: the bound
+          expression then returns either the joined outputs or such an exit. *)
   span : Meta.span;  (** Information about the origin of the expression *)
 }
 

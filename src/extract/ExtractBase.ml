@@ -1159,6 +1159,7 @@ let builtin_adts () : (builtin_ty * string) list =
       [
         (TResult, "Result");
         (TLoopResult, "ControlFlow");
+        (TSum, "_root_.Sum");
         (TFuel, "Nat");
         (TArray, "Array");
         (TSlice, "Slice");
@@ -1170,6 +1171,7 @@ let builtin_adts () : (builtin_ty * string) list =
       [
         (TResult, "result");
         (TLoopResult, "control_flow");
+        (TSum, "either");
         (TFuel, if backend () = HOL4 then "num" else "nat");
         (TArray, "array");
         (TSlice, "slice");
@@ -1216,6 +1218,8 @@ let builtin_variants () : (builtin_ty * VariantId.id * string) list =
         (TError, error_failure_id, "panic");
         (TLoopResult, loop_result_continue_id, "cont");
         (TLoopResult, loop_result_break_id, "done");
+        (TSum, sum_left_id, "_root_.Sum.inl");
+        (TSum, sum_right_id, "_root_.Sum.inr");
         (* No Fuel::Zero on purpose *)
         (* No Fuel::Succ on purpose *)
       ]

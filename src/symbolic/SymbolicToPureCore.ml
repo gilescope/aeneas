@@ -46,6 +46,15 @@ type fun_ctx = {
 }
 [@@deriving show]
 
+(** The early exits an expression can take, with the type of their payload: a
+    [return] in a function body (the output, with the backward functions), a
+    [continue] or a [break] in a loop body (the loop's inputs, resp. outputs).
+*)
+type exit_info =
+  | ExitFun of ty
+  | ExitLoop of ty * ty  (** continue payload, break payload *)
+[@@deriving show]
+
 (** Contains information about a loop we entered.
 
     Note that a path in a translated function body can have at most one call to
@@ -234,6 +243,15 @@ type bs_ctx = {
           We initialize this at [None]. *)
   mk_continue : (bs_ctx -> texpr -> texpr) option;
   mk_break : (bs_ctx -> texpr -> texpr) option;
+  mk_join : (texpr -> texpr) option;
+      (** Small helper: translate a [Join] leaf given its outputs. [None] means
+          [ok outputs]; inside a let whose other branches exit early (see
+          [SymbolicAst.let_expr.with_exits]) the outputs are tagged instead. *)
+  exit_info : exit_info option;
+      (** How the current expression can be left early (see [exit_info]). A let
+          with early exits (see [SymbolicAst.let_expr.with_exits]) uses it to
+          carry an exit's payload out of the bound expression, then leaves with
+          it. [None] at the top level, before the body. *)
   mut_borrow_to_consumed : texpr V.BorrowId.Map.t;
       (** A map from mutable borrows consumed by region abstractions to consumed
           values.

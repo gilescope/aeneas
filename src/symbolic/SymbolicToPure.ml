@@ -46,7 +46,24 @@ let translate_fun_decl_body (ctx : bs_ctx) (signature : fun_sig) (body : S.expr)
     let output = mk_simpl_tuple_ty tys in
     mk_output output
   in
-  let ctx = { ctx with mk_return = Some mk_return; mk_panic = Some mk_panic } in
+  (* What a [return] carries: see [bs_ctx.exit_info] *)
+  let exit_info =
+    let back_tys = compute_back_tys ctx.sg.fun_ty in
+    let back_tys = List.filter_map (fun x -> x) back_tys in
+    let tys =
+      if ctx.sg.fun_ty.fwd_info.ignore_output then back_tys
+      else ctx.sg.fun_ty.fwd_output :: back_tys
+    in
+    ExitFun (mk_simpl_tuple_ty tys)
+  in
+  let ctx =
+    {
+      ctx with
+      mk_return = Some mk_return;
+      mk_panic = Some mk_panic;
+      exit_info = Some exit_info;
+    }
+  in
   let body = translate_expr body ctx in
   (* Sanity check *)
   type_check_texpr ctx body;

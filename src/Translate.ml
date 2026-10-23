@@ -221,6 +221,8 @@ let translate_function_to_pure_aux (trans_ctx : trans_ctx)
       mk_return = None;
       mk_panic = None;
       mk_continue = None;
+      mk_join = None;
+      exit_info = None;
       mk_break = None;
       mut_borrow_to_consumed = BorrowId.Map.empty;
       var_id_to_default = Pure.FVarId.Map.empty;

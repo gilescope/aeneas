@@ -509,6 +509,14 @@ let max_error_spans = ref 5
     the match/switch/etc. *)
 let recover_joins = ref true
 
+(** Join the contexts after a switch even when some branches leave early with a
+    [break], [continue] or [return]: only the branches which fall through are
+    joined, the others keep their own continuation. Without it a sequence of
+    such switches duplicates the code after each one (exponentially). Off by
+    default: inside a loop body the exits then carry every loop variable, which
+    hides from the loop simplifications that most of them are unchanged. *)
+let join_early_exits = ref false
+
 (** When analyzing types, for instance to check whether they use erased regions
     or not, we ignore dynamic traits.
 

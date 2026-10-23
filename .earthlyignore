@@ -1,0 +1,8 @@
+.git
+bin
+src/_build
+tests/test_runner/_build
+charon/charon/target
+charon/.git
+backends/lean/.lake
+tests/lean/.lake

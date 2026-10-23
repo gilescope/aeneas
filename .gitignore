@@ -80,3 +80,6 @@ nohup.out
 */.#*
 *.smt2
 .DS_Store
+
+# Output of the Earthfile dev harness (`+test`, `+test-all`, `+lean-check`)
+tests/build/

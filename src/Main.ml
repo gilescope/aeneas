@@ -195,6 +195,10 @@ let () =
         Arg.Int (fun x -> max_error_spans := x),
         " Maximum number of local uses of an external definition which \
          triggered an error that we print (if < 0 we print them all)" );
+      ( "-join-early-exits",
+        Arg.Set join_early_exits,
+        " Join the contexts after a switch whose branches may break, continue \
+         or return, instead of duplicating the code after it once per branch" );
       ( "-strict-joins",
         Arg.Clear recover_joins,
         " Report an error whenever joining contexts fails rather than \

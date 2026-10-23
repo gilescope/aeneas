@@ -109,6 +109,7 @@ package «tests» {}
 @[default_target] lean_lib IterSpecs
 @[default_target] lean_lib IterStdOverrides
 @[default_target] lean_lib JoinDuplicate
+@[default_target] lean_lib JoinEarlyExit
 @[default_target] lean_lib Joins
 @[default_target] lean_lib LeanKeywords
 @[default_target] lean_lib LeanKeywordsClash

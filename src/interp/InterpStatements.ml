@@ -648,6 +648,17 @@ let eval_global_as_fresh_symbolic_value (span : Meta.span)
       (ctx, mk_tvalue_from_symbolic_value sval, cc)
 
 (** Evaluate a statement. *)
+(** Whether to join the contexts after a switch. By default, only when no branch
+    [break]s, [continue]s or [return]s. With [-join-early-exits], when at least
+    two branches fall through: those are joined, the exits keep their own
+    continuation, and the code after the switch is no longer duplicated once per
+    branch (exponentially, for a sequence of such switches). *)
+let should_join (branches : block list)
+    (resl : (eval_ctx * statement_eval_res) list) : bool =
+  if !Config.join_early_exits then
+    List.length (List.filter (fun (_, res) -> res = Unit) resl) >= 2
+  else not (List.exists block_has_break_continue_return branches)
+
 let rec eval_statement (config : config) (st : statement) : stl_cm_fun =
  fun ctx ->
   (* Debugging *)
@@ -910,16 +921,13 @@ and eval_switch_raw (config : config) (span : Meta.span) (data : switch_data)
                 (S.mk_opt_place_from_op span op ctx)
                 ctx
             in
-            (* Check if we should join the states after the if then else *)
-            let join =
-              (not (block_has_break_continue_return true_block))
-              && not (block_has_break_continue_return false_block)
-            in
             let resl_true = eval_block config true_block true_ctx in
             let resl_false = eval_block config false_block false_ctx in
             let ctx_resl, cf_branches =
               comp_seqs __FILE__ __LINE__ span [ resl_true; resl_false ]
             in
+            (* Check if we should join the states after the if then else *)
+            let join = should_join [ true_block; false_block ] ctx_resl in
             let cc el =
               match cf_branches el with
               | [ e_true; e_false ] -> cf_bool (e_true, e_false)
@@ -968,15 +976,12 @@ and eval_switch_raw (config : config) (span : Meta.span) (data : switch_data)
             (* Then evaluate the "otherwise" branch *)
             let resl_otherwise = eval_block config otherwise ctx_otherwise in
 
-            (* Should we join the contexts after the switch? *)
-            let join =
-              (not (List.exists block_has_break_continue_return target_blocks))
-              && not (block_has_break_continue_return otherwise)
-            in
             let resl, cf =
               comp_seqs __FILE__ __LINE__ span
                 (resl_branches @ [ resl_otherwise ])
             in
+            (* Should we join the contexts after the switch? *)
+            let join = should_join (otherwise :: target_blocks) resl in
             let cc el =
               let el, e_otherwise = Collections.List.pop_last el in
               cf_int (el, e_otherwise)
@@ -1035,11 +1040,9 @@ and eval_switch_raw (config : config) (span : Meta.span) (data : switch_data)
                 (fun ctx -> (eval_switch config span data branches) ctx)
                 ctxl
             in
-            (* Should we join the contexts after the match? *)
-            let join =
-              not (List.exists block_has_break_continue_return branches)
-            in
             let ctx_resl, cf = comp_seqs __FILE__ __LINE__ span resl in
+            (* Should we join the contexts after the match? *)
+            let join = should_join branches ctx_resl in
             let cc = cc_comp cf_expand cf in
             if join then (* Join the contexts *)
               try eval_switch_with_join config span cc ctx0 ctx_resl
@@ -1064,37 +1067,25 @@ and eval_switch_raw (config : config) (span : Meta.span) (data : switch_data)
       expressions for the [then] and [else] branches, reconstructs the full
       [if then else] expression).
     - [resl_branches]: each element of the list corresponds to the result of
-      evaluating a branch. The list of eval contexts and evaluation results
-      should be either empty (if we reached a panic statement: we abort the
-      symbolic execution there) or a list with one element (if we did not abort
-      execution because of a panic statement). The continuation expects the
-      symbolic expression for what happens at the end of the branch, and
-      reconstructs the expression for the full branch. *)
+      evaluating a branch: a context and how the branch ended. A branch which
+      reached a panic has no result (we abort the symbolic execution there).
+      The branches which fell through ([Unit]) are joined; those which left
+      with a [break], [continue] or [return] are passed through untouched,
+      with their own continuation. The continuation expects the symbolic
+      expression for what happens at the end of each branch, and reconstructs
+      the expression for the full branch. *)
 and eval_switch_with_join (config : config) (span : Meta.span)
     (cf : SA.expr list -> SA.expr) (ctx0 : eval_ctx)
     (ctx_resl : (eval_ctx * statement_eval_res) list) :
     (eval_ctx * statement_eval_res) list * (SA.expr list -> SA.expr) =
-  (* Count the number of contexts to join.
-
-     Note that all evaluation results should be [Unit]: break, continue and
-     return should not happen as we attempt to join only if the code in the
-     branches doesn't contain break, etc. instructions. It can also not be
-     panic as once we reach a panic we stop the symbolic execution (we simply
-     synthesize a panic node in the symbolic AST). *)
-  [%sanity_check] span (List.for_all (fun (_, res) -> res = Unit) ctx_resl);
-  let ctxl = List.map fst ctx_resl in
+  (* The contexts to join: those of the branches which fell through *)
+  let units, exits = List.partition (fun (_, res) -> res = Unit) ctx_resl in
+  let ctxl = List.map fst units in
   let num_units = List.length ctxl in
-  if num_units = 0 then (
-    ( (* We only have panics: nothing to do *)
-      [],
-      fun el ->
-        [%sanity_check] span (el = []);
-        cf [] ))
-  else if num_units = 1 then
-    (* No need to join the contexts: continue with the current context, and inline
-       what happens inside the loop inside the branching expression. *)
-    let ctx = List.hd ctxl in
-    ([ (ctx, Unit) ], cf)
+  if num_units <= 1 then
+    (* Nothing to join: at most one branch continues after the switch, so the
+       code after it is not duplicated *)
+    (ctx_resl, cf)
   else (
     (* We need to join the contexts *)
     [%ldebug
@@ -1192,31 +1183,46 @@ and eval_switch_with_join (config : config) (span : Meta.span)
       (* Generate the let expression *)
       cf (SA.Join (ctx, output_values, output_abs))
     in
-    let resl = List.map match_ctx ctxl in
+    (* The expressions of the joined branches, in the order of [ctx_resl]; the
+       exits are filled in by the continuation *)
+    let resl =
+      List.map
+        (fun (ctx, res) -> if res = Unit then Some (match_ctx ctx) else None)
+        ctx_resl
+    in
 
-    (* We can now call the continuation introduced when branching to group the
-       expressions of the branches into a single branching expression (i.e.,
-       we group the expressions for the [then] and [else] branches into a single
+    (* Generate the let expression: the continuation receives one expression
+       per result we output below, the first for the joined context, then one
+       per exit, which we put back in branch order. We can then call the
+       continuation introduced when branching to group the expressions of the
+       branches into a single branching expression (i.e., we group the
+       expressions for the [then] and [else] branches into a single
        [if then else] expression. *)
-    let bound_expr = cf resl in
-
-    (* Generate the let expression *)
     let cf (el : SA.expr list) : SA.expr =
       match el with
-      | [ next_expr ] ->
+      | next_expr :: exit_exprs ->
+          let rec fill resl exit_exprs =
+            match (resl, exit_exprs) with
+            | [], [] -> []
+            | Some e :: resl, _ -> e :: fill resl exit_exprs
+            | None :: resl, e :: exit_exprs -> e :: fill resl exit_exprs
+            | _ -> [%internal_error] span
+          in
+          let bound_expr = cf (fill resl exit_exprs) in
           Let
             {
               bound_expr;
               out_svalues = output_svalues;
               out_abs = output_abs;
               next_expr;
+              with_exits = exits <> [];
               span;
             }
-      | _ -> [%internal_error] span
+      | [] -> [%internal_error] span
     in
 
-    (* Output the joined context *)
-    ([ (joined_ctx, Unit) ], cf))
+    (* Output the joined context, then the exits *)
+    ((joined_ctx, Unit) :: exits, cf))
 
 (** Evaluate a function call (auxiliary helper for [eval_statement]) *)
 and eval_function_call (config : config) (span : Meta.span) (call : call) :

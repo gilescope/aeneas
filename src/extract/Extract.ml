@@ -727,6 +727,15 @@ let builtin_method_default (trait_decl : trait_decl)
 
 (** - [inside_do]: [true] if we are inside a do block. In Lean, controls whether
       we can print let-bindings or if we need to insert a [do] first. *)
+(** Whether a type contains the builtin sum (a joined switch with early exits
+    binds one, see [SymbolicToPureExpressions.translate_let]). *)
+let rec ty_mentions_sum (ty : ty) : bool =
+  match ty with
+  | TAdt (TBuiltin TSum, _) -> true
+  | TAdt (_, generics) -> List.exists ty_mentions_sum generics.types
+  | TArrow (t0, t1) -> ty_mentions_sum t0 || ty_mentions_sum t1
+  | TVar _ | TLiteral _ | TTraitType _ | TNever | TDynTrait _ | TError -> false
+
 let rec extract_texpr (span : Meta.span) (ctx : extraction_ctx)
     (fmt : F.formatter) ~(inside : bool) ~(inside_do : bool) (e : texpr) : unit
     =
@@ -1435,6 +1444,13 @@ and extract_lets (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
             | Lean, (POpen _ | PBound _), TLiteral TBool ->
                 F.pp_print_space fmt ();
                 F.pp_print_string fmt ": Bool"
+            | Lean, (POpen _ | PBound _), ty when ty_mentions_sum ty ->
+                (* A sum built in one branch leaves the other side's type to
+                   inference, which has nothing to go on when no branch builds
+                   it (a loop body that only breaks, say): pin it. *)
+                F.pp_print_space fmt ();
+                F.pp_print_string fmt ": ";
+                extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false ty
             | _ -> ());
             F.pp_print_space fmt ();
             let eq =
