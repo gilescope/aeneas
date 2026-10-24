@@ -30,11 +30,13 @@ test:
     ARG FILE=join-early-exit.rs
     # Extra aeneas flags, e.g. --AENEAS_OPTIONS="-log SymbolicToPureExpressions".
     ARG AENEAS_OPTIONS
+    # Seconds before the run is killed (0: never), e.g. to collect a -log dump only.
+    ARG TIMEOUT=0
     WORKDIR /aeneas
     COPY +build/aeneas +build/test_runner /opt/aeneas/
     COPY --dir tests/src tests/
     RUN mkdir -p tests/llbc tests/lean \
-        && test_runner /opt/aeneas/charon /opt/aeneas/aeneas tests/llbc "tests/src/$FILE" $AENEAS_OPTIONS 2>&1 | tee test.log
+        && timeout "$TIMEOUT" test_runner /opt/aeneas/charon /opt/aeneas/aeneas tests/llbc "tests/src/$FILE" $AENEAS_OPTIONS 2>&1 | tee test.log
     SAVE ARTIFACT test.log AS LOCAL tests/build/test.log
     SAVE ARTIFACT tests/lean/*.lean AS LOCAL tests/lean/
 

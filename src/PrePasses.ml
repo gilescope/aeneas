@@ -1105,15 +1105,94 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
           | [] -> []
           | st :: after ->
               let after_has_loop = has_loop { b with statements = after } in
-              update_statement depth ~after_has_loop st @ go after
+              (* Does the block leave right after the loop: past deaths, drops
+                 and assignments (such as the carry of [_0] into an [Option] that
+                 [unnest_loop_continuations] adds), a [return] or a [break] of an
+                 enclosing loop? Then a [break] of the loop which has just set
+                 [_0] is a return: Charon folds the code between a [while]'s exit
+                 and a shared [return] into the loop, leaving [_0 := e; break 0]
+                 where [return e] was, the value cascading through the enclosing
+                 loops' [break]s. [post_exit] is that tail, exit included. *)
+              let rec post_exit (acc : statement list) (stl : statement list) :
+                  statement list option =
+                match stl with
+                | ({
+                     kind =
+                       StorageDead _ | Drop _ | Nop | PlaceMention _ | Assign _;
+                     _;
+                   } as s)
+                  :: stl -> post_exit (s :: acc) stl
+                | ({ kind = Return | Break _; _ } as s) :: _ ->
+                    Some (List.rev (s :: acc))
+                | _ -> None
+              in
+              let post_exit = post_exit [] after in
+              update_statement depth ~after_has_loop ~post_exit st @ go after
         in
         { b with statements = go b.statements }
       and update_statement (depth : int) ~(after_has_loop : bool)
-          (st : statement) : statement list =
+          ~(post_exit : statement list option) (st : statement) : statement list
+          =
         match st.kind with
         | Loop loop ->
             (* Inner loops first: their escaping exits now sit in this body *)
             let loop = update_block (depth + 1) loop in
+            (* Does the exit carry [_0]: is it set just before, past the deaths,
+               by an assignment, a call, or a switch every falling-through
+               branch of which sets it? [prev] holds the preceding statements,
+               latest first. *)
+            let rec carries (prev : statement list) =
+              match prev with
+              | ({ kind = StorageDead _ | Drop _ | Nop | PlaceMention _; _ } :
+                  statement)
+                :: prev -> carries prev
+              | { kind = Assign ({ kind = PlaceLocal id; _ }, _); _ } :: _
+              | {
+                  kind = Call ({ dest = { kind = PlaceLocal id; _ }; _ }, _);
+                  _;
+                }
+                :: _ -> id = LocalId.zero
+              | { kind = Switch (_, branches); _ } :: _ ->
+                  List.for_all
+                    (fun (b : block) ->
+                      let rev = List.rev b.statements in
+                      (match rev with
+                      | {
+                          kind =
+                            Break _ | Continue _ | Return | UndefinedBehavior;
+                          _;
+                        }
+                        :: _ -> true
+                      | _ -> false)
+                      || carries rev)
+                    branches
+              (* Dead code (e.g. after a loop every exit of which was lifted):
+                 the exit is never taken, so it may count as carrying. Lifting it
+                 like the others leaves the loop without a plain exit, and the
+                 code after the loop is then marked unreachable instead of being
+                 explored with [_0] unset. *)
+              | { kind = Panic _ | UnwindTerminate | UndefinedBehavior; _ } :: _
+                -> true
+              | _ -> false
+            in
+            (* Whether the loop's body (outside its inner loops) has a [break]
+               carrying [_0] *)
+            let rec has_carrying_break (b : block) : bool =
+              let rec go prev (stl : statement list) =
+                match stl with
+                | [] -> false
+                | ({ kind = Break 0; _ } : statement) :: _ when carries prev ->
+                    true
+                | ({ kind = Switch (_, branches); _ } as st) :: stl ->
+                    List.exists has_carrying_break branches
+                    || go (st :: prev) stl
+                | st :: stl -> go (st :: prev) stl
+              in
+              go [] b.statements
+            in
+            (* Such [break]s are [return]s, and are lifted as such, landing on
+               the block's own exit with [_0] set *)
+            let carry_breaks = post_exit <> None && has_carrying_break loop in
             (* [update_loops] handles a loop which both [break]s and [return]s by
                copying the code which follows the loop, up to its [return], into
                the loop at each [break]. If that code contains a loop, it then
@@ -1158,7 +1237,7 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
                 | Switch (_, branches) -> List.exists in_block branches
                 | _ -> false
               in
-              in_block loop
+              in_block loop || carry_breaks
             in
             (* The locals (other than [inner_locals]) which the loop's own exits
                ending with [exit] end, in order (e.g. a [for] loop's iterator) *)
@@ -1200,10 +1279,18 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
                 (inner_locals @ if has_escapes then break_deaths else [])
             in
             let lifted = ref [] in
-            let escape (st : statement) (exit : statement_kind) : statement list
-                =
+            let own_exits = ref 0 in
+            (* [carries]: the exit is preceded by an assignment to [_0], which it
+               carries out (Charon turns a [return] shared by several paths into
+               [_0 := e; break i] to the block holding the [return]). Such an
+               exit is lifted like a [return], in an [Option], because [_0] must
+               not be live across the loop: it is unset on the loop's other
+               exits, and the symbolic execution cannot join a set value with an
+               unset one. *)
+            let escape ?(carries = false) ?(landing : statement list option)
+                (st : statement) (exit : statement_kind) : statement list =
               match exit with
-              | Return -> (
+              | (Return | Break _) when exit = Return || carries -> (
                   match ret_option with
                   | None ->
                       [%craise] st.span
@@ -1268,16 +1355,27 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
                              ( data,
                                [
                                  block
-                                   [
-                                     mk st.span
-                                       (Assign
-                                          (ret_place, Use (Move field, NoRetag)));
-                                     mk st.span (StorageDead (local_of slot));
-                                     {
-                                       (mk st.span Return) with
-                                       comments_before = [ lifted_return ];
-                                     };
-                                   ];
+                                   ([
+                                      mk st.span
+                                        (Assign
+                                           (ret_place, Use (Move field, NoRetag)));
+                                      mk st.span (StorageDead (local_of slot));
+                                    ]
+                                   @
+                                   match landing with
+                                   | Some stl -> stl
+                                   | None ->
+                                       [
+                                         {
+                                           (mk st.span exit) with
+                                           comments_before =
+                                             [
+                                               (if exit = Return then
+                                                  lifted_return
+                                                else lifted_exit);
+                                             ];
+                                         };
+                                       ]);
                                  block
                                    [ mk st.span (StorageDead (local_of slot)) ];
                                ] ))
@@ -1321,6 +1419,7 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
                 match stl with
                 | [] -> List.rev acc
                 | st :: stl when exits_outer st ->
+                    let carries = carries acc in
                     (* ... nor drop them (the [drop]s Rust interleaves with the
                        deaths before a [return]). The same holds for a [break] or
                        [continue] to an outer loop: the deaths of the outer loops'
@@ -1354,19 +1453,31 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
                       | _ -> acc
                     in
                     go
-                      (List.rev_append (replace st) (drop_outer_deaths acc))
+                      (List.rev_append (replace ~carries st)
+                         (drop_outer_deaths acc))
                       stl
-                | st :: stl -> go (List.rev_append (replace st) acc) stl
+                | st :: stl ->
+                    go
+                      (List.rev_append (replace ~carries:(carries acc) st) acc)
+                      stl
               in
               { b with statements = go [] b.statements }
-            and replace (st : statement) : statement list =
+            and replace ?(carries = false) (st : statement) : statement list =
               match st.kind with
-              | Break 0 when has_escapes -> end_inner st.span @ [ st ]
+              | Break 0 when carries && carry_breaks ->
+                  (* Lands on the block's own tail, [_0] set *)
+                  escape ~carries ~landing:(Option.get post_exit) st (Break 0)
+              | Break 0 when has_escapes ->
+                  incr own_exits;
+                  end_inner st.span @ [ st ]
+              | Break 0 ->
+                  incr own_exits;
+                  [ st ]
               (* The locals of the loop's body are dead at its back edge *)
               | Continue 0 when has_escapes ->
                   List.map (fun id -> mk st.span (StorageDead id)) inner_locals
                   @ [ st ]
-              | Break i when i > 0 -> escape st (Break (i - 1))
+              | Break i when i > 0 -> escape ~carries st (Break (i - 1))
               | Continue i when i > 0 -> escape st (Continue (i - 1))
               | Return when depth > 0 || carry_own -> escape st Return
               | Return when is_lifted_return st ->
@@ -1387,20 +1498,10 @@ let lift_nested_loop_exits (crate : crate) (f : fun_decl) : fun_decl =
                   ]
               | _ -> [ st ]
             in
-            (* Whether the loop has an exit of its own (a [break] of it), before
-               the rewrite adds the lifted ones *)
-            let rec own_break (k : int) (b : block) : bool =
-              List.exists
-                (fun (st : statement) ->
-                  match st.kind with
-                  | Break i -> i = k
-                  | Loop b -> own_break (k + 1) b
-                  | Switch (_, branches) -> List.exists (own_break k) branches
-                  | _ -> false)
-                b.statements
-            in
-            let has_own_exit = own_break 0 loop in
             let loop = replace_block loop in
+            (* Whether the loop has an exit of its own (a [break] of it), the
+               lifted ones aside *)
+            let has_own_exit = !own_exits > 0 in
             let lifted = List.rev !lifted in
             (* If every exit of the loop was lifted, the loop is left through one
                of them, which the checks after it take: the code after the checks

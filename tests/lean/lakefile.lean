@@ -18,6 +18,7 @@ package «tests» {}
 @[default_target] lean_lib AssertCfg
 @[default_target] lean_lib AssocTypeConstraint
 @[default_target] lean_lib AssocTypeDiamond
+@[default_target] lean_lib AtoiParse
 @[default_target] lean_lib Avl
 @[default_target] lean_lib BaseTutorial
 @[default_target] lean_lib Bitwise
@@ -108,6 +109,7 @@ package «tests» {}
 @[default_target] lean_lib IterRevDefault
 @[default_target] lean_lib IterSpecs
 @[default_target] lean_lib IterStdOverrides
+@[default_target] lean_lib JoinBottoms
 @[default_target] lean_lib JoinDuplicate
 @[default_target] lean_lib JoinEarlyExit
 @[default_target] lean_lib Joins
