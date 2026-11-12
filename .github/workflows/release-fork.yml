@@ -1,0 +1,173 @@
+name: Release (fork)
+# Fork-only: upstream's Release workflow is disabled on forks (scheduled/dispatched workflows are),
+# and tags cannot always be pushed through automation. A push to a release/** branch publishes a
+# prerelease tagged build-<sha> with the linux x86_64 static tarball (aeneas + charon).
+on:
+  push:
+    branches:
+      - 'release/**'
+
+jobs:
+  select-runner:
+    uses: ./.github/workflows/select-runner.yml
+
+  prepare:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag_name: ${{ steps.tag.outputs.tag_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate Tag
+        id: tag
+        run: |
+          set -eo pipefail
+
+          SHORT_SHA="$(git rev-parse --short HEAD)"
+          TAG_NAME="build-${SHORT_SHA}"
+          echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag_name }}
+          prerelease: true
+          make_latest: false
+          generate_release_notes: true
+
+  build:
+    name: Build (${{ matrix.artifact_name }})
+    needs: [prepare, select-runner]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+      actions: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: aeneas-linux-x86_64
+            nix_attr: aeneas-static-release
+            nix_machine: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install nix
+        if: ${{ !matrix.nix_machine }}
+        uses: nixbuild/nix-quick-install-action@v30
+        with:
+          nix_conf: |
+            keep-env-derivations = true
+            keep-outputs = true
+            extra-substituters = https://hacl.cachix.org
+            extra-trusted-public-keys = hacl.cachix.org-1:FzsZ2xsByOwKwIWNPII7yMOelJNDZ12mDAj3d1eGX0c=
+
+      - name: Restore Nix Cache
+        if: ${{ !matrix.nix_machine }}
+        id: restore-nix-cache
+        uses: nix-community/cache-nix-action/restore@v6
+        with:
+          primary-key: ${{ matrix.os }}-release-${{ hashFiles('**/flake.lock') }}
+          # if there's no cache hit, restore a cache by this prefix
+          restore-prefixes-first-match: ${{ matrix.os }}-release
+
+      - name: Package
+        env:
+          # The release tag reported by `aeneas -version`.
+          AENEAS_RELEASE_VERSION: ${{ needs.prepare.outputs.tag_name }}
+        run: |
+          set -eo pipefail
+
+          # Pass `--impure` so that nix can read `AENEAS_RELEASE_VERSION`
+          nix build -L --impure .#${{ matrix.nix_attr }}
+          mkdir dist_staging
+          cp -R result/. dist_staging/
+          # Nix preserves read-only permissions from the store, so we must make files writable.
+          chmod -R +w dist_staging
+
+      - name: Install elan (Lean toolchain manager)
+        if: ${{ !matrix.nix_machine }}
+        run: |
+          set -eo pipefail
+
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Hash Lean dependencies
+        id: hash-lean-dependencies
+        run: echo "hash=$(nix-hash --flat --type sha256 dist_staging/backends/lean/lake-manifest.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Lean dependencies
+        uses: actions/cache@v6
+        with:
+          path: dist_staging/backends/lean/.lake
+          key: ${{ matrix.os }}-lean-${{ steps.hash-lean-dependencies.outputs.hash }}
+          restore-keys: |
+            ${{ matrix.os }}-lean-
+
+      - name: Pre-compile Lean Library
+        run: |
+          set -eo pipefail
+
+          script="$PWD/scripts/ci-precompile-lean.sh"
+          cd dist_staging/backends/lean
+          if [[ "${{ matrix.nix_machine }}" == "true" ]]; then
+            nix develop ../../.. --command "$script"
+          else
+            "$script"
+          fi
+
+      - name: Upload Lean oleans
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag_name }}
+          files: dist_staging/backends/lean/.lake/lean-build-aeneas-*.tar.gz
+
+      - name: Re-package Tarball
+        run: |
+          set -eo pipefail
+
+          cd dist_staging
+          # Remove existing archive to avoid overwrite failures on macOS
+          rm -f "../${{ matrix.artifact_name }}.tar.gz"
+          tar -czf "../${{ matrix.artifact_name }}.tar.gz" -- *
+
+      # Verify the binary is functional.
+      - name: Smoke Test
+        env:
+          AENEAS_RELEASE_VERSION: ${{ needs.prepare.outputs.tag_name }}
+        run: |
+          set -eo pipefail
+
+          mkdir staging
+          cd staging
+          tar xf ../${{ matrix.artifact_name }}.tar.gz
+          ./aeneas --help > /dev/null
+
+          # Verify the reported version matches the release tag
+          version_output="$(./aeneas -version)"
+          expected="aeneas ${AENEAS_RELEASE_VERSION}"
+          if [[ "$version_output" != "$expected" ]]; then
+            echo "Version mismatch: expected '$expected', got '$version_output'" >&2
+            exit 1
+          fi
+
+      - name: Upload Artifact
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag_name }}
+          files: ${{ matrix.artifact_name }}.tar.gz
+
+      - name: Save Nix Cache
+        if: ${{ always() && !matrix.nix_machine }}
+        uses: nix-community/cache-nix-action/save@v6
+        with:
+          primary-key: ${{ steps.restore-nix-cache.outputs.primary-key }}
+          gc-max-store-size: 2G
+          purge: true
+          purge-created: 604800 # 7 * 24 * 3600 = 7 days in seconds
+
