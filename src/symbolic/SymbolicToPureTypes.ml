@@ -1133,7 +1133,9 @@ and translate_trait_method_sig (decls_ctx : C.decls_ctx)
      type of the trait, [Self::Layer<X>]. Inside the trait declaration [Self]
      stays [Self] (the projection is a field of the structure being defined), so
      we must not let the substitution turn it into [UnknownTrait]. *)
-  let subst = make_subst_from_generics_for_trait flat_sig.generics Self generics in
+  let subst =
+    make_subst_from_generics_for_trait flat_sig.generics Self generics
+  in
   let inputs = List.map (ty_substitute subst) flat_sig.inputs in
   let output = ty_substitute subst flat_sig.output in
 
