@@ -54,9 +54,9 @@ def ListF.Insts.GatShape.wrap
     Source: 'tests/src/gat.rs', lines 19:0-30:1 -/
 @[reducible]
 def ListF.Insts.GatShape : Shape ListF := {
-  Layer :=  fun (X : Type) => Option (Std.U32 × X)
-  wrap := fun (X : Type) => ListF.Insts.GatShape.wrap
-  unwrap := fun (X : Type) => ListF.Insts.GatShape.unwrap
+  Layer := fun (X : Type) => Option (Std.U32 × X)
+  wrap := fun {X : Type} => ListF.Insts.GatShape.wrap
+  unwrap := fun {X : Type} => ListF.Insts.GatShape.unwrap
 }
 
 /-- [gat::roundtrip]:
