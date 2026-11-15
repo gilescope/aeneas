@@ -3849,6 +3849,7 @@ let apply_assoc_type_constraints (crate : crate) : crate =
             let args = self#visit_generic_args env args in
             let same (c : trait_type_constraint) =
               c.type_id = id && c.trait_ref.kind = tr.kind
+              && args = empty_generic_args
             in
             match List.find_opt same local with
             | Some c -> self#visit_ty env c.ty
