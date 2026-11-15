@@ -44,6 +44,10 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           skipAddingSubstituter: true
       - uses: actions/checkout@v4
+      # TEMPORARY (gat-lite branch only): print the formatter's diff so it can be applied where
+      # ocamlformat is not available. Remove before proposing upstream.
+      - name: Show formatting diff
+        run: nix develop --command bash -c "make format >/dev/null 2>&1 || true; git --no-pager diff --no-color; git checkout -- ."
       - run: nix build -L .#checks.x86_64-linux.aeneas-check-tidiness
       - run: nix build -L .#checks.x86_64-linux.check-charon-pin
       - run: nix build -L .#aeneas

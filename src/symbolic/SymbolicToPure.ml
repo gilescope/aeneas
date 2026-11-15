@@ -338,7 +338,7 @@ let translate_trait_impl (ctx : Contexts.decls_ctx) (trait_impl : A.trait_impl)
      type-level function, hence the binder. *)
   let types =
     List.map
-      (fun ((type_id, t) : T.AssocTypeId.id * A.trait_assoc_ty_impl T.binder) ->
+      (fun ((type_id, t) : T.AssocTypeId.id * T.trait_assoc_ty_impl T.binder) ->
         let name =
           Charon.GAstUtils.get_assoc_type_name ctx.crate trait_impl.impl_trait.id
             type_id
@@ -346,7 +346,7 @@ let translate_trait_impl (ctx : Contexts.decls_ctx) (trait_impl : A.trait_impl)
         ( type_id,
           name,
           translate_binder span
-            (fun (t : A.trait_assoc_ty_impl) -> translate_ty t.value)
+            (fun (t : T.trait_assoc_ty_impl) -> translate_ty t.value)
             t ))
       (T.AssocTypeId.Map.to_list types)
   in
