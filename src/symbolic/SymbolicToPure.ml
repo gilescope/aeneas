@@ -242,7 +242,8 @@ let translate_trait_decl (ctx : Contexts.decls_ctx) (trait_decl : A.trait_decl)
     List.map
       (fun ((type_id, t) : T.AssocTypeId.id * A.trait_assoc_ty T.binder) ->
         let params = t.binder_params in
-        [%cassert] span (params.const_generics = [])
+        [%cassert] span
+          (params.const_generics = [])
           "Generic associated types with const generic parameters are not \
            supported yet";
         [%cassert] span
@@ -340,8 +341,8 @@ let translate_trait_impl (ctx : Contexts.decls_ctx) (trait_impl : A.trait_impl)
     List.map
       (fun ((type_id, t) : T.AssocTypeId.id * T.trait_assoc_ty_impl T.binder) ->
         let name =
-          Charon.GAstUtils.get_assoc_type_name ctx.crate trait_impl.impl_trait.id
-            type_id
+          Charon.GAstUtils.get_assoc_type_name ctx.crate
+            trait_impl.impl_trait.id type_id
         in
         ( type_id,
           name,

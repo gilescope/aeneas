@@ -143,7 +143,8 @@ and translate_trait_ref_kind (span : Meta.span option)
 let translate_gat_args (span : Meta.span option)
     (translate_generics : T.generic_args -> generic_args)
     (generics : T.generic_args) : generic_args =
-  [%cassert_opt_span] span (generics.const_generics = [])
+  [%cassert_opt_span] span
+    (generics.const_generics = [])
     "Generic associated types with const generic parameters are not supported \
      yet";
   [%cassert_opt_span] span (generics.trait_refs = [])
