@@ -488,7 +488,7 @@ let rec extract_ty (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
       F.pp_print_space fmt ();
       extract_rec ~inside:false ret_ty;
       if inside then F.pp_print_string fmt ")"
-  | TTraitType (trait_ref, type_id) -> (
+  | TTraitType (trait_ref, type_id, generics) -> (
       if !parameterize_trait_types then [%admit_raise] span "Unimplemented" fmt
       else
         let type_name =
@@ -497,6 +497,22 @@ let rec extract_ty (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
         in
         let add_brackets (s : string) =
           if backend () = Coq then "(" ^ s ^ ")" else s
+        in
+        (* The arguments of a generic associated type: the projection is a
+           type-level function which we apply to them, e.g. [Inst.Layer A]. *)
+        [%cassert] span
+          (generics.const_generics = [])
+          "Generic associated types with const generic arguments are not \
+           supported yet";
+        let has_args = generics.types <> [] in
+        if has_args && inside then F.pp_print_string fmt "(";
+        let extract_args () =
+          List.iter
+            (fun ty ->
+              F.pp_print_space fmt ();
+              extract_rec ~inside:true ty)
+            generics.types;
+          if has_args && inside then F.pp_print_string fmt ")"
         in
         (* There may be a special treatment depending on the instance id.
            See the comments for {!extract_trait_instance_id_with_dot}.
@@ -509,14 +525,16 @@ let rec extract_ty (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
         | Self ->
             extract_trait_instance_id_if_not_self span ctx fmt no_params_tys
               ~inside:false trait_ref.trait_decl_ref trait_ref.trait_id;
-            F.pp_print_string fmt type_name
+            F.pp_print_string fmt type_name;
+            extract_args ()
         | _ ->
             (* HOL4 doesn't have 1st class types *)
             [%cassert] span
               (backend () <> HOL4)
               "Trait types are not supported yet when generating code for HOL4";
             extract_trait_ref span ctx fmt no_params_tys ~inside:false trait_ref;
-            F.pp_print_string fmt ("." ^ add_brackets type_name))
+            F.pp_print_string fmt ("." ^ add_brackets type_name);
+            extract_args ())
   | TNever -> F.pp_print_string fmt "Never"
   | TError -> extract_ty_errors fmt
   | TDynTrait params -> (

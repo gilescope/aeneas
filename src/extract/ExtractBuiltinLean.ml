@@ -571,6 +571,9 @@ let lean_builtin_funs =
     (* file: "Aeneas/Std/Vec.lean", line: 81 *)
     mk_fun "alloc::vec::{alloc::vec::Vec<@T>}::new" "alloc.vec.Vec.new"
       ~can_fail:false ~lift:false;
+    (* file: "Aeneas/Std/VecExtra.lean", line: 155 *)
+    mk_fun "alloc::vec::{alloc::vec::Vec<@T>}::pop" "alloc.vec.Vec.pop"
+      ~keep_params:(Some [ true; false ]);
     (* file: "Aeneas/Std/Vec.lean", line: 155 *)
     mk_fun "alloc::vec::{alloc::vec::Vec<@T>}::push" "alloc.vec.Vec.push"
       ~keep_params:(Some [ true; false ]);

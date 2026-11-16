@@ -2100,7 +2100,7 @@ let ctx_compute_var_basename (span : Meta.span) (ctx : extraction_ctx)
           | TPureNat -> "n"
           | TPureInt -> "i")
       | TArrow _ -> "f"
-      | TTraitType (trait_ref, type_id) ->
+      | TTraitType (trait_ref, type_id, _) ->
           let name =
             Charon.GAstUtils.get_assoc_type_name ctx.crate
               trait_ref.trait_decl_ref.trait_decl_id type_id

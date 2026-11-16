@@ -219,28 +219,42 @@ let translate_trait_decl (ctx : Contexts.decls_ctx) (trait_decl : A.trait_decl)
     match_name_find_opt ctx trait_decl.item_meta.name
       (ExtractBuiltin.builtin_trait_decls_map ())
   in
-  if (not (T.AssocTypeId.Map.is_empty types)) && builtin_info = None then
-    (* Most associated types are removed by Charon's `--remove-associated-types`. *)
+  let types = T.AssocTypeId.Map.to_list types in
+  (* Plain associated types are lifted to parameters of the trait by Charon's
+     `--remove-associated-types`. The ones which remain are either generic
+     associated types (GATs), which we support when they only have type
+     parameters, or types Charon could not lift (mutually-recursive traits),
+     which we don't support. *)
+  let is_gat ((_, t) : T.AssocTypeId.id * A.trait_assoc_ty T.binder) : bool =
+    t.binder_params <> TypesUtils.empty_generic_params
+  in
+  if List.exists (fun t -> not (is_gat t)) types && builtin_info = None then
     [%warn] span
-      ("Found an associated type in a trait declaration; trait associated \
-        types are usually lifted to become parameters of the trait definition, \
-        but this can fail with mutually-recursive traits as well as GATs. \
-        Aeneas cannot handle such types today, and the generated code will \
-        likely be incorrect." ^ "\nTrait declaration: " ^ name ^ "\nSource: "
+      ("Found a non-generic associated type in a trait declaration; trait \
+        associated types are usually lifted to become parameters of the trait \
+        definition, but this can fail with mutually-recursive traits. Aeneas \
+        cannot handle such types today, and the generated code will likely be \
+        incorrect." ^ "\nTrait declaration: " ^ name ^ "\nSource: "
      ^ Errors.span_to_string span
       ^ Contexts.compute_local_uses_error_message ctx
           (IdTraitDecl trait_decl.def_id));
   let types =
     List.map
       (fun ((type_id, t) : T.AssocTypeId.id * A.trait_assoc_ty T.binder) ->
+        let params = t.binder_params in
         [%cassert] span
-          (t.binder_params = TypesUtils.empty_generic_params)
-          "Can not extract trait associated types with parameters";
-        let t = t.binder_value in
-        [%cassert] span (t.implied_clauses = [])
-          "Can not extract trait associated types with implied trait clauses";
-        (type_id, t.name))
-      (T.AssocTypeId.Map.to_list types)
+          (params.const_generics = [])
+          "Generic associated types with const generic parameters are not \
+           supported yet";
+        [%cassert] span
+          (params.trait_clauses = [] && params.trait_type_constraints = [])
+          "Generic associated types with where-clauses are not supported yet";
+        [%cassert] span
+          (t.binder_value.implied_clauses = [])
+          "Trait bounds on generic associated types are not supported yet";
+        ( type_id,
+          translate_binder opt_span (fun (t : A.trait_assoc_ty) -> t.name) t ))
+      types
   in
   let consts =
     List.map
@@ -287,7 +301,7 @@ let translate_trait_impl (ctx : Contexts.decls_ctx) (trait_impl : A.trait_impl)
     generics = llbc_generics;
     implied_trait_refs;
     consts;
-    types = _;
+    types;
     methods;
     is_unsafe = _;
     is_negative = _;
@@ -320,8 +334,23 @@ let translate_trait_impl (ctx : Contexts.decls_ctx) (trait_impl : A.trait_impl)
         (const_id, name, translate_global_decl_ref span translate_ty gref))
       (T.AssocConstId.Map.to_list consts)
   in
-  (* We checked that there were no types in the trait declaration already. *)
-  let types = [] in
+  (* The associated types which remain after Charon's
+     `--remove-associated-types` are the generic ones: their value is a
+     type-level function, hence the binder. *)
+  let types =
+    List.map
+      (fun ((type_id, t) : T.AssocTypeId.id * T.trait_assoc_ty_impl T.binder) ->
+        let name =
+          Charon.GAstUtils.get_assoc_type_name ctx.crate
+            trait_impl.impl_trait.id type_id
+        in
+        ( type_id,
+          name,
+          translate_binder span
+            (fun (t : T.trait_assoc_ty_impl) -> translate_ty t.value)
+            t ))
+      (T.AssocTypeId.Map.to_list types)
+  in
   let methods =
     List.map
       (fun ((method_id, m) : TraitMethodId.id * T.fun_decl_ref T.binder) ->
