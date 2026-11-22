@@ -2,14 +2,14 @@
 [[91mError[39m] Trait bounds on generic associated types are not supported yet
 Source: 'tests/src/gat-bound.rs', lines 8:0-11:1
 Compiler source: symbolic/SymbolicToPure.ml, line 252
- 
+
 Uncaught exception:
   
   (Failure
     "Trait bounds on generic associated types are not supported yet\
    \nSource: 'tests/src/gat-bound.rs', lines 8:0-11:1\
    \nCompiler source: symbolic/SymbolicToPure.ml, line 252")
- 
+
 Raised at Aeneas__Errors.craise_opt_span in file "Errors.ml", line 120, characters 4-23
 Called from Aeneas__Errors.cassert_opt_span in file "Errors.ml" (inlined), line 152, characters 16-50
 Called from Aeneas__Errors.cassert in file "Errors.ml" (inlined), line 156, characters 2-46
