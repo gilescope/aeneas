@@ -1,0 +1,24 @@
+[[92mInfo[39m ] Imported: tests/llbc/gat-bound.llbc
+[[91mError[39m] Trait bounds on generic associated types are not supported yet
+Source: 'tests/src/gat-bound.rs', lines 8:0-11:1
+Compiler source: symbolic/SymbolicToPure.ml, line 252
+ 
+Uncaught exception:
+  
+  (Failure
+    "Trait bounds on generic associated types are not supported yet\
+   \nSource: 'tests/src/gat-bound.rs', lines 8:0-11:1\
+   \nCompiler source: symbolic/SymbolicToPure.ml, line 252")
+ 
+Raised at Aeneas__Errors.craise_opt_span in file "Errors.ml", line 120, characters 4-23
+Called from Aeneas__Errors.cassert_opt_span in file "Errors.ml" (inlined), line 152, characters 16-50
+Called from Aeneas__Errors.cassert in file "Errors.ml" (inlined), line 156, characters 2-46
+Called from Aeneas__SymbolicToPure.translate_trait_decl.(fun) in file "symbolic/SymbolicToPure.ml", lines 252-254, characters 8-74
+Called from Stdlib__List.map in file "list.ml", line 83, characters 15-19
+Called from Aeneas__SymbolicToPure.translate_trait_decl in file "symbolic/SymbolicToPure.ml", lines 242-257, characters 4-11
+Called from Aeneas__Translate.translate_crate_to_pure.(fun) in file "Translate.ml", line 549, characters 22-69
+Called from Stdlib__List.filter_map in file "list.ml", line 280, characters 12-15
+Called from Stdlib__List.filter_map in file "list.ml", line 282, characters 23-37
+Called from Aeneas__Translate.translate_crate_to_pure in file "Translate.ml", lines 544-570, characters 4-68
+Called from Aeneas__Translate.translate_crate in file "Translate.ml", line 2344, characters 31-71
+Called from Dune__exe__Main in file "Main.ml", lines 765-766, characters 8-37
