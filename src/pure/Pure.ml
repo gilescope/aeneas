@@ -580,7 +580,10 @@ type ty =
     (* Note: the `de_bruijn_id`s are incorrect, see comment on `translate_region_binder` *)
   | TLiteral of literal_type
   | TArrow of ty * ty
-  | TTraitType of trait_ref * assoc_type_id
+  | TTraitType of trait_ref * assoc_type_id * generic_args
+      (** [<T as Trait>::Assoc<Args>]. The generic arguments are those of a
+          generic associated type (GAT); they are empty for a plain associated
+          type. We only support GATs with type parameters. *)
   | TNever
   | TDynTrait of dyn_predicate
   | TError
@@ -1907,7 +1910,10 @@ type trait_decl = {
   parent_clauses : trait_param list;
   llbc_parent_clauses : Types.trait_param list;
   consts : (assoc_const_id * trait_item_name * ty) list;
-  types : (assoc_type_id * trait_item_name) list;
+  types : (assoc_type_id * trait_item_name binder) list;
+      (** The associated types which Charon did not lift to parameters of the
+          trait: generic associated types. The binder holds the parameters of
+          the GAT (it binds nothing for a plain associated type). *)
   methods : trait_method list;
 }
 [@@deriving show]
@@ -1932,7 +1938,9 @@ type trait_impl = {
   preds : predicates;
   parent_trait_refs : trait_ref list;
   consts : (assoc_const_id * trait_item_name * global_decl_ref) list;
-  types : (assoc_type_id * trait_item_name * ty) list;
+  types : (assoc_type_id * trait_item_name * ty binder) list;
+      (** The value of a generic associated type is a type-level function: the
+          binder holds the parameters of the GAT. *)
   methods : (trait_method_id * trait_item_name * fun_decl_ref binder) list;
 }
 [@@deriving show]

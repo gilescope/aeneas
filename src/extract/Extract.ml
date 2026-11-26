@@ -2869,15 +2869,16 @@ let extract_trait_decl_type_names (ctx : extraction_ctx)
           else ctx_compute_trait_decl_name ctx trait_decl ^ type_name
         in
         List.map
-          (fun (type_id, item_name) ->
+          (fun ((type_id, item_name) : _ * trait_item_name binder) ->
             (* Type name *)
-            let type_name = compute_type_name item_name in
+            let type_name = compute_type_name item_name.binder_value in
             (type_id, type_name))
           types
     | Some info ->
         let type_map = StringMap.of_list info.types in
         List.map
-          (fun (type_id, item_name) ->
+          (fun ((type_id, item_name) : _ * trait_item_name binder) ->
+            let item_name = item_name.binder_value in
             match StringMap.find_opt item_name type_map with
             | Some type_name -> (type_id, type_name)
             | None ->
@@ -3334,12 +3335,21 @@ let extract_trait_decl (ctx : extraction_ctx) (fmt : F.formatter)
 
     (* The types *)
     List.iter
-      (fun (type_id, _) ->
+      (fun ((type_id, b) : _ * trait_item_name binder) ->
         (* Extract the type *)
         let item_name =
           ctx_get_trait_type decl.item_meta.span decl.def_id type_id ctx
         in
         let ty () =
+          (* A generic associated type is a type-level function:
+             [Type -> ... -> Type] (we only support type parameters) *)
+          List.iter
+            (fun _ ->
+              F.pp_print_space fmt ();
+              F.pp_print_string fmt (type_keyword decl.item_meta.span);
+              F.pp_print_space fmt ();
+              extract_arrow fmt ())
+            b.binder_generics.types;
           F.pp_print_space fmt ();
           F.pp_print_string fmt (type_keyword decl.item_meta.span)
         in
@@ -3760,6 +3770,62 @@ let extract_adapted_method (fmt : F.formatter) (adapter : method_adapter)
 (** Small helper.
 
     Extract the items for a method in a trait impl. *)
+(** The explicit/implicit status of the generics of a method in a trait impl.
+
+    The field of the trait structure was printed from the trait declaration's
+    signature, whose explicit info is computed from the method's inputs; the
+    impl's binder is computed without inputs, so a type parameter that appears
+    only in an input would be explicit on one side and implicit on the other.
+    Use the declaration's, when it is available and has the same shape. *)
+let trait_impl_method_explicit_info (ctx : extraction_ctx)
+    (trait_decl_id : trait_decl_id) (method_id : trait_method_id)
+    (fn : fun_decl_ref binder) : explicit_info =
+  let same_shape (e : explicit_info) =
+    List.length e.explicit_types
+    = List.length fn.binder_explicit_info.explicit_types
+    && List.length e.explicit_const_generics
+       = List.length fn.binder_explicit_info.explicit_const_generics
+  in
+  match TraitDeclId.Map.find_opt trait_decl_id ctx.trans_trait_decls with
+  | None -> fn.binder_explicit_info
+  | Some decl -> (
+      match
+        List.find_opt
+          (fun (m : trait_method) -> m.method_id = method_id)
+          decl.methods
+      with
+      | Some m when same_shape m.signature.explicit_info ->
+          m.signature.explicit_info
+      | _ -> fn.binder_explicit_info)
+
+(** Extract the value of an associated type in a trait impl.
+
+    The value of a generic associated type is a type-level function: we
+    quantify over the parameters of the GAT ([fun X => ...]), like we do for
+    the generics of a method. *)
+let extract_trait_impl_assoc_type_value (span : Meta.span)
+    (ctx : extraction_ctx) (fmt : F.formatter) (impl : trait_impl)
+    (b : ty binder) (subst_ty : ty -> ty) : unit =
+  let ctx =
+    if b.binder_generics = empty_generic_params then ctx
+    else begin
+      let ctx, tys, cgs, tcs =
+        ctx_add_generic_params span impl.item_meta.name Method
+          b.binder_llbc_generics b.binder_generics ctx
+      in
+      (* The caller printed the space after [:=] *)
+      extract_generic_params span ctx fmt TypeDeclId.Set.empty ~use_fun:true
+        ~space:(Some (ref true)) Method b.binder_generics
+        (Some b.binder_explicit_info) tys cgs tcs;
+      F.pp_print_space fmt ();
+      F.pp_print_string fmt "=>";
+      F.pp_print_space fmt ();
+      ctx
+    end
+  in
+  extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false
+    (subst_ty b.binder_value)
+
 let extract_trait_impl_method_items_aux (ctx : extraction_ctx)
     (fmt : F.formatter) (impl : trait_impl) (method_id : trait_method_id)
     (fn : fun_decl_ref binder) : unit =
@@ -3781,7 +3847,9 @@ let extract_trait_impl_method_items_aux (ctx : extraction_ctx)
        (trait impl + method generics) *)
     let method_generics = fn.binder_generics in
     let method_llbc_generics = fn.binder_llbc_generics in
-    let method_explicit_info = fn.binder_explicit_info in
+    let method_explicit_info =
+      trait_impl_method_explicit_info ctx trait_decl_id method_id fn
+    in
     let ctx, method_tys, method_cgs, method_tcs =
       ctx_add_generic_params span trans.f.item_meta.name Method
         method_llbc_generics method_generics ctx
@@ -3901,11 +3969,11 @@ let extract_trait_impl_literal (ctx : extraction_ctx) (fmt : F.formatter)
   let trait_decl = TraitDeclId.Map.find trait_decl_id ctx.crate.trait_decls in
   let types =
     List.map
-      (fun (type_id, _, ty) ->
+      (fun ((type_id, _, b) : _ * _ * ty binder) ->
         ( ctx_get_trait_type span trait_decl_id type_id ctx,
           fun () ->
-            extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false
-              (subst_visitor#visit_ty subst ty) ))
+            extract_trait_impl_assoc_type_value span ctx fmt impl b
+              (subst_visitor#visit_ty subst) ))
       impl.types
   in
   let parents =
@@ -3939,9 +4007,12 @@ let extract_trait_impl_literal (ctx : extraction_ctx) (fmt : F.formatter)
                 ctx_add_generic_params span trans.f.item_meta.name Method
                   fn.binder_llbc_generics fn.binder_generics ctx
               in
+              let explicit =
+                trait_impl_method_explicit_info ctx trait_decl_id method_id fn
+              in
               extract_generic_params span ctx fmt TypeDeclId.Set.empty
-                ~use_fun:true Method fn.binder_generics
-                (Some fn.binder_explicit_info) tys cgs tcs;
+                ~use_fun:true Method fn.binder_generics (Some explicit) tys cgs
+                tcs;
               F.pp_print_space fmt ();
               F.pp_print_string fmt "=>";
               F.pp_print_space fmt ();
@@ -4198,12 +4269,12 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
 
     (* The types *)
     List.iter
-      (fun (type_id, _, ty) ->
+      (fun ((type_id, _, b) : _ * _ * ty binder) ->
         (* Extract the type *)
         let item_name = ctx_get_trait_type span trait_decl_id type_id ctx in
         let ty () =
           F.pp_print_space fmt ();
-          extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false ty
+          extract_trait_impl_assoc_type_value span ctx fmt impl b (fun ty -> ty)
         in
         extract_trait_impl_item ctx fmt item_name ty)
       impl.types;

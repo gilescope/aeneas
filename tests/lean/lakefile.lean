@@ -66,6 +66,7 @@ package «tests» {}
 @[default_target] lean_lib ExcludedTraitMethod
 @[default_target] lean_lib FnItemHigherRanked
 @[default_target] lean_lib FromTo
+@[default_target] lean_lib Gat
 @[default_target] lean_lib GenericIterZip
 @[default_target] lean_lib GenericUnitOutput
 @[default_target] lean_lib Hashmap
