@@ -127,10 +127,33 @@ and translate_trait_ref_kind (span : Meta.span option)
       let inst_id = translate_trait_ref_kind span translate_ty tref in
       ParentClause (inst_id, tref.trait_decl_ref.binder_value.id, clause_id)
   | ItemClause _ ->
-      (* `ItemClause`s are removed by Charon's `--remove-associated-types`, except for GATs *)
-      [%craise_opt_span] span "Generic Associated Types are not supported yet"
+      (* `ItemClause`s are removed by Charon's `--remove-associated-types`,
+         except for GATs: they are the trait bounds on a GAT. *)
+      [%craise_opt_span] span
+        "Trait bounds on generic associated types are not supported yet (only \
+         GATs with type parameters and no bounds are)"
   | Dyn -> [%craise_opt_span] span "Dynamic trait types are not supported yet"
   | UnknownTrait s -> [%craise_opt_span] span ("Unknown trait found: " ^ s)
+
+(** Translate the generic arguments of a generic associated type (GAT) - they
+    are empty for a plain associated type.
+
+    We only support GATs with type parameters: const generic arguments, and
+    trait references (the proofs of the GAT's where-clauses) are rejected. *)
+let translate_gat_args (span : Meta.span option)
+    (translate_generics : T.generic_args -> generic_args)
+    (generics : T.generic_args) : generic_args =
+  [%cassert_opt_span] span
+    (generics.const_generics = [])
+    "Generic associated types with const generic parameters are not supported \
+     yet";
+  [%cassert_opt_span] span (generics.trait_refs = [])
+    "Generic associated types with where-clauses are not supported yet";
+  translate_generics generics
+
+(** Whether the arguments of a GAT mention regions (i.e., contain borrows). *)
+let gat_args_have_regions (generics : T.generic_args) : bool =
+  List.exists (TypesUtils.ty_has_regions_in_pred (fun _ -> true)) generics.types
 
 (** Translate a signature type - TODO: factor out the different translation
     functions *)
@@ -182,10 +205,10 @@ let rec translate_sty (span : Meta.span option) (ty : T.ty) : ty =
       TAdt (TBuiltin (TRawPtr mut), generics)
   | TTraitType (trait_ref, type_name, generics) ->
       let trait_ref = translate_strait_ref span trait_ref in
-      [%cassert_opt_span] span
-        (generics = TypesUtils.empty_generic_args)
-        "Unimplemented";
-      TTraitType (trait_ref, type_name)
+      let generics =
+        translate_gat_args span (translate_sgeneric_args span) generics
+      in
+      TTraitType (trait_ref, type_name, generics)
   | TFnDef _ | TFnPtr _ ->
       [%craise_opt_span] span "Arrow types are not supported yet"
   | TDynTrait _ ->
@@ -389,11 +412,13 @@ let rec translate_fwd_ty (span : Meta.span option) (decls_ctx : C.decls_ctx)
       let generics = { types = [ ty ]; const_generics = []; trait_refs = [] } in
       TAdt (TBuiltin (TRawPtr mut), generics)
   | TTraitType (trait_ref, type_name, generics) ->
-      [%cassert_opt_span] span
-        (generics = TypesUtils.empty_generic_args)
-        "Unimplemented";
       let trait_ref = translate_fwd_trait_ref span decls_ctx trait_ref in
-      TTraitType (trait_ref, type_name)
+      let generics =
+        translate_gat_args span
+          (translate_fwd_generic_args span decls_ctx)
+          generics
+      in
+      TTraitType (trait_ref, type_name, generics)
   | TFnDef { binder_regions = _; binder_value = { kind; generics } } -> (
       (* The regions the item binds (e.g. [for<'a, 'b> Ord::cmp<'a, 'b>]) vanish
          with the others in the pure type. *)
@@ -532,9 +557,12 @@ and compute_back_ty_num_levels (span : Meta.span option)
     | TTraitType (trait_ref, _, generics) ->
         [%sanity_check_opt_span] span
           (TypesUtils.trait_ref_kind_is_local_clause_or_builtin trait_ref.kind);
+        (* A GAT applied to types containing borrows could hide those borrows
+           behind the abstract type: we don't support this. *)
         [%cassert_opt_span] span
-          (generics = TypesUtils.empty_generic_args)
-          "Unimplemented";
+          (not (gat_args_have_regions generics))
+          "Generic associated types applied to types containing borrows are \
+           not supported yet";
         save_count outer_regions
     | TFnDef _ ->
         (* A function item holds no borrows (see [RegionsHierarchy]) *)
@@ -670,8 +698,9 @@ and translate_back_ty_aux (span : Meta.span option) (decls_ctx : C.decls_ctx)
         [%sanity_check_opt_span] span
           (TypesUtils.trait_ref_kind_is_local_clause_or_builtin trait_ref.kind);
         [%cassert_opt_span] span
-          (generics = TypesUtils.empty_generic_args)
-          "Unimplemented";
+          (not (gat_args_have_regions generics))
+          "Generic associated types applied to types containing borrows are \
+           not supported yet";
         stop outer_regions ty
     | TFnDef _ ->
         (* A function item holds no borrows (see [RegionsHierarchy]) *)
@@ -1100,7 +1129,13 @@ and translate_trait_method_sig (decls_ctx : C.decls_ctx)
       (generic_args_of_params trait_generics)
       (bound_generic_args_of_params method_generics)
   in
-  let subst = make_subst_from_generics flat_sig.generics generics in
+  (* The flat signature may mention [Self] inside types: a generic associated
+     type of the trait, [Self::Layer<X>]. Inside the trait declaration [Self]
+     stays [Self] (the projection is a field of the structure being defined), so
+     we must not let the substitution turn it into [UnknownTrait]. *)
+  let subst =
+    make_subst_from_generics_for_trait flat_sig.generics Self generics
+  in
   let inputs = List.map (ty_substitute subst) flat_sig.inputs in
   let output = ty_substitute subst flat_sig.output in
 

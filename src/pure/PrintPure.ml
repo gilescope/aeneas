@@ -317,13 +317,17 @@ let rec ty_to_string (env : fmt_env) (inside : bool) (ty : ty) : string =
         ty_to_string env true arg_ty ^ " -> " ^ ty_to_string env false ret_ty
       in
       if inside then "(" ^ ty ^ ")" else ty
-  | TTraitType (trait_ref, type_id) ->
+  | TTraitType (trait_ref, type_id, generics) ->
       let type_name =
         Charon.GAstUtils.get_assoc_type_name env.crate
           trait_ref.trait_decl_ref.trait_decl_id type_id
       in
       let trait_ref = trait_ref_to_string env false trait_ref in
-      let s = trait_ref ^ "::" ^ type_name in
+      let generics =
+        if generics = empty_generic_args then ""
+        else generic_args_to_string env generics
+      in
+      let s = trait_ref ^ "::" ^ type_name ^ generics in
       if inside then "(" ^ s ^ ")" else s
   | TNever -> "@Never"
   | TError -> "@Error"

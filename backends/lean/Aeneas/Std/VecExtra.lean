@@ -148,4 +148,33 @@ theorem alloc.vec.Vec.Insts.CoreHashHash.hash_monotone {γ : Type _} [Lean.Order
 
 end
 
+/-! ## `pop` -/
+
+/-- `pop`: the last element and the vector without it; `none` and the vector unchanged when it
+is empty -/
+@[expose, rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::pop" (keepParams := [true, false])]
+def alloc.vec.Vec.pop {T : Type} (v : alloc.vec.Vec T) : Result (Option T × alloc.vec.Vec T) :=
+  match v.val.getLast? with
+  | none => ok (none, v)
+  | some x =>
+    ok (some x, Vec.from v.val.dropLast (by
+      have := v.property
+      rw [List.length_dropLast]
+      omega))
+
+@[step]
+theorem alloc.vec.Vec.pop_spec {T : Type} (v : alloc.vec.Vec T) :
+    v.pop ⦃ o v1 => o = v.val.getLast? ∧ v1.val = v.val.dropLast ⦄ := by
+  unfold alloc.vec.Vec.pop
+  split
+  · rename_i heq
+    rw [WP.spec_ok]
+    show none = v.val.getLast? ∧ v.val = v.val.dropLast
+    have hnil : v.val = [] := List.getLast?_eq_none_iff.mp heq
+    exact ⟨heq.symm, by rw [hnil]; rfl⟩
+  · rename_i x heq
+    rw [WP.spec_ok]
+    show some x = v.val.getLast? ∧ (Vec.from v.val.dropLast _).val = v.val.dropLast
+    exact ⟨heq.symm, Vec.from_val _ _⟩
+
 end Aeneas.Std

@@ -1,0 +1,5 @@
+[[92mInfo[39m ] Imported: tests/llbc/gat_bound.llbc
+[[91mError[39m] Trait bounds on generic associated types are not supported yet
+Source: 'tests/src/gat-bound.rs', lines 8:0-11:1
+Compiler source: symbolic/SymbolicToPure.ml, line 252
+
