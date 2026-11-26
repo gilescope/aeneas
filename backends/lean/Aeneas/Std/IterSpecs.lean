@@ -166,14 +166,14 @@ theorem core.iter.adapters.take.Take.yields_atLeast {I Item : Type}
     ∀ (xs : List Item) (it : I) (n : Usize), xs.length = n.val → YieldsAtLeast IA it xs →
     Yields (core.iter.traits.iterator.IteratorTake IA) ⟨it, n⟩ xs
   | [], it, n, hn, _ => by
-    simp only [Yields, core.iter.adapters.take.IteratorTake.next]
+    simp only [Yields, core.iter.traits.iterator.IteratorTake, core.iter.adapters.take.IteratorTake.nextPlain]
     simp [show n.val = 0 by simpa using hn.symm, spec_ok]
   | x :: xs, it, n, hn, h => by
     simp only [YieldsAtLeast] at h
     obtain ⟨⟨o, it'⟩, hnx, ho, hy⟩ := spec_eq_ok h
     subst ho
     simp only [Yields, core.iter.traits.iterator.IteratorTake,
-      core.iter.adapters.take.IteratorTake.next]
+      core.iter.adapters.take.IteratorTake.nextPlain]
     have hn0 : ¬ n.val = 0 := by simp at hn; omega
     simp only [hn0, ↓reduceIte]
     obtain ⟨n', hn', hn'v, -⟩ := spec_eq_ok (UScalar.sub_spec (x := n) (y := 1#usize) (by simp; omega))
@@ -455,7 +455,7 @@ theorem core.slice.iter.IteratorSliceIter.yields {T : Type} :
   | n + 1, it, hn => by
     have hi : it.i < it.slice.val.length := by omega
     rw [List.drop_eq_getElem_cons hi]
-    simp only [Yields, core.iter.traits.iterator.IteratorSliceIter,
+    simp only [Yields, core.iter.traits.iterator.IteratorSliceIter_next,
       core.slice.iter.IteratorSliceIter.next, Slice.len_val, Slice.length, hi, ↓reduceDIte, spec_ok]
     refine ⟨rfl, ?_⟩
     simpa using core.slice.iter.IteratorSliceIter.yields n { it with i := it.i + 1 } (by simp; omega)
@@ -709,7 +709,7 @@ theorem core.iter.adapters.map.Map.yields_spec {I F Item B : Type}
     · cases j with
       | zero => simpa using hR
       | succ j => simpa using hRs j (by simpa using hj)
-    · simp only [Yields, core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator,
+    · simp only [Yields, core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator_next,
         core.iter.adapters.map.Map.Insts.CoreIterTraitsIteratorIterator.next]
       simp only [List.getElem_cons_zero] at hcall
       simp [hnext, hcall, hys]
@@ -942,15 +942,15 @@ theorem core.iter.adapters.chain.Chain.yields_b {A B Item : Type}
     obtain ⟨⟨o, b'⟩, hnext, ho⟩ := spec_eq_ok hy
     simp only [uncurry'_pair] at ho
     subst ho
-    simp [Yields, core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator,
-      core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next, hnext]
+    simp [Yields, core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator_next,
+      core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.nextPlain, hnext]
   | y :: ys, b, hy => by
     simp only [Yields] at hy
     obtain ⟨⟨o, b'⟩, hnext, hpost⟩ := spec_eq_ok hy
     simp only [uncurry'_pair] at hpost
     obtain ⟨rfl, hy'⟩ := hpost
-    simp only [Yields, core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator,
-      core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next, hnext, bind_tc_ok,
+    simp only [Yields, core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator_next,
+      core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.nextPlain, hnext, bind_tc_ok,
       spec_ok]
     exact ⟨rfl, core.iter.adapters.chain.Chain.yields_b IA IB ys b' hy'⟩
 
@@ -967,15 +967,15 @@ theorem core.iter.adapters.chain.Chain.yields {A B Item : Type}
     simp only [uncurry'_pair] at ho
     subst ho
     refine (Yields_congr _ ?_ ys).2 (core.iter.adapters.chain.Chain.yields_b IA IB ys b hb)
-    simp [core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator,
-      core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next, hnext]
+    simp [core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator_next,
+      core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.nextPlain, hnext]
   | x :: xs, a, hy => by
     simp only [Yields] at hy
     obtain ⟨⟨o, a'⟩, hnext, hpost⟩ := spec_eq_ok hy
     simp only [uncurry'_pair] at hpost
     obtain ⟨rfl, hy'⟩ := hpost
-    simp only [List.cons_append, Yields, core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator,
-      core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.next, hnext, bind_tc_ok,
+    simp only [List.cons_append, Yields, core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator_next,
+      core.iter.adapters.chain.Chain.Insts.CoreIterTraitsIteratorIterator.nextPlain, hnext, bind_tc_ok,
       spec_ok]
     exact ⟨rfl, core.iter.adapters.chain.Chain.yields IA IB ys b hb xs a' hy'⟩
 

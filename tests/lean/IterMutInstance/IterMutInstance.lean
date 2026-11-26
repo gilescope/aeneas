@@ -22,17 +22,6 @@ noncomputable section
 
 namespace iter_mut_instance
 
-/-- Trait implementation: [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a mut T> for core::slice::iter::IterMut<'a, T>}]
-    Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 153:8-153:45
-    Name pattern: [core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>] -/
-@[reducible, rust_trait_impl
-  "core::iter::traits::iterator::Iterator<core::slice::iter::IterMut<'a, @T>, &'a mut @T>"]
-impl_def core.slice.iter.IterMut.Insts.CoreIterTraitsIteratorIteratorMutAT (T :
-  Type) : core.iter.traits.iterator.Iterator (core.slice.iter.IterMut T) T := {
-  next := fun _ => Result.fail Error.undef
-  size_hint := fun _ => Result.fail Error.undef
-}
-
 /-- [core::slice::iter::ChunksMut]
     Source: '/rustc/library/core/src/slice/iter.rs', lines 1654:0-1654:31
     Name pattern: [core::slice::iter::ChunksMut]
